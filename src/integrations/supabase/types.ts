@@ -14,16 +14,253 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      family_access: {
+        Row: {
+          can_view: boolean
+          created_at: string
+          granted_by: string
+          id: string
+          patient_id: string
+          user_id: string
+        }
+        Insert: {
+          can_view?: boolean
+          created_at?: string
+          granted_by: string
+          id?: string
+          patient_id: string
+          user_id: string
+        }
+        Update: {
+          can_view?: boolean
+          created_at?: string
+          granted_by?: string
+          id?: string
+          patient_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_access_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_access_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_access_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hospitals: {
+        Row: {
+          address: string
+          contact_email: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          address: string
+          contact_email: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          address?: string
+          contact_email?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
+      medical_records: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_url: string | null
+          id: string
+          patient_id: string
+          record_date: string
+          record_type: Database["public"]["Enums"]["record_type"]
+          severity: Database["public"]["Enums"]["severity_level"]
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          patient_id: string
+          record_date: string
+          record_type: Database["public"]["Enums"]["record_type"]
+          severity?: Database["public"]["Enums"]["severity_level"]
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          patient_id?: string
+          record_date?: string
+          record_type?: Database["public"]["Enums"]["record_type"]
+          severity?: Database["public"]["Enums"]["severity_level"]
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medical_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medical_records_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          created_at: string
+          created_by: string
+          dob: string
+          gender: string
+          hospital_id: string
+          id: string
+          name: string
+          primary_contact: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          dob: string
+          gender: string
+          hospital_id: string
+          id?: string
+          name: string
+          primary_contact: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          dob?: string
+          gender?: string
+          hospital_id?: string
+          id?: string
+          name?: string
+          primary_contact?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patients_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patients_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string
+          email: string
+          hospital_id: string | null
+          id: string
+          name: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          hospital_id?: string | null
+          id: string
+          name: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          hospital_id?: string | null
+          id?: string
+          name?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_hospital: {
+        Args: { user_id: string }
+        Returns: string
+      }
+      get_user_role: {
+        Args: { user_id: string }
+        Returns: Database["public"]["Enums"]["user_role"]
+      }
     }
     Enums: {
-      [_ in never]: never
+      record_type:
+        | "prescription"
+        | "test_report"
+        | "scan"
+        | "discharge_summary"
+        | "consultation_notes"
+        | "lab_results"
+        | "imaging"
+      severity_level: "low" | "moderate" | "high" | "critical"
+      user_role: "hospital_staff" | "patient" | "family_member" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +387,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      record_type: [
+        "prescription",
+        "test_report",
+        "scan",
+        "discharge_summary",
+        "consultation_notes",
+        "lab_results",
+        "imaging",
+      ],
+      severity_level: ["low", "moderate", "high", "critical"],
+      user_role: ["hospital_staff", "patient", "family_member", "admin"],
+    },
   },
 } as const
