@@ -1,1 +1,13 @@
 project_id = "qiqepumdtaozjzfjbggl"
+
+[functions.upload-record]
+verify_jwt = true
+
+[functions.get-patient-timeline]
+verify_jwt = true
+
+[functions.grant-access-to-family]
+verify_jwt = true
+
+[functions.notify-patient-new-record]
+verify_jwt = false
