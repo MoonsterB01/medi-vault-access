@@ -1,128 +1,234 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Shield, Clock, Users, FileText, QrCode, Bell } from "lucide-react";
+import { Shield, Users, Hospital, FileText, Lock, Clock, Bell } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
-const Index = () => {
+export default function Index() {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        
+        setUser(userData);
+      }
+    };
+    checkUser();
+  }, []);
+
+  const handleGetStarted = () => {
+    if (user) {
+      // Redirect based on user role
+      if (user.role === 'hospital_staff' || user.role === 'admin') {
+        navigate('/hospital-dashboard');
+      } else {
+        navigate('/patient-dashboard');
+      }
+    } else {
+      navigate('/auth');
+    }
+  };
+
+  const handleHospitalPortal = () => {
+    if (user && (user.role === 'hospital_staff' || user.role === 'admin')) {
+      navigate('/hospital-dashboard');
+    } else {
+      navigate('/auth');
+    }
+  };
+
+  const handlePatientPortal = () => {
+    if (user && (user.role === 'patient' || user.role === 'family_member')) {
+      navigate('/patient-dashboard');
+    } else {
+      navigate('/auth');
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <FileText className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <h1 className="text-2xl font-bold text-foreground">MediVault</h1>
-          </div>
-          <nav className="hidden md:flex items-center space-x-6">
-            <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#hospitals" className="text-muted-foreground hover:text-foreground transition-colors">For Hospitals</a>
-            <a href="#patients" className="text-muted-foreground hover:text-foreground transition-colors">For Patients</a>
-            <a href="#contact" className="text-muted-foreground hover:text-foreground transition-colors">Contact</a>
-            <Button variant="outline" size="sm">Login</Button>
-          </nav>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      {/* Navigation */}
+      <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <Shield className="h-8 w-8 text-blue-600" />
+          <span className="text-xl font-bold">MediVault</span>
+        </div>
+        <div className="flex gap-4">
+          {user ? (
+            <Button onClick={() => supabase.auth.signOut()} variant="outline">
+              Sign Out
+            </Button>
+          ) : (
+            <Button onClick={() => navigate('/auth')}>
+              Sign In
+            </Button>
+          )}
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <header className="container mx-auto px-4 py-16 text-center">
+        <div className="flex justify-center mb-6">
+          <Shield className="h-16 w-16 text-blue-600" />
+        </div>
+        <h1 className="text-5xl font-bold text-gray-900 mb-4">
+          MediVault
+        </h1>
+        <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          Secure Digital Medical Records Management for Hospitals and Patients
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Button size="lg" className="px-8 py-3" onClick={handleGetStarted}>
+            Get Started
+          </Button>
+          <Button variant="outline" size="lg" className="px-8 py-3" onClick={() => navigate('/auth')}>
+            Learn More
+          </Button>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-b from-background to-muted/30">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-5xl md:text-6xl font-bold text-foreground mb-6">
-            Simplify Healthcare.<br />
-            <span className="text-primary">One Record at a Time.</span>
-          </h2>
-          <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Secure digital medical record management that connects hospitals, patients, and families through a unified platform.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-            <Button size="lg" className="text-lg px-8 py-6">
-              For Hospitals
-            </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8 py-6">
-              For Patients
-            </Button>
-          </div>
-
-          {/* Illustration */}
-          <div className="relative max-w-4xl mx-auto">
-            <Card className="p-8 bg-card/50 backdrop-blur-sm border-primary/20">
-              <CardContent className="p-0">
-                <div className="grid md:grid-cols-3 gap-8 items-center">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <FileText className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="font-semibold text-foreground mb-2">Upload Records</h3>
-                    <p className="text-sm text-muted-foreground">Hospitals securely upload patient medical records</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Shield className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="font-semibold text-foreground mb-2">Secure Storage</h3>
-                    <p className="text-sm text-muted-foreground">HIPAA-compliant encrypted storage and access</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Users className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="font-semibold text-foreground mb-2">Family Access</h3>
-                    <p className="text-sm text-muted-foreground">Patients control who can view their records</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Preview */}
-      <section className="py-16 bg-background">
-        <div className="container mx-auto px-4">
-          <h3 className="text-3xl font-bold text-center text-foreground mb-12">Key Features</h3>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <CardContent className="p-0">
-                <Clock className="w-10 h-10 text-primary mb-4" />
-                <h4 className="text-lg font-semibold text-foreground mb-2">Medical Timeline</h4>
-                <p className="text-muted-foreground">View complete medical history in chronological order</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <CardContent className="p-0">
-                <QrCode className="w-10 h-10 text-primary mb-4" />
-                <h4 className="text-lg font-semibold text-foreground mb-2">QR Code Access</h4>
-                <p className="text-muted-foreground">Instant record access during hospital visits</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <CardContent className="p-0">
-                <Bell className="w-10 h-10 text-primary mb-4" />
-                <h4 className="text-lg font-semibold text-foreground mb-2">Smart Notifications</h4>
-                <p className="text-muted-foreground">Get notified when new reports are available</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-card border-t border-border py-8">
-        <div className="container mx-auto px-4 text-center">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
-              <FileText className="w-4 h-4 text-primary-foreground" />
+      {/* For Hospitals & Patients Section */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="flex items-center mb-6">
+              <Hospital className="h-12 w-12 text-blue-600 mr-4" />
+              <h2 className="text-2xl font-bold text-gray-900">For Hospitals</h2>
             </div>
-            <span className="text-lg font-semibold text-foreground">MediVault</span>
+            <p className="text-gray-600 mb-6">
+              Securely upload, manage, and share patient medical records with automated notifications and audit trails.
+            </p>
+            <ul className="space-y-3 mb-6">
+              <li className="flex items-center">
+                <Lock className="h-5 w-5 text-green-600 mr-3" />
+                <span>HIPAA-compliant security</span>
+              </li>
+              <li className="flex items-center">
+                <FileText className="h-5 w-5 text-green-600 mr-3" />
+                <span>Automated report uploads</span>
+              </li>
+              <li className="flex items-center">
+                <Bell className="h-5 w-5 text-green-600 mr-3" />
+                <span>Real-time notifications</span>
+              </li>
+            </ul>
+            <Button className="w-full" onClick={handleHospitalPortal}>
+              Hospital Portal
+            </Button>
           </div>
-          <p className="text-muted-foreground">© 2024 MediVault. Secure healthcare record management.</p>
+
+          <div className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="flex items-center mb-6">
+              <Users className="h-12 w-12 text-blue-600 mr-4" />
+              <h2 className="text-2xl font-bold text-gray-900">For Patients</h2>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Access your complete medical history in a secure timeline view with family sharing capabilities.
+            </p>
+            <ul className="space-y-3 mb-6">
+              <li className="flex items-center">
+                <Clock className="h-5 w-5 text-green-600 mr-3" />
+                <span>Timeline view of records</span>
+              </li>
+              <li className="flex items-center">
+                <Users className="h-5 w-5 text-green-600 mr-3" />
+                <span>Family access sharing</span>
+              </li>
+              <li className="flex items-center">
+                <Shield className="h-5 w-5 text-green-600 mr-3" />
+                <span>Secure document access</span>
+              </li>
+            </ul>
+            <Button className="w-full" onClick={handlePatientPortal}>
+              Patient Portal
+            </Button>
+          </div>
         </div>
-      </footer>
+      </section>
+
+      {/* How It Works Section */}
+      <section className="bg-white py-16">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+            How MediVault Works
+          </h2>
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <div className="text-center">
+              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-bold text-blue-600">1</span>
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Secure Upload</h3>
+              <p className="text-gray-600">
+                Hospitals upload patient reports directly to secure cloud storage with automated categorization.
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-bold text-blue-600">2</span>
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Instant Notification</h3>
+              <p className="text-gray-600">
+                Patients and authorized family members receive immediate notifications of new records.
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl font-bold text-blue-600">3</span>
+              </div>
+              <h3 className="text-xl font-semibold mb-3">Access Anywhere</h3>
+              <p className="text-gray-600">
+                View complete medical timeline with severity-based organization and secure document access.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Key Features Section */}
+      <section className="container mx-auto px-4 py-16">
+        <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+          Key Features
+        </h2>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <Lock className="h-8 w-8 text-blue-600 mb-4" />
+            <h3 className="font-semibold mb-2">Bank-Level Security</h3>
+            <p className="text-gray-600 text-sm">
+              End-to-end encryption with role-based access control
+            </p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <FileText className="h-8 w-8 text-blue-600 mb-4" />
+            <h3 className="font-semibold mb-2">Document Management</h3>
+            <p className="text-gray-600 text-sm">
+              Organize by type, date, and severity for easy access
+            </p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <Bell className="h-8 w-8 text-blue-600 mb-4" />
+            <h3 className="font-semibold mb-2">Smart Notifications</h3>
+            <p className="text-gray-600 text-sm">
+              Email and SMS alerts for critical updates
+            </p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <Users className="h-8 w-8 text-blue-600 mb-4" />
+            <h3 className="font-semibold mb-2">Family Sharing</h3>
+            <p className="text-gray-600 text-sm">
+              Grant secure access to family members
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
-};
-
-export default Index;
+}
