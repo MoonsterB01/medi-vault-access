@@ -30,22 +30,47 @@ export default function PatientDashboard() {
         return;
       }
 
-      const { data: userData } = await supabase
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (userData?.role === 'hospital_staff' || userData?.role === 'admin') {
+      if (userError) {
+        console.error('Error fetching user data:', userError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch user profile. Please try again.",
+          variant: "destructive",
+        });
+        setAuthLoading(false);
+        return;
+      }
+
+      if (!userData) {
+        toast({
+          title: "Profile Not Found",
+          description: "Your user profile was not found. Please contact support.",
+          variant: "destructive",
+        });
+        setAuthLoading(false);
+        return;
+      }
+
+      if (userData.role === 'hospital_staff' || userData.role === 'admin') {
         navigate('/hospital-dashboard');
         return;
       }
 
       setUser(userData);
-      fetchPatientTimeline(user.id);
+      await fetchPatientTimeline(user.id);
     } catch (error) {
       console.error('Auth error:', error);
-      navigate('/auth');
+      toast({
+        title: "Authentication Error",
+        description: "There was an error loading your account. Please try signing in again.",
+        variant: "destructive",
+      });
     } finally {
       setAuthLoading(false);
     }
