@@ -14,6 +14,7 @@ export default function PatientDashboard() {
   const [timeline, setTimeline] = useState<any[]>([]);
   const [familyEmail, setFamilyEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -22,25 +23,32 @@ export default function PatientDashboard() {
   }, []);
 
   const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/auth');
+        return;
+      }
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (userData?.role === 'hospital_staff' || userData?.role === 'admin') {
+        navigate('/hospital-dashboard');
+        return;
+      }
+
+      setUser(userData);
+      fetchPatientTimeline(user.id);
+    } catch (error) {
+      console.error('Auth error:', error);
       navigate('/auth');
-      return;
+    } finally {
+      setAuthLoading(false);
     }
-
-    const { data: userData } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (userData?.role === 'hospital_staff' || userData?.role === 'admin') {
-      navigate('/hospital-dashboard');
-      return;
-    }
-
-    setUser(userData);
-    fetchPatientTimeline(user.id);
   };
 
   const fetchPatientTimeline = async (userId: string) => {
@@ -133,8 +141,15 @@ export default function PatientDashboard() {
     }
   };
 
-  if (!user) {
-    return <div>Loading...</div>;
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Loading dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
