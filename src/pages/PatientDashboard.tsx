@@ -152,6 +152,10 @@ export default function PatientDashboard() {
     );
   }
 
+  if (!user) {
+    return null; // This prevents rendering when user is null after auth check
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
