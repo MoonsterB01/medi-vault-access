@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      documents: {
+        Row: {
+          content_type: string | null
+          description: string | null
+          document_type: string | null
+          file_path: string
+          file_size: number | null
+          filename: string
+          id: string
+          patient_id: string
+          searchable_content: string | null
+          tags: string[] | null
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          content_type?: string | null
+          description?: string | null
+          document_type?: string | null
+          file_path: string
+          file_size?: number | null
+          filename: string
+          id?: string
+          patient_id: string
+          searchable_content?: string | null
+          tags?: string[] | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          content_type?: string | null
+          description?: string | null
+          document_type?: string | null
+          file_path?: string
+          file_size?: number | null
+          filename?: string
+          id?: string
+          patient_id?: string
+          searchable_content?: string | null
+          tags?: string[] | null
+          uploaded_at?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       family_access: {
         Row: {
           can_view: boolean
@@ -157,6 +217,7 @@ export type Database = {
           id: string
           name: string
           primary_contact: string
+          shareable_id: string | null
           updated_at: string
         }
         Insert: {
@@ -168,6 +229,7 @@ export type Database = {
           id?: string
           name: string
           primary_contact: string
+          shareable_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -179,6 +241,7 @@ export type Database = {
           id?: string
           name?: string
           primary_contact?: string
+          shareable_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -241,6 +304,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_shareable_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_user_hospital: {
         Args: { user_id: string }
         Returns: string
