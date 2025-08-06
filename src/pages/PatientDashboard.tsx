@@ -245,16 +245,16 @@ export default function PatientDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                        <code className="flex-1 font-mono text-lg font-bold">
+                      <div className="flex items-center gap-2 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                        <code className="flex-1 font-mono text-xl font-bold text-blue-900 tracking-wider">
                           {patientData.shareable_id}
                         </code>
-                        <Button size="sm" variant="outline" onClick={copyShareableId}>
+                        <Button size="sm" variant="default" onClick={copyShareableId} className="bg-blue-600 hover:bg-blue-700">
                           <Copy className="h-4 w-4" />
                         </Button>
                       </div>
-                      <p className="text-sm text-gray-600">
-                        Anyone with this ID can upload documents to your medical record. Keep it secure!
+                      <p className="text-sm text-gray-600 text-center">
+                        📋 Click the copy button to share this ID with others for document uploads
                       </p>
                     </div>
                   </CardContent>
