@@ -52,7 +52,7 @@ export default function DocumentSearch({ patientId }: DocumentSearchProps) {
           body: JSON.stringify({
             patientId: patientId || undefined,
             query: searchQuery || undefined,
-            documentType: documentType || undefined,
+            documentType: documentType && documentType !== "all_types" ? documentType : undefined,
             tags: selectedTags ? selectedTags.split(',').map(tag => tag.trim()) : undefined,
             limit: 50,
             offset: 0
@@ -133,7 +133,7 @@ export default function DocumentSearch({ patientId }: DocumentSearchProps) {
                     <SelectValue placeholder="All types" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Types</SelectItem>
+                    <SelectItem value="all_types">All Types</SelectItem>
                     <SelectItem value="lab_report">Lab Report</SelectItem>
                     <SelectItem value="prescription">Prescription</SelectItem>
                     <SelectItem value="x_ray">X-Ray</SelectItem>
