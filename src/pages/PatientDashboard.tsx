@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { User, FileText, LogOut, Share2, Calendar, AlertCircle } from "lucide-react";
+import { User, FileText, LogOut, Share2, Calendar, AlertCircle, Copy, Upload, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import DocumentUpload from "@/components/DocumentUpload";
+import DocumentSearch from "@/components/DocumentSearch";
 
 export default function PatientDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -156,6 +159,16 @@ export default function PatientDashboard() {
     navigate('/');
   };
 
+  const copyShareableId = () => {
+    if (patientData?.shareable_id) {
+      navigator.clipboard.writeText(patientData.shareable_id);
+      toast({
+        title: "Copied!",
+        description: "Shareable ID copied to clipboard",
+      });
+    }
+  };
+
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'critical': return 'bg-red-100 text-red-800';
@@ -201,33 +214,62 @@ export default function PatientDashboard() {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Patient Info & Share Access */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Patient Info & Shareable ID */}
           <div className="space-y-6">
             {patientData && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Patient Information</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <p><strong>Name:</strong> {patientData.name}</p>
-                    <p><strong>DOB:</strong> {patientData.dob}</p>
-                    <p><strong>Gender:</strong> {patientData.gender}</p>
-                    <p><strong>Contact:</strong> {patientData.primary_contact}</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Patient Information</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <p><strong>Name:</strong> {patientData.name}</p>
+                      <p><strong>DOB:</strong> {patientData.dob}</p>
+                      <p><strong>Gender:</strong> {patientData.gender}</p>
+                      <p><strong>Contact:</strong> {patientData.primary_contact}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Share2 className="h-5 w-5" />
+                      Your Shareable ID
+                    </CardTitle>
+                    <CardDescription>
+                      Share this ID with others to let them upload documents to your medical record
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                        <code className="flex-1 font-mono text-lg font-bold">
+                          {patientData.shareable_id}
+                        </code>
+                        <Button size="sm" variant="outline" onClick={copyShareableId}>
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Anyone with this ID can upload documents to your medical record. Keep it secure!
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
             )}
 
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Share2 className="h-5 w-5" />
-                  Share Access
+                  Grant Family Access
                 </CardTitle>
                 <CardDescription>
-                  Grant family members access to view your medical records
+                  Give family members access to view your medical records
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -249,68 +291,103 @@ export default function PatientDashboard() {
             </Card>
           </div>
 
-          {/* Medical Records Timeline */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Medical Records Timeline
-                </CardTitle>
-                <CardDescription>
-                  Your medical records organized by date and severity
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {timeline.length > 0 ? (
-                  <div className="space-y-4">
-                    {timeline.map((record) => (
-                      <div key={record.id} className="border rounded-lg p-4 space-y-2">
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-1">
-                            <h3 className="font-semibold capitalize">
-                              {record.record_type.replace('_', ' ')}
-                            </h3>
-                            <p className="text-sm text-gray-600">
-                              Uploaded by: {record.uploader_name}
-                            </p>
-                            {record.description && (
-                              <p className="text-sm">{record.description}</p>
+          {/* Main Content with Tabs */}
+          <div className="lg:col-span-3">
+            <Tabs defaultValue="timeline" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="timeline" className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Timeline
+                </TabsTrigger>
+                <TabsTrigger value="documents" className="flex items-center gap-2">
+                  <Search className="h-4 w-4" />
+                  Search Documents
+                </TabsTrigger>
+                <TabsTrigger value="upload" className="flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  Upload
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="timeline" className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Medical Records Timeline
+                    </CardTitle>
+                    <CardDescription>
+                      Your medical records organized by date and severity
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {timeline.length > 0 ? (
+                      <div className="space-y-4">
+                        {timeline.map((record) => (
+                          <div key={record.id} className="border rounded-lg p-4 space-y-2">
+                            <div className="flex justify-between items-start">
+                              <div className="space-y-1">
+                                <h3 className="font-semibold capitalize">
+                                  {record.record_type.replace('_', ' ')}
+                                </h3>
+                                <p className="text-sm text-gray-600">
+                                  Uploaded by: {record.uploader_name}
+                                </p>
+                                {record.description && (
+                                  <p className="text-sm">{record.description}</p>
+                                )}
+                              </div>
+                              <div className="flex flex-col items-end gap-2">
+                                <Badge className={getSeverityColor(record.severity)}>
+                                  {record.severity}
+                                </Badge>
+                                <div className="flex items-center gap-1 text-sm text-gray-500">
+                                  <Calendar className="h-4 w-4" />
+                                  {new Date(record.record_date).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+                            {record.signed_url && (
+                              <Button variant="outline" size="sm" asChild>
+                                <a href={record.signed_url} target="_blank" rel="noopener noreferrer">
+                                  View Document
+                                </a>
+                              </Button>
                             )}
                           </div>
-                          <div className="flex flex-col items-end gap-2">
-                            <Badge className={getSeverityColor(record.severity)}>
-                              {record.severity}
-                            </Badge>
-                            <div className="flex items-center gap-1 text-sm text-gray-500">
-                              <Calendar className="h-4 w-4" />
-                              {new Date(record.record_date).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </div>
-                        {record.signed_url && (
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={record.signed_url} target="_blank" rel="noopener noreferrer">
-                              View Document
-                            </a>
-                          </Button>
-                        )}
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      No Medical Records Found
-                    </h3>
-                    <p className="text-gray-600">
-                      Your medical records will appear here once uploaded by healthcare providers.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    ) : (
+                      <div className="text-center py-12">
+                        <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                          No Medical Records Found
+                        </h3>
+                        <p className="text-gray-600">
+                          Your medical records will appear here once uploaded by healthcare providers.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="documents" className="mt-6">
+                <DocumentSearch patientId={patientData?.id} />
+              </TabsContent>
+
+              <TabsContent value="upload" className="mt-6">
+                <DocumentUpload 
+                  shareableId={patientData?.shareable_id} 
+                  onUploadSuccess={() => {
+                    // Refresh timeline and documents
+                    if (user?.id) {
+                      fetchPatientTimeline(user.id);
+                    }
+                  }}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>

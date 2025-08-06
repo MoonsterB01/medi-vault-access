@@ -11,3 +11,9 @@ verify_jwt = true
 
 [functions.notify-patient-new-record]
 verify_jwt = false
+
+[functions.upload-document]
+verify_jwt = false
+
+[functions.search-documents]
+verify_jwt = true
