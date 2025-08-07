@@ -270,6 +270,7 @@ export type Database = {
           name: string
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
+          user_shareable_id: string | null
         }
         Insert: {
           created_at?: string
@@ -279,6 +280,7 @@ export type Database = {
           name: string
           role: Database["public"]["Enums"]["user_role"]
           updated_at?: string
+          user_shareable_id?: string | null
         }
         Update: {
           created_at?: string
@@ -288,6 +290,7 @@ export type Database = {
           name?: string
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
+          user_shareable_id?: string | null
         }
         Relationships: [
           {
@@ -305,6 +308,10 @@ export type Database = {
     }
     Functions: {
       generate_shareable_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_user_shareable_id: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
