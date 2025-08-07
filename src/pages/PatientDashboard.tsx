@@ -215,8 +215,49 @@ export default function PatientDashboard() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Patient Info & Shareable ID */}
+          {/* User Info & Unique ID */}
           <div className="space-y-6">
+            {/* User's Personal Unique ID */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Your Unique ID
+                </CardTitle>
+                <CardDescription>
+                  Your personal unique identifier as a {user?.role?.replace('_', ' ')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                    <code className="flex-1 font-mono text-xl font-bold text-green-900 tracking-wider">
+                      {user?.user_shareable_id || 'Loading...'}
+                    </code>
+                    <Button 
+                      size="sm" 
+                      variant="default" 
+                      onClick={() => {
+                        if (user?.user_shareable_id) {
+                          navigator.clipboard.writeText(user.user_shareable_id);
+                          toast({
+                            title: "Copied!",
+                            description: "Your unique ID copied to clipboard",
+                          });
+                        }
+                      }} 
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-600 text-center">
+                    🆔 This is your personal unique identifier
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
             {patientData && (
               <>
                 <Card>
@@ -237,10 +278,10 @@ export default function PatientDashboard() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Share2 className="h-5 w-5" />
-                      Your Shareable ID
+                      Patient Shareable ID
                     </CardTitle>
                     <CardDescription>
-                      Share this ID with others to let them upload documents to your medical record
+                      Share this ID with others to let them upload documents to this patient's medical record
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
