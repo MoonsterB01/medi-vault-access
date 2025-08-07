@@ -65,6 +65,7 @@ export default function PatientDashboard() {
         return;
       }
 
+      console.log('User data fetched:', userData);
       setUser(userData);
       await fetchPatientTimeline(user.id);
     } catch (error) {
@@ -232,7 +233,7 @@ export default function PatientDashboard() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
                     <code className="flex-1 font-mono text-xl font-bold text-green-900 tracking-wider">
-                      {user?.user_shareable_id || 'Loading...'}
+                      {user?.user_shareable_id || 'No ID assigned'}
                     </code>
                     <Button 
                       size="sm" 
