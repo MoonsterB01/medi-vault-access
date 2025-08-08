@@ -82,30 +82,46 @@ export default function PatientDashboard() {
 
   const fetchPatientTimeline = async (userId: string) => {
     try {
-      // Find patient record associated with this user
-      const { data: patientAccess } = await supabase
+      // Find patient record associated with this user without nested selects (avoids RLS recursion)
+      const { data: fa, error: faErr } = await supabase
         .from('family_access')
-        .select('patient_id, patients(*)')
+        .select('patient_id')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-      if (patientAccess) {
-        setPatientData(patientAccess.patients);
-        
-        // Fetch timeline for this patient
-        const { data: { session } } = await supabase.auth.getSession();
-        const response = await fetch(
-          `https://qiqepumdtaozjzfjbggl.supabase.co/functions/v1/get-patient-timeline?patientId=${patientAccess.patient_id}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${session?.access_token}`,
-            },
+      if (faErr) {
+        console.error('family_access fetch error:', faErr);
+      }
+
+      if (fa?.patient_id) {
+        const { data: patient, error: pErr } = await supabase
+          .from('patients')
+          .select('*')
+          .eq('id', fa.patient_id)
+          .maybeSingle();
+
+        if (pErr) {
+          console.error('patients fetch error:', pErr);
+        }
+
+        if (patient) {
+          setPatientData(patient);
+
+          // Fetch timeline for this patient
+          const { data: { session } } = await supabase.auth.getSession();
+          const response = await fetch(
+            `https://qiqepumdtaozjzfjbggl.supabase.co/functions/v1/get-patient-timeline?patientId=${fa.patient_id}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${session?.access_token}`,
+              },
+            }
+          );
+
+          if (response.ok) {
+            const result = await response.json();
+            setTimeline(result.timeline || []);
           }
-        );
-
-        if (response.ok) {
-          const result = await response.json();
-          setTimeline(result.timeline || []);
         }
       }
     } catch (error) {
