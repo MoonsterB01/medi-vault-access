@@ -35,20 +35,64 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Uploading document for shareable ID: ${shareableId}`);
 
-    // Find patient by shareable ID
-    const { data: patient, error: patientError } = await supabase
-      .from('patients')
-      .select('id, name')
-      .eq('shareable_id', shareableId)
-      .single();
+    // Resolve patient by shareableId (supports MED-XXXXXXXX and USER-XXXXXXXX)
+    const upperId = shareableId.toUpperCase();
+    let patient: { id: string; name: string } | null = null;
 
-    if (patientError || !patient) {
-      console.error('Patient not found:', patientError);
+    if (upperId.startsWith('MED-')) {
+      const { data: p, error: pErr } = await supabase
+        .from('patients')
+        .select('id, name')
+        .eq('shareable_id', upperId)
+        .single();
+      if (pErr || !p) {
+        console.error('Patient not found via MED ID:', pErr);
+      } else {
+        patient = p;
+      }
+    } else if (upperId.startsWith('USER-')) {
+      // Find the user by their user_shareable_id, then map to a patient via family_access
+      const { data: usr, error: usrErr } = await supabase
+        .from('users')
+        .select('id')
+        .eq('user_shareable_id', upperId)
+        .single();
+
+      if (!usrErr && usr) {
+        const { data: fa, error: faErr } = await supabase
+          .from('family_access')
+          .select('patient_id')
+          .eq('user_id', usr.id)
+          .eq('can_view', true)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (!faErr && fa?.patient_id) {
+          const { data: p2, error: p2Err } = await supabase
+            .from('patients')
+            .select('id, name')
+            .eq('id', fa.patient_id)
+            .single();
+          if (!p2Err && p2) {
+            patient = p2;
+          } else {
+            console.error('Patient lookup by family_access failed:', p2Err);
+          }
+        } else {
+          console.error('family_access lookup failed or not found:', faErr);
+        }
+      } else {
+        console.error('User not found via USER ID:', usrErr);
+      }
+    }
+
+    if (!patient) {
       return new Response(
         JSON.stringify({ error: 'Invalid shareable ID' }),
-        { 
-          status: 404, 
-          headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+        {
+          status: 404,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
         }
       );
     }

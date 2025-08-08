@@ -67,16 +67,14 @@ const { toast } = useToast();
       return;
     }
 
-    // Normalize and validate shareable ID (must be MED-XXXXXXXX)
+    // Normalize and validate shareable ID (accept MED-XXXXXXXX or USER-XXXXXXXX)
     const normalizedId = inputShareableId.trim().toUpperCase();
     const isValidMedId = /^MED-[A-Z0-9]{8}$/.test(normalizedId);
-    if (!isValidMedId) {
-      const isUserId = normalizedId.startsWith("USER-");
+    const isValidUserId = /^USER-[A-Z0-9]{8}$/.test(normalizedId);
+    if (!isValidMedId && !isValidUserId) {
       toast({
         title: "Invalid shareable ID",
-        description: isUserId
-          ? "You entered your USER ID. Please use the patient's MED-XXXXXXXX ID."
-          : "Shareable ID must look like MED-XXXXXXXX. Ask the patient for their MED ID.",
+        description: "Enter a valid MED-XXXXXXXX or USER-XXXXXXXX ID.",
         variant: "destructive",
       });
       setInputShareableId(normalizedId);
@@ -162,13 +160,13 @@ const { toast } = useToast();
               <Label htmlFor="shareable-id">Patient Shareable ID *</Label>
               <Input
                 id="shareable-id"
-                placeholder="e.g., MED-ABC12345"
+                placeholder="e.g., MED-ABC12345 or USER-ABC12345"
                 value={inputShareableId}
                 onChange={(e) => setInputShareableId(e.target.value.toUpperCase())}
                 required
               />
               <p className="text-sm text-gray-600">
-                Tip: Use the patient's MED-XXXXXXXX ID, not your USER-... ID.
+                Tip: You can use MED-XXXXXXXX or your USER-XXXXXXXX ID.
               </p>
             </div>
           )}
