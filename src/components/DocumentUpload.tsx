@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,12 @@ export default function DocumentUpload({ shareableId, onUploadSuccess }: Documen
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
   const [inputShareableId, setInputShareableId] = useState(shareableId || "");
-  const { toast } = useToast();
+const { toast } = useToast();
+
+  // Keep input in sync if parent provides/updates shareableId
+  useEffect(() => {
+    setInputShareableId(shareableId || "");
+  }, [shareableId]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -62,6 +67,22 @@ export default function DocumentUpload({ shareableId, onUploadSuccess }: Documen
       return;
     }
 
+    // Normalize and validate shareable ID (must be MED-XXXXXXXX)
+    const normalizedId = inputShareableId.trim().toUpperCase();
+    const isValidMedId = /^MED-[A-Z0-9]{8}$/.test(normalizedId);
+    if (!isValidMedId) {
+      const isUserId = normalizedId.startsWith("USER-");
+      toast({
+        title: "Invalid shareable ID",
+        description: isUserId
+          ? "You entered your USER ID. Please use the patient's MED-XXXXXXXX ID."
+          : "Shareable ID must look like MED-XXXXXXXX. Ask the patient for their MED ID.",
+        variant: "destructive",
+      });
+      setInputShareableId(normalizedId);
+      return;
+    }
+
     setUploading(true);
     try {
       const fileContent = await convertFileToBase64(file);
@@ -74,14 +95,14 @@ export default function DocumentUpload({ shareableId, onUploadSuccess }: Documen
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            shareableId: inputShareableId,
-            file: {
-              name: file.name,
-              content: fileContent,
-              type: file.type,
-              size: file.size
-            },
+            body: JSON.stringify({
+              shareableId: normalizedId,
+              file: {
+                name: file.name,
+                content: fileContent,
+                type: file.type,
+                size: file.size
+              },
             documentType,
             description: description || undefined,
             tags: tagsArray.length > 0 ? tagsArray : undefined
@@ -143,9 +164,12 @@ export default function DocumentUpload({ shareableId, onUploadSuccess }: Documen
                 id="shareable-id"
                 placeholder="e.g., MED-ABC12345"
                 value={inputShareableId}
-                onChange={(e) => setInputShareableId(e.target.value)}
+                onChange={(e) => setInputShareableId(e.target.value.toUpperCase())}
                 required
               />
+              <p className="text-sm text-gray-600">
+                Tip: Use the patient's MED-XXXXXXXX ID, not your USER-... ID.
+              </p>
             </div>
           )}
 
