@@ -42,23 +42,12 @@ const handler = async (req: Request): Promise<Response> => {
       {
         global: {
           headers: { Authorization: authHeader }
-        }
+        },
+        auth: { persistSession: false }
       }
     );
 
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      console.error('User auth error:', userError);
-      return new Response(
-        JSON.stringify({ error: 'Invalid user session' }),
-        { 
-          status: 401, 
-          headers: { 'Content-Type': 'application/json', ...corsHeaders } 
-        }
-      );
-    }
-
+    // Parse request body first
     const { 
       patientId, 
       query, 
@@ -69,6 +58,19 @@ const handler = async (req: Request): Promise<Response> => {
       limit = 50, 
       offset = 0 
     }: SearchRequest = await req.json();
+
+    // Get current user using the token
+    const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    if (userError || !user) {
+      console.error('User auth error:', userError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid user session' }),
+        { 
+          status: 401, 
+          headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+        }
+      );
+    }
 
     console.log('Searching documents for user:', user.id, 'with filters:', { patientId, query, documentType, tags });
 

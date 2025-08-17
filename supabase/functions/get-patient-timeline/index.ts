@@ -28,7 +28,7 @@ serve(async (req) => {
     });
 
     // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser(req.headers.get('Authorization')?.replace('Bearer ', '') || '');
     if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
