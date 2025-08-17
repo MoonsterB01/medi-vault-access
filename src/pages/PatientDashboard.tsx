@@ -108,20 +108,38 @@ export default function PatientDashboard() {
           setPatientData(patient);
 
           // Fetch timeline for this patient using Supabase functions invoke
+          console.log('Fetching timeline for patient:', fa.patient_id);
+          
           const { data: result, error: timelineError } = await supabase.functions.invoke('get-patient-timeline', {
             body: { patientId: fa.patient_id }
           });
+
+          console.log('Timeline function response:', { result, timelineError });
 
           if (timelineError) {
             console.error('Timeline fetch error:', timelineError);
             toast({
               title: "Error",
-              description: "Failed to load medical timeline. Please try again.",
+              description: `Failed to load medical timeline: ${timelineError.message}`,
               variant: "destructive",
             });
           } else if (result) {
-            console.log('Timeline data:', result);
+            console.log('Timeline data received:', result);
+            console.log('Timeline array:', result.timeline);
             setTimeline(result.timeline || []);
+            
+            if ((result.timeline || []).length === 0) {
+              console.log('No timeline items found');
+              toast({
+                title: "No Documents",
+                description: "No documents found for this patient.",
+              });
+            } else {
+              toast({
+                title: "Success",
+                description: `Loaded ${result.timeline.length} documents.`,
+              });
+            }
           }
         }
       }

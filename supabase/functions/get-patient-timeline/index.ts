@@ -13,6 +13,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Timeline function called with method:', req.method);
+    
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -27,43 +29,33 @@ serve(async (req) => {
       },
     });
 
-    // Get current user from the authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Authorization header required' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
+    // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       console.error('Auth error:', authError);
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      return new Response(JSON.stringify({ error: 'Unauthorized', details: authError?.message }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Get patientId from URL params or request body
-    let patientId: string | null = null;
-    
-    if (req.method === 'GET') {
-      const url = new URL(req.url);
-      patientId = url.searchParams.get('patientId');
-    } else if (req.method === 'POST') {
-      const body = await req.json();
-      patientId = body.patientId;
-    }
+    console.log('Authenticated user:', user.id);
+
+    // Get patientId from request body
+    const body = await req.json();
+    const patientId = body.patientId;
 
     if (!patientId) {
+      console.error('No patient ID provided');
       return new Response(JSON.stringify({ error: 'Patient ID is required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Get user info
+    console.log('Fetching timeline for patient:', patientId);
+
+    // Get user info to check access
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('hospital_id, role')
@@ -71,14 +63,16 @@ serve(async (req) => {
       .single();
 
     if (userError || !userData) {
+      console.error('User data error:', userError);
       return new Response(JSON.stringify({ error: 'User not found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Check access to patient records through RLS policies
-    // First verify we can access the patient
+    console.log('User data:', userData);
+
+    // Check if user has access to this patient
     const { data: patient, error: patientError } = await supabase
       .from('patients')
       .select('id, name, dob, gender, hospital_id')
@@ -86,38 +80,16 @@ serve(async (req) => {
       .single();
 
     if (patientError || !patient) {
+      console.error('Patient access error:', patientError);
       return new Response(JSON.stringify({ error: 'Patient not found or access denied' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Get medical records (RLS will filter based on user permissions)
-    const { data: records, error: recordsError } = await supabase
-      .from('medical_records')
-      .select(`
-        id,
-        record_type,
-        description,
-        severity,
-        record_date,
-        file_url,
-        created_at,
-        uploaded_by,
-        users:uploaded_by(name)
-      `)
-      .eq('patient_id', patientId)
-      .order('record_date', { ascending: false });
+    console.log('Patient found:', patient.name);
 
-    if (recordsError) {
-      console.error('Records fetch error:', recordsError);
-      return new Response(JSON.stringify({ error: 'Failed to fetch records' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Get documents (RLS will filter based on user permissions)
+    // Fetch documents only (focusing on documents first)
     const { data: documents, error: documentsError } = await supabase
       .from('documents')
       .select(`
@@ -137,63 +109,44 @@ serve(async (req) => {
 
     if (documentsError) {
       console.error('Documents fetch error:', documentsError);
-      return new Response(JSON.stringify({ error: 'Failed to fetch documents' }), {
+      return new Response(JSON.stringify({ error: 'Failed to fetch documents', details: documentsError.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Transform and combine records and documents into a unified timeline
-    const transformedRecords = (records || []).map(record => ({
-      ...record,
-      type: 'medical_record' as const,
-      date: record.record_date,
-      uploader_name: record.users?.name || 'Unknown',
-      title: `${record.record_type} - ${record.description || 'Medical Record'}`,
-      file_url: record.file_url,
-    }));
+    console.log('Documents found:', documents?.length || 0);
+    console.log('Documents data:', documents);
 
+    // Transform documents into timeline format
     const transformedDocuments = (documents || []).map(doc => ({
       ...doc,
       type: 'document' as const,
-      date: doc.uploaded_at?.split('T')[0], // Convert timestamp to date
+      date: doc.uploaded_at?.split('T')[0] || new Date().toISOString().split('T')[0],
       uploader_name: 'Document Upload',
       title: doc.filename,
-      file_url: doc.file_path,
+      file_url: doc.file_path, // Map file_path to file_url for consistency
       record_type: doc.document_type || 'document',
-      severity: 'low' as const, // Default severity for documents
+      severity: 'low' as const,
     }));
 
-    // Combine and sort all timeline items by date
-    const timeline = [...transformedRecords, ...transformedDocuments]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    console.log('Transformed documents:', transformedDocuments);
 
-    const groupedBySeverity = {
-      critical: timeline.filter(r => r.severity === 'critical'),
-      high: timeline.filter(r => r.severity === 'high'),
-      moderate: timeline.filter(r => r.severity === 'moderate'),
-      low: timeline.filter(r => r.severity === 'low'),
-    };
-
-    const groupedByType = timeline.reduce((acc, record) => {
-      const type = record.record_type || 'document';
-      if (!acc[type]) {
-        acc[type] = [];
-      }
-      acc[type].push(record);
-      return acc;
-    }, {} as Record<string, typeof timeline>);
-
-    // Generate signed URLs for files
+    // Generate signed URLs for documents
     const timelineWithUrls = await Promise.all(
-      timeline.map(async (item) => {
-        if (item.file_url) {
+      transformedDocuments.map(async (item) => {
+        if (item.file_path) {
           try {
-            // Use appropriate bucket based on item type
-            const bucket = item.type === 'medical_record' ? 'medical_records' : 'medical-documents';
-            const { data: signedUrl } = await supabase.storage
-              .from(bucket)
-              .createSignedUrl(item.file_url, 3600); // 1 hour expiry
+            console.log('Generating signed URL for:', item.file_path);
+            const { data: signedUrl, error: urlError } = await supabase.storage
+              .from('medical-documents')
+              .createSignedUrl(item.file_path, 3600);
+            
+            if (urlError) {
+              console.error('Signed URL error for', item.file_path, ':', urlError);
+            } else {
+              console.log('Signed URL generated:', signedUrl?.signedUrl);
+            }
             
             return {
               ...item,
@@ -208,30 +161,37 @@ serve(async (req) => {
       })
     );
 
-    return new Response(JSON.stringify({
+    const responseData = {
       patient,
       timeline: timelineWithUrls,
       summary: {
-        total_records: timeline.length,
+        total_records: timelineWithUrls.length,
         by_severity: {
-          critical: groupedBySeverity.critical.length,
-          high: groupedBySeverity.high.length,
-          moderate: groupedBySeverity.moderate.length,
-          low: groupedBySeverity.low.length,
+          critical: 0,
+          high: 0,
+          moderate: 0,
+          low: timelineWithUrls.length,
         },
-        by_type: Object.keys(groupedByType).reduce((acc, type) => {
-          acc[type] = groupedByType[type].length;
-          return acc;
-        }, {} as Record<string, number>),
-        latest_record: timeline[0]?.record_date || null,
+        by_type: {
+          document: timelineWithUrls.length,
+        },
+        latest_record: timelineWithUrls[0]?.uploaded_at || null,
       },
-    }), {
+    };
+
+    console.log('Final response:', responseData);
+
+    return new Response(JSON.stringify(responseData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
     console.error('Error in get-patient-timeline function:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error', 
+      details: error.message,
+      stack: error.stack 
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
