@@ -78,9 +78,7 @@ export default function DocumentSearch({ patientId }: DocumentSearchProps) {
     }
   };
 
-  useEffect(() => {
-    searchDocuments();
-  }, [patientId]);
+  // Remove auto-search on mount - only search when user clicks search button
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
