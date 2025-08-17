@@ -386,13 +386,22 @@ export default function PatientDashboard() {
                             <div className="flex justify-between items-start">
                               <div className="space-y-1">
                                 <h3 className="font-semibold capitalize">
-                                  {record.record_type.replace('_', ' ')}
+                                  {record.record_type?.replace('_', ' ') || record.document_type?.replace('_', ' ') || 'Document'}
                                 </h3>
                                 <p className="text-sm text-gray-600">
                                   Uploaded by: {record.uploader_name}
                                 </p>
                                 {record.description && (
                                   <p className="text-sm">{record.description}</p>
+                                )}
+                                {record.tags && record.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {record.tags.map((tag: string, index: number) => (
+                                      <Badge key={index} variant="secondary" className="text-xs">
+                                        {tag}
+                                      </Badge>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
                               <div className="flex flex-col items-end gap-2">
@@ -401,7 +410,7 @@ export default function PatientDashboard() {
                                 </Badge>
                                 <div className="flex items-center gap-1 text-sm text-gray-500">
                                   <Calendar className="h-4 w-4" />
-                                  {new Date(record.record_date).toLocaleDateString()}
+                                  {new Date(record.date).toLocaleDateString()}
                                 </div>
                               </div>
                             </div>
