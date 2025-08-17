@@ -202,21 +202,30 @@ export default function PatientTimeline() {
                             {/* Record content */}
                             <div className="flex-1 border rounded-lg p-4 bg-white">
                               <div className="flex justify-between items-start mb-3">
-                                <div>
-                                  <h3 className="text-lg font-semibold capitalize">
-                                    {record.record_type.replace('_', ' ')}
-                                  </h3>
-                                  <p className="text-sm text-gray-600">
-                                    Uploaded by: {record.uploader_name}
-                                  </p>
-                                </div>
+                                 <div>
+                                   <h3 className="text-lg font-semibold">
+                                     {record.title || record.record_type?.replace('_', ' ') || 'Document'}
+                                   </h3>
+                                   <p className="text-sm text-gray-600">
+                                     {record.type === 'document' ? 'Document Upload' : `Uploaded by: ${record.uploader_name}`}
+                                   </p>
+                                   {record.type === 'document' && record.tags && record.tags.length > 0 && (
+                                     <div className="flex gap-1 mt-1">
+                                       {record.tags.map((tag: string, idx: number) => (
+                                         <Badge key={idx} variant="outline" className="text-xs">
+                                           {tag}
+                                         </Badge>
+                                       ))}
+                                     </div>
+                                   )}
+                                 </div>
                                 <div className="text-right">
                                   <Badge className={getSeverityColor(record.severity)}>
                                     {record.severity}
                                   </Badge>
-                                  <p className="text-sm text-gray-500 mt-1">
-                                    {new Date(record.record_date).toLocaleDateString()}
-                                  </p>
+                                   <p className="text-sm text-gray-500 mt-1">
+                                     {new Date(record.date || record.record_date).toLocaleDateString()}
+                                   </p>
                                 </div>
                               </div>
                               

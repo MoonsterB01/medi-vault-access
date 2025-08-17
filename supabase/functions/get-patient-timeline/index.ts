@@ -100,11 +100,56 @@ serve(async (req) => {
       });
     }
 
-    // Group records by severity and type for better organization
-    const timeline = records.map(record => ({
+    // Get documents (RLS will filter based on user permissions)
+    const { data: documents, error: documentsError } = await supabase
+      .from('documents')
+      .select(`
+        id,
+        filename,
+        document_type,
+        description,
+        file_path,
+        uploaded_at,
+        uploaded_by,
+        tags,
+        content_type,
+        file_size
+      `)
+      .eq('patient_id', patientId)
+      .order('uploaded_at', { ascending: false });
+
+    if (documentsError) {
+      console.error('Documents fetch error:', documentsError);
+      return new Response(JSON.stringify({ error: 'Failed to fetch documents' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Transform and combine records and documents into a unified timeline
+    const transformedRecords = (records || []).map(record => ({
       ...record,
+      type: 'medical_record' as const,
+      date: record.record_date,
       uploader_name: record.users?.name || 'Unknown',
+      title: `${record.record_type} - ${record.description || 'Medical Record'}`,
+      file_url: record.file_url,
     }));
+
+    const transformedDocuments = (documents || []).map(doc => ({
+      ...doc,
+      type: 'document' as const,
+      date: doc.uploaded_at?.split('T')[0], // Convert timestamp to date
+      uploader_name: 'Document Upload',
+      title: doc.filename,
+      file_url: doc.file_path,
+      record_type: doc.document_type || 'document',
+      severity: 'low' as const, // Default severity for documents
+    }));
+
+    // Combine and sort all timeline items by date
+    const timeline = [...transformedRecords, ...transformedDocuments]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const groupedBySeverity = {
       critical: timeline.filter(r => r.severity === 'critical'),
@@ -114,32 +159,35 @@ serve(async (req) => {
     };
 
     const groupedByType = timeline.reduce((acc, record) => {
-      if (!acc[record.record_type]) {
-        acc[record.record_type] = [];
+      const type = record.record_type || 'document';
+      if (!acc[type]) {
+        acc[type] = [];
       }
-      acc[record.record_type].push(record);
+      acc[type].push(record);
       return acc;
     }, {} as Record<string, typeof timeline>);
 
     // Generate signed URLs for files
     const timelineWithUrls = await Promise.all(
-      timeline.map(async (record) => {
-        if (record.file_url) {
+      timeline.map(async (item) => {
+        if (item.file_url) {
           try {
+            // Use appropriate bucket based on item type
+            const bucket = item.type === 'medical_record' ? 'medical_records' : 'medical-documents';
             const { data: signedUrl } = await supabase.storage
-              .from('medical_records')
-              .createSignedUrl(record.file_url, 3600); // 1 hour expiry
+              .from(bucket)
+              .createSignedUrl(item.file_url, 3600); // 1 hour expiry
             
             return {
-              ...record,
+              ...item,
               signed_url: signedUrl?.signedUrl,
             };
           } catch (error) {
-            console.warn('Failed to generate signed URL for record:', record.id, error);
-            return record;
+            console.warn('Failed to generate signed URL for item:', item.id, error);
+            return item;
           }
         }
-        return record;
+        return item;
       })
     );
 
