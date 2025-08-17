@@ -124,7 +124,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Save document metadata
+    // Save document metadata  
     const { data: documentData, error: documentError } = await supabase
       .from('documents')
       .insert({
@@ -136,6 +136,7 @@ const handler = async (req: Request): Promise<Response> => {
         document_type: documentType,
         description: description || null,
         tags: tags || [],
+        uploaded_by: 'a3d61033-287d-4ae5-adba-f12d6e75daa9', // Default uploader for public uploads
         searchable_content: `${file.name} ${documentType} ${description || ''} ${tags?.join(' ') || ''}`
       })
       .select()
