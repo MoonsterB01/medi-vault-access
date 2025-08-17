@@ -46,6 +46,19 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
 
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error('User auth error:', userError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid user session' }),
+        { 
+          status: 401, 
+          headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+        }
+      );
+    }
+
     const { 
       patientId, 
       query, 
@@ -57,17 +70,54 @@ const handler = async (req: Request): Promise<Response> => {
       offset = 0 
     }: SearchRequest = await req.json();
 
-    console.log('Searching documents with filters:', { patientId, query, documentType, tags });
+    console.log('Searching documents for user:', user.id, 'with filters:', { patientId, query, documentType, tags });
 
-    // Build query - avoid inner join to prevent RLS recursion
+    // Get user's accessible patient IDs first
+    const { data: familyAccess, error: accessError } = await supabase
+      .from('family_access')
+      .select('patient_id')
+      .eq('user_id', user.id)
+      .eq('can_view', true);
+
+    if (accessError) {
+      console.error('Error getting family access:', accessError);
+      return new Response(
+        JSON.stringify({ error: 'Access denied' }),
+        { 
+          status: 403, 
+          headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+        }
+      );
+    }
+
+    const accessiblePatientIds = familyAccess?.map(fa => fa.patient_id) || [];
+    console.log('User has access to patients:', accessiblePatientIds);
+
+    if (accessiblePatientIds.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          documents: [],
+          total: 0,
+          offset,
+          limit
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        }
+      );
+    }
+
+    // Build query - filter by accessible patients
     let queryBuilder = supabase
       .from('documents')
       .select('*')
+      .in('patient_id', accessiblePatientIds)
       .order('uploaded_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
-    // Apply filters
-    if (patientId) {
+    // Apply additional filters
+    if (patientId && accessiblePatientIds.includes(patientId)) {
       queryBuilder = queryBuilder.eq('patient_id', patientId);
     }
 
@@ -100,6 +150,21 @@ const handler = async (req: Request): Promise<Response> => {
         { 
           status: 500, 
           headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+        }
+      );
+    }
+
+    if (!documents) {
+      return new Response(
+        JSON.stringify({ 
+          documents: [],
+          total: 0,
+          offset,
+          limit
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
         }
       );
     }
