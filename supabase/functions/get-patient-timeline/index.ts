@@ -27,17 +27,34 @@ serve(async (req) => {
       },
     });
 
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser(req.headers.get('Authorization')?.replace('Bearer ', '') || '');
+    // Get current user from the authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Authorization header required' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      console.error('Auth error:', authError);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const url = new URL(req.url);
-    const patientId = url.searchParams.get('patientId');
+    // Get patientId from URL params or request body
+    let patientId: string | null = null;
+    
+    if (req.method === 'GET') {
+      const url = new URL(req.url);
+      patientId = url.searchParams.get('patientId');
+    } else if (req.method === 'POST') {
+      const body = await req.json();
+      patientId = body.patientId;
+    }
 
     if (!patientId) {
       return new Response(JSON.stringify({ error: 'Patient ID is required' }), {
