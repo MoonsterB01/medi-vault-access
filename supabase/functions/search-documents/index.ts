@@ -59,13 +59,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Searching documents with filters:', { patientId, query, documentType, tags });
 
-    // Build query
+    // Build query - avoid inner join to prevent RLS recursion
     let queryBuilder = supabase
       .from('documents')
-      .select(`
-        *,
-        patients!inner(name, shareable_id)
-      `)
+      .select('*')
       .order('uploaded_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -107,15 +104,23 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Generate signed URLs for file access
+    // Generate signed URLs and fetch patient data separately to avoid RLS issues
     const documentsWithUrls = await Promise.all(
       documents.map(async (doc) => {
+        // Fetch patient data separately
+        const { data: patient } = await supabase
+          .from('patients')
+          .select('name, shareable_id')
+          .eq('id', doc.patient_id)
+          .maybeSingle();
+
         const { data: signedUrl } = await supabase.storage
           .from('medical-documents')
           .createSignedUrl(doc.file_path, 3600); // 1 hour expiry
 
         return {
           ...doc,
+          patients: patient,
           signed_url: signedUrl?.signedUrl
         };
       })
