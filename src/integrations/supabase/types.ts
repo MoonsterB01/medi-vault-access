@@ -153,60 +153,6 @@ export type Database = {
         }
         Relationships: []
       }
-      medical_records: {
-        Row: {
-          created_at: string
-          description: string | null
-          file_url: string | null
-          id: string
-          patient_id: string
-          record_date: string
-          record_type: Database["public"]["Enums"]["record_type"]
-          severity: Database["public"]["Enums"]["severity_level"]
-          updated_at: string
-          uploaded_by: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          file_url?: string | null
-          id?: string
-          patient_id: string
-          record_date: string
-          record_type: Database["public"]["Enums"]["record_type"]
-          severity?: Database["public"]["Enums"]["severity_level"]
-          updated_at?: string
-          uploaded_by: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          file_url?: string | null
-          id?: string
-          patient_id?: string
-          record_date?: string
-          record_type?: Database["public"]["Enums"]["record_type"]
-          severity?: Database["public"]["Enums"]["severity_level"]
-          updated_at?: string
-          uploaded_by?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "medical_records_patient_id_fkey"
-            columns: ["patient_id"]
-            isOneToOne: false
-            referencedRelation: "patients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "medical_records_uploaded_by_fkey"
-            columns: ["uploaded_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       patients: {
         Row: {
           created_at: string

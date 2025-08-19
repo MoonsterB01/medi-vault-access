@@ -82,69 +82,115 @@ export default function PatientDashboard() {
 
   const fetchPatientTimeline = async (userId: string) => {
     try {
-      // Find patient record associated with this user without nested selects (avoids RLS recursion)
+      console.log('=== Starting fetchPatientTimeline for user:', userId);
+      
+      // Find patient record associated with this user
       const { data: fa, error: faErr } = await supabase
         .from('family_access')
         .select('patient_id')
         .eq('user_id', userId)
         .maybeSingle();
 
+      console.log('Family access query result:', { fa, faErr });
+
       if (faErr) {
         console.error('family_access fetch error:', faErr);
+        toast({
+          title: "Database Error",
+          description: `Access check failed: ${faErr.message}`,
+          variant: "destructive",
+        });
+        return;
       }
 
-      if (fa?.patient_id) {
-        const { data: patient, error: pErr } = await supabase
-          .from('patients')
-          .select('*')
-          .eq('id', fa.patient_id)
-          .maybeSingle();
+      if (!fa?.patient_id) {
+        console.log('No patient associated with this user');
+        toast({
+          title: "No Patient Record",
+          description: "No patient record found for your account.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-        if (pErr) {
-          console.error('patients fetch error:', pErr);
-        }
+      console.log('Found patient ID:', fa.patient_id);
 
-        if (patient) {
-          setPatientData(patient);
+      // Get patient details
+      const { data: patient, error: pErr } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('id', fa.patient_id)
+        .maybeSingle();
 
-          // Fetch timeline for this patient using Supabase functions invoke
-          console.log('Fetching timeline for patient:', fa.patient_id);
-          
-          const { data: result, error: timelineError } = await supabase.functions.invoke('get-patient-timeline', {
-            body: { patientId: fa.patient_id }
+      console.log('Patient query result:', { patient, pErr });
+
+      if (pErr) {
+        console.error('patients fetch error:', pErr);
+        toast({
+          title: "Patient Error",
+          description: `Failed to load patient data: ${pErr.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!patient) {
+        console.log('Patient not found');
+        toast({
+          title: "Patient Not Found",
+          description: "Patient record not found.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Setting patient data:', patient);
+      setPatientData(patient);
+
+      // Fetch timeline using edge function
+      console.log('=== Calling timeline function for patient:', fa.patient_id);
+      
+      const { data: result, error: timelineError } = await supabase.functions.invoke('get-patient-timeline', {
+        body: { patientId: fa.patient_id }
+      });
+
+      console.log('=== Timeline function response:', { result, timelineError });
+
+      if (timelineError) {
+        console.error('Timeline fetch error:', timelineError);
+        toast({
+          title: "Timeline Error",
+          description: `Failed to load documents: ${timelineError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (result) {
+        console.log('Timeline data:', result);
+        const timelineData = result.timeline || [];
+        console.log('Setting timeline with', timelineData.length, 'items');
+        setTimeline(timelineData);
+        
+        if (timelineData.length === 0) {
+          toast({
+            title: "No Documents",
+            description: "No documents found. Try uploading some documents first.",
           });
-
-          console.log('Timeline function response:', { result, timelineError });
-
-          if (timelineError) {
-            console.error('Timeline fetch error:', timelineError);
-            toast({
-              title: "Error",
-              description: `Failed to load medical timeline: ${timelineError.message}`,
-              variant: "destructive",
-            });
-          } else if (result) {
-            console.log('Timeline data received:', result);
-            console.log('Timeline array:', result.timeline);
-            setTimeline(result.timeline || []);
-            
-            if ((result.timeline || []).length === 0) {
-              console.log('No timeline items found');
-              toast({
-                title: "No Documents",
-                description: "No documents found for this patient.",
-              });
-            } else {
-              toast({
-                title: "Success",
-                description: `Loaded ${result.timeline.length} documents.`,
-              });
-            }
-          }
+        } else {
+          toast({
+            title: "Timeline Loaded",
+            description: `Found ${timelineData.length} documents.`,
+          });
         }
       }
     } catch (error) {
-      console.error('Error fetching patient timeline:', error);
+      console.error('Error in fetchPatientTimeline:', error);
+      toast({
+        title: "Unexpected Error",
+        description: "An unexpected error occurred while loading your timeline.",
+        variant: "destructive",
+      });
     }
   };
 

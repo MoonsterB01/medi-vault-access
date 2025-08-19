@@ -89,48 +89,58 @@ serve(async (req) => {
 
     console.log('Patient found:', patient.name);
 
-    // Fetch documents only (focusing on documents first)
+    // Fetch documents with better debugging
+    console.log('Fetching documents for patient:', patientId);
+    console.log('Current user:', user.id);
+    console.log('User role:', userData.role);
+    
     const { data: documents, error: documentsError } = await supabase
       .from('documents')
-      .select(`
-        id,
-        filename,
-        document_type,
-        description,
-        file_path,
-        uploaded_at,
-        uploaded_by,
-        tags,
-        content_type,
-        file_size
-      `)
+      .select('*')
       .eq('patient_id', patientId)
       .order('uploaded_at', { ascending: false });
 
+    console.log('Raw documents query result:', { documents, documentsError });
+
     if (documentsError) {
       console.error('Documents fetch error:', documentsError);
-      return new Response(JSON.stringify({ error: 'Failed to fetch documents', details: documentsError.message }), {
+      return new Response(JSON.stringify({ 
+        error: 'Failed to fetch documents', 
+        details: documentsError.message,
+        code: documentsError.code 
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     console.log('Documents found:', documents?.length || 0);
-    console.log('Documents data:', documents);
+    if (documents && documents.length > 0) {
+      console.log('First document:', documents[0]);
+    }
 
     // Transform documents into timeline format
     const transformedDocuments = (documents || []).map(doc => ({
-      ...doc,
+      id: doc.id,
+      filename: doc.filename,
+      document_type: doc.document_type,
+      description: doc.description,
+      file_path: doc.file_path,
+      uploaded_at: doc.uploaded_at,
+      uploaded_by: doc.uploaded_by,
+      tags: doc.tags || [],
+      content_type: doc.content_type,
+      file_size: doc.file_size,
       type: 'document' as const,
       date: doc.uploaded_at?.split('T')[0] || new Date().toISOString().split('T')[0],
       uploader_name: 'Document Upload',
       title: doc.filename,
-      file_url: doc.file_path, // Map file_path to file_url for consistency
+      file_url: doc.file_path,
       record_type: doc.document_type || 'document',
       severity: 'low' as const,
     }));
 
-    console.log('Transformed documents:', transformedDocuments);
+    console.log('Transformed documents:', transformedDocuments.length, 'items');
 
     // Generate signed URLs for documents
     const timelineWithUrls = await Promise.all(
