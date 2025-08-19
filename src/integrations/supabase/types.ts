@@ -253,6 +253,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_user_manage_patient: {
+        Args: { patient_id_param: string }
+        Returns: boolean
+      }
       generate_shareable_id: {
         Args: Record<PropertyKey, never>
         Returns: string
