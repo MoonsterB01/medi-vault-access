@@ -142,9 +142,6 @@ export default function HospitalDashboard() {
     navigate('/');
   };
 
-  const viewPatientTimeline = async (patientId: string) => {
-    navigate(`/patient-timeline/${patientId}`);
-  };
 
   if (authLoading) {
     return (
@@ -298,14 +295,6 @@ export default function HospitalDashboard() {
                       <p className="text-sm text-gray-600">DOB: {patient.dob}</p>
                       <p className="text-sm text-gray-600">Contact: {patient.primary_contact}</p>
                     </div>
-                    <Button
-                      onClick={() => viewPatientTimeline(patient.id)}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <Search className="h-4 w-4 mr-2" />
-                      View Timeline
-                    </Button>
                   </div>
                 ))}
                 {patients.length === 0 && (
