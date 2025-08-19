@@ -269,6 +269,14 @@ export type Database = {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      user_can_access_patient: {
+        Args: { patient_id_param: string }
+        Returns: boolean
+      }
+      user_hospital_can_access_patient: {
+        Args: { patient_id_param: string }
+        Returns: boolean
+      }
     }
     Enums: {
       record_type:
