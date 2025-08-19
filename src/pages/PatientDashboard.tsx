@@ -5,16 +5,15 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { User, FileText, LogOut, Share2, Calendar, AlertCircle, Copy, Upload, Search } from "lucide-react";
+import { User, FileText, LogOut, Share2, Copy, Upload, Download, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentUpload from "@/components/DocumentUpload";
-import DocumentSearch from "@/components/DocumentSearch";
 
 export default function PatientDashboard() {
   const [user, setUser] = useState<any>(null);
   const [patientData, setPatientData] = useState<any>(null);
-  const [timeline, setTimeline] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
   const [familyEmail, setFamilyEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
@@ -67,7 +66,7 @@ export default function PatientDashboard() {
 
       console.log('User data fetched:', userData);
       setUser(userData);
-      await fetchPatientTimeline(user.id);
+      await fetchPatientData(user.id);
     } catch (error) {
       console.error('Auth error:', error);
       toast({
@@ -80,9 +79,9 @@ export default function PatientDashboard() {
     }
   };
 
-  const fetchPatientTimeline = async (userId: string) => {
+  const fetchPatientData = async (userId: string) => {
     try {
-      console.log('=== Starting fetchPatientTimeline for user:', userId);
+      console.log('=== Starting fetchPatientData for user:', userId);
       
       // Find patient record associated with this user
       const { data: fa, error: faErr } = await supabase
@@ -146,49 +145,63 @@ export default function PatientDashboard() {
 
       console.log('Setting patient data:', patient);
       setPatientData(patient);
-
-      // Fetch timeline using edge function
-      console.log('=== Calling timeline function for patient:', fa.patient_id);
       
-      const { data: result, error: timelineError } = await supabase.functions.invoke('get-patient-timeline', {
-        body: { patientId: fa.patient_id }
+      // Fetch documents directly
+      await fetchDocuments(fa.patient_id);
+    } catch (error) {
+      console.error('Error in fetchPatientData:', error);
+      toast({
+        title: "Unexpected Error",
+        description: "An unexpected error occurred while loading your data.",
+        variant: "destructive",
       });
+    }
+  };
 
-      console.log('=== Timeline function response:', { result, timelineError });
+  const fetchDocuments = async (patientId: string) => {
+    try {
+      console.log('=== Fetching documents for patient:', patientId);
+      
+      const { data: docs, error: docsError } = await supabase
+        .from('documents')
+        .select(`
+          *,
+          patients (name, shareable_id)
+        `)
+        .eq('patient_id', patientId)
+        .order('uploaded_at', { ascending: false });
 
-      if (timelineError) {
-        console.error('Timeline fetch error:', timelineError);
+      console.log('Documents query result:', { docs, docsError });
+
+      if (docsError) {
+        console.error('Documents fetch error:', docsError);
         toast({
-          title: "Timeline Error",
-          description: `Failed to load documents: ${timelineError.message}`,
+          title: "Documents Error",
+          description: `Failed to load documents: ${docsError.message}`,
           variant: "destructive",
         });
         return;
       }
 
-      if (result) {
-        console.log('Timeline data:', result);
-        const timelineData = result.timeline || [];
-        console.log('Setting timeline with', timelineData.length, 'items');
-        setTimeline(timelineData);
-        
-        if (timelineData.length === 0) {
-          toast({
-            title: "No Documents",
-            description: "No documents found. Try uploading some documents first.",
-          });
-        } else {
-          toast({
-            title: "Timeline Loaded",
-            description: `Found ${timelineData.length} documents.`,
-          });
-        }
+      console.log('Setting documents:', docs || []);
+      setDocuments(docs || []);
+      
+      if (!docs || docs.length === 0) {
+        toast({
+          title: "No Documents",
+          description: "No documents found. Try uploading some documents first.",
+        });
+      } else {
+        toast({
+          title: "Documents Loaded",
+          description: `Found ${docs.length} documents.`,
+        });
       }
     } catch (error) {
-      console.error('Error in fetchPatientTimeline:', error);
+      console.error('Error fetching documents:', error);
       toast({
-        title: "Unexpected Error",
-        description: "An unexpected error occurred while loading your timeline.",
+        title: "Document Fetch Error",
+        description: "An unexpected error occurred while loading documents.",
         variant: "destructive",
       });
     }
@@ -251,13 +264,20 @@ export default function PatientDashboard() {
     }
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical': return 'bg-red-100 text-red-800';
-      case 'high': return 'bg-orange-100 text-orange-800';
-      case 'moderate': return 'bg-yellow-100 text-yellow-800';
-      case 'low': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const formatFileSize = (bytes: number) => {
+    if (!bytes) return 'Unknown size';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const formatDocumentType = (type: string) => {
+    return type ? type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Document';
+  };
+
+  const onUploadSuccess = () => {
+    if (patientData?.id) {
+      fetchDocuments(patientData.id);
     }
   };
 
@@ -416,15 +436,11 @@ export default function PatientDashboard() {
 
           {/* Main Content with Tabs */}
           <div className="lg:col-span-3">
-            <Tabs defaultValue="timeline" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="timeline" className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Timeline
-                </TabsTrigger>
+            <Tabs defaultValue="documents" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="documents" className="flex items-center gap-2">
-                  <Search className="h-4 w-4" />
-                  Search Documents
+                  <FileText className="h-4 w-4" />
+                  My Documents
                 </TabsTrigger>
                 <TabsTrigger value="upload" className="flex items-center gap-2">
                   <Upload className="h-4 w-4" />
@@ -432,71 +448,103 @@ export default function PatientDashboard() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="timeline" className="mt-6">
+              <TabsContent value="documents" className="mt-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <FileText className="h-5 w-5" />
-                      Medical Records Timeline
+                      My Documents
                     </CardTitle>
                     <CardDescription>
-                      Your medical records organized by date and severity
+                      Your uploaded medical documents
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {timeline.length > 0 ? (
-                      <div className="space-y-4">
-                        {timeline.map((record) => (
-                          <div key={record.id} className="border rounded-lg p-4 space-y-2">
-                            <div className="flex justify-between items-start">
-                              <div className="space-y-1">
-                                <h3 className="font-semibold capitalize">
-                                  {record.record_type?.replace('_', ' ') || record.document_type?.replace('_', ' ') || 'Document'}
+                    {documents.length > 0 ? (
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {documents.map((doc) => (
+                          <Card key={doc.id} className="p-4">
+                            <div className="space-y-3">
+                              <div>
+                                <h3 className="font-semibold text-sm truncate" title={doc.filename}>
+                                  {doc.filename}
                                 </h3>
-                                <p className="text-sm text-gray-600">
-                                  Uploaded by: {record.uploader_name}
+                                <p className="text-xs text-gray-500">
+                                  {formatDocumentType(doc.document_type)}
                                 </p>
-                                {record.description && (
-                                  <p className="text-sm">{record.description}</p>
-                                )}
-                                {record.tags && record.tags.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-2">
-                                    {record.tags.map((tag: string, index: number) => (
-                                      <Badge key={index} variant="secondary" className="text-xs">
-                                        {tag}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                )}
                               </div>
-                              <div className="flex flex-col items-end gap-2">
-                                <Badge className={getSeverityColor(record.severity)}>
-                                  {record.severity}
-                                </Badge>
-                                <div className="flex items-center gap-1 text-sm text-gray-500">
-                                  <Calendar className="h-4 w-4" />
-                                  {new Date(record.date).toLocaleDateString()}
+                              
+                              {doc.description && (
+                                <p className="text-sm text-gray-600 line-clamp-2">{doc.description}</p>
+                              )}
+                              
+                              <div className="space-y-1">
+                                <p className="text-xs text-gray-500">
+                                  <Calendar className="h-3 w-3 inline mr-1" />
+                                  {new Date(doc.uploaded_at).toLocaleDateString()}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  Size: {formatFileSize(doc.file_size)}
+                                </p>
+                              </div>
+                              
+                              {doc.tags && doc.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {doc.tags.slice(0, 2).map((tag: string, index: number) => (
+                                    <Badge key={index} variant="secondary" className="text-xs">
+                                      {tag}
+                                    </Badge>
+                                  ))}
+                                  {doc.tags.length > 2 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      +{doc.tags.length - 2}
+                                    </Badge>
+                                  )}
                                 </div>
-                              </div>
-                            </div>
-                            {record.signed_url && (
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={record.signed_url} target="_blank" rel="noopener noreferrer">
-                                  View Document
-                                </a>
+                              )}
+                              
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full"
+                                onClick={async () => {
+                                  try {
+                                    const { data } = await supabase.storage
+                                      .from('medical-documents')
+                                      .createSignedUrl(doc.file_path, 3600);
+                                    
+                                    if (data?.signedUrl) {
+                                      window.open(data.signedUrl, '_blank');
+                                    } else {
+                                      toast({
+                                        title: "Error",
+                                        description: "Could not generate download link",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  } catch (error) {
+                                    console.error('Error creating signed URL:', error);
+                                    toast({
+                                      title: "Error",
+                                      description: "Failed to open document",
+                                      variant: "destructive",
+                                    });
+                                  }
+                                }}
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                View
                               </Button>
-                            )}
-                          </div>
+                            </div>
+                          </Card>
                         ))}
                       </div>
                     ) : (
                       <div className="text-center py-12">
-                        <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                          No Medical Records Found
-                        </h3>
-                        <p className="text-gray-600">
-                          Your medical records will appear here once uploaded by healthcare providers.
+                        <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No documents found</h3>
+                        <p className="text-gray-500 mb-4">
+                          Start by uploading your first medical document using the Upload tab.
                         </p>
                       </div>
                     )}
@@ -504,18 +552,15 @@ export default function PatientDashboard() {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="documents" className="mt-6">
-                <DocumentSearch patientId={patientData?.id} />
-              </TabsContent>
-
               <TabsContent value="upload" className="mt-6">
-                <DocumentUpload 
-                  shareableId={patientData?.shareable_id} 
+                <DocumentUpload
+                  shareableId={patientData?.shareable_id}
                   onUploadSuccess={() => {
-                    // Refresh timeline and documents
-                    if (user?.id) {
-                      fetchPatientTimeline(user.id);
-                    }
+                    toast({
+                      title: "Document Uploaded!",
+                      description: "Your document has been uploaded successfully.",
+                    });
+                    onUploadSuccess();
                   }}
                 />
               </TabsContent>
