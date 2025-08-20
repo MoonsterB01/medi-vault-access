@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { User, FileText, LogOut, Share2, Copy, Upload, Download, Calendar } from "lucide-react";
+import { User, FileText, LogOut, Share2, Copy, Upload, Download, Calendar, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentUpload from "@/components/DocumentUpload";
@@ -436,6 +436,18 @@ export default function PatientDashboard() {
 
           {/* Main Content with Tabs */}
           <div className="lg:col-span-3">
+            {/* Timeline View Button */}
+            <div className="mb-6">
+              <Button 
+                onClick={() => navigate('/document-timeline')}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Clock className="h-4 w-4" />
+                View Timeline
+              </Button>
+            </div>
+            
             <Tabs defaultValue="documents" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="documents" className="flex items-center gap-2">

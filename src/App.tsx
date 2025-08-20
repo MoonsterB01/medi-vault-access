@@ -7,7 +7,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import HospitalDashboard from "./pages/HospitalDashboard";
 import PatientDashboard from "./pages/PatientDashboard";
-
+import DocumentTimeline from "./pages/DocumentTimeline";
 import PublicUpload from "./pages/PublicUpload";
 import NotFound from "./pages/NotFound";
 
@@ -24,6 +24,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/hospital-dashboard" element={<HospitalDashboard />} />
           <Route path="/patient-dashboard" element={<PatientDashboard />} />
+          <Route path="/document-timeline" element={<DocumentTimeline />} />
           <Route path="/upload" element={<PublicUpload />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
