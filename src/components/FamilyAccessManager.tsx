@@ -101,7 +101,7 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
 
     setGrantLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('grant-access-to-family', {
+      const { data, error } = await supabase.functions.invoke('grant-access-to-family', {
         body: {
           patientId,
           familyMemberEmail: emailOrId.trim(),
@@ -110,6 +110,7 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
       });
 
       if (error) {
+        console.error('Grant access error:', error);
         toast({
           title: "Error",
           description: error.message || "Failed to grant access",
@@ -118,12 +119,13 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
       } else {
         toast({
           title: "Success",
-          description: "Access granted successfully",
+          description: data?.message || "Access granted successfully",
         });
         setEmailOrId("");
         fetchFamilyAccess(); // Refresh the list
       }
     } catch (error: any) {
+      console.error('Grant access catch error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to grant access",
@@ -194,6 +196,9 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
               placeholder="Enter email (e.g., family@example.com) or User ID (e.g., USER-5CBE9C94)"
               className="mt-1"
             />
+            <p className="text-sm text-muted-foreground">
+              You can enter either an email address or a User ID. The person must already have an account.
+            </p>
           </div>
           <Button 
             onClick={handleGrantAccess} 

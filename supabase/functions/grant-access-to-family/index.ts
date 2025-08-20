@@ -39,7 +39,7 @@ serve(async (req) => {
     const { patientId, familyMemberEmail, canView = true } = await req.json();
 
     if (!patientId || !familyMemberEmail) {
-      return new Response(JSON.stringify({ error: 'Patient ID and family member email are required' }), {
+      return new Response(JSON.stringify({ error: 'Patient ID and family member email/user ID are required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -54,7 +54,7 @@ serve(async (req) => {
 
     if (userError || !userData) {
       return new Response(JSON.stringify({ error: 'User not found' }), {
-        status: 404,
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -68,7 +68,7 @@ serve(async (req) => {
 
     if (patientError || !patient) {
       return new Response(JSON.stringify({ error: 'Patient not found or access denied' }), {
-        status: 404,
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -81,16 +81,36 @@ serve(async (req) => {
       });
     }
 
-    // Find the family member by email
-    const { data: familyMember, error: familyError } = await supabase
-      .from('users')
-      .select('id, name, role')
-      .eq('email', familyMemberEmail)
-      .single();
+    // Find the family member by email or user ID
+    let familyMember: { id: string; name: string; role: string } | null = null;
+    
+    // Check if input looks like a User ID (USER-XXXXXXXX)
+    if (familyMemberEmail.toUpperCase().startsWith('USER-')) {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, role')
+        .eq('user_shareable_id', familyMemberEmail.toUpperCase())
+        .single();
+      
+      if (!error && data) {
+        familyMember = data;
+      }
+    } else {
+      // Treat as email address
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, role')
+        .eq('email', familyMemberEmail)
+        .single();
+      
+      if (!error && data) {
+        familyMember = data;
+      }
+    }
 
-    if (familyError || !familyMember) {
+    if (!familyMember) {
       return new Response(JSON.stringify({ error: 'Family member not found. They need to sign up first.' }), {
-        status: 404,
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
