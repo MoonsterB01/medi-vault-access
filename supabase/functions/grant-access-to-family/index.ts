@@ -15,6 +15,9 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    // User-authenticated client for permission validation
     const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: {
         autoRefreshToken: false,
@@ -24,6 +27,14 @@ serve(async (req) => {
         headers: {
           Authorization: req.headers.get('Authorization')!,
         },
+      },
+    });
+
+    // Service role client for user lookups (bypasses RLS)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
       },
     });
 
@@ -81,15 +92,15 @@ serve(async (req) => {
       });
     }
 
-    // Find the family member by email or user ID
+    // Find the family member by email or user ID using service role client (bypasses RLS)
     let familyMember: { id: string; name: string; role: string } | null = null;
     
     console.log(`Searching for family member: ${familyMemberEmail}`);
     
     // Check if input looks like a User ID (USER-XXXXXXXX)
     if (familyMemberEmail.toUpperCase().startsWith('USER-')) {
-      console.log('Searching by user_shareable_id');
-      const { data, error } = await supabase
+      console.log('Searching by user_shareable_id using service role');
+      const { data, error } = await supabaseAdmin
         .from('users')
         .select('id, name, role')
         .eq('user_shareable_id', familyMemberEmail.toUpperCase())
@@ -101,8 +112,8 @@ serve(async (req) => {
       }
     } else {
       // Treat as email address
-      console.log('Searching by email');
-      const { data, error } = await supabase
+      console.log('Searching by email using service role');
+      const { data, error } = await supabaseAdmin
         .from('users')
         .select('id, name, role')
         .eq('email', familyMemberEmail)
