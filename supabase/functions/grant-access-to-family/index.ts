@@ -84,25 +84,31 @@ serve(async (req) => {
     // Find the family member by email or user ID
     let familyMember: { id: string; name: string; role: string } | null = null;
     
+    console.log(`Searching for family member: ${familyMemberEmail}`);
+    
     // Check if input looks like a User ID (USER-XXXXXXXX)
     if (familyMemberEmail.toUpperCase().startsWith('USER-')) {
+      console.log('Searching by user_shareable_id');
       const { data, error } = await supabase
         .from('users')
         .select('id, name, role')
         .eq('user_shareable_id', familyMemberEmail.toUpperCase())
         .single();
       
+      console.log('User ID search result:', { data, error });
       if (!error && data) {
         familyMember = data;
       }
     } else {
       // Treat as email address
+      console.log('Searching by email');
       const { data, error } = await supabase
         .from('users')
         .select('id, name, role')
         .eq('email', familyMemberEmail)
         .single();
       
+      console.log('Email search result:', { data, error });
       if (!error && data) {
         familyMember = data;
       }
