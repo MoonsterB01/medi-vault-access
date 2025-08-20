@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { User, FileText, LogOut, Share2, Copy, Upload, Download, Calendar, Clock, Trash2 } from "lucide-react";
+import { User, FileText, LogOut, Share2, Copy, Upload, Download, Calendar, Clock, Trash2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentUpload from "@/components/DocumentUpload";
@@ -14,6 +16,7 @@ import FamilyAccessManager from "@/components/FamilyAccessManager";
 export default function PatientDashboard() {
   const [user, setUser] = useState<any>(null);
   const [patientData, setPatientData] = useState<any>(null);
+  const [availablePatients, setAvailablePatients] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [familyEmail, setFamilyEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -87,7 +90,21 @@ export default function PatientDashboard() {
       // Find all patient records associated with this user
       const { data: familyAccess, error: faErr } = await supabase
         .from('family_access')
-        .select('patient_id')
+        .select(`
+          patient_id,
+          patients:patient_id (
+            id,
+            name,
+            dob,
+            gender,
+            primary_contact,
+            hospital_id,
+            created_by,
+            created_at,
+            updated_at,
+            shareable_id
+          )
+        `)
         .eq('user_id', userId)
         .eq('can_view', true);
 
@@ -113,45 +130,25 @@ export default function PatientDashboard() {
         return;
       }
 
-      // For now, use the first patient if user has access to multiple
-      // TODO: In the future, we could add a patient selector UI
-      const selectedPatientId = familyAccess[0].patient_id;
-      console.log(`Found ${familyAccess.length} patient(s), using first one:`, selectedPatientId);
+      // Extract patient data from the nested query result
+      const patients = familyAccess
+        .map(access => access.patients)
+        .filter(Boolean);
 
-      // Get patient details
-      const { data: patient, error: pErr } = await supabase
-        .from('patients')
-        .select('*')
-        .eq('id', selectedPatientId)
-        .maybeSingle();
+      console.log(`Found ${patients.length} patient(s):`, patients);
+      setAvailablePatients(patients);
 
-      console.log('Patient query result:', { patient, pErr });
-
-      if (pErr) {
-        console.error('patients fetch error:', pErr);
+      // Auto-select first patient if only one is available
+      if (patients.length === 1) {
+        setPatientData(patients[0]);
+        await fetchDocuments(patients[0].id);
+      } else if (patients.length > 1) {
+        // If multiple patients, user needs to select one
         toast({
-          title: "Patient Error",
-          description: `Failed to load patient data: ${pErr.message}`,
-          variant: "destructive",
+          title: "Multiple Patient Access",
+          description: `You have access to ${patients.length} patient records. Please select one to view.`,
         });
-        return;
       }
-
-      if (!patient) {
-        console.log('Patient not found');
-        toast({
-          title: "Patient Not Found",
-          description: "Patient record not found.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('Setting patient data:', patient);
-      setPatientData(patient);
-      
-      // Fetch documents directly
-      await fetchDocuments(selectedPatientId);
     } catch (error) {
       console.error('Error in fetchPatientData:', error);
       toast({
@@ -160,6 +157,15 @@ export default function PatientDashboard() {
         variant: "destructive",
       });
     }
+  };
+
+  const handlePatientSelect = async (patient: any) => {
+    setPatientData(patient);
+    await fetchDocuments(patient.id);
+    toast({
+      title: "Patient Selected",
+      description: `Now viewing records for ${patient.name}`,
+    });
   };
 
   const fetchDocuments = async (patientId: string) => {
@@ -396,6 +402,59 @@ export default function PatientDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Patient Selector - show when multiple patients available */}
+            {availablePatients.length > 1 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Select Patient Profile
+                  </CardTitle>
+                  <CardDescription>
+                    You have access to {availablePatients.length} patient profiles. Choose which one to view.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <Label htmlFor="patient-select">Available Patients:</Label>
+                    <Select 
+                      value={patientData?.id || ""} 
+                      onValueChange={(patientId) => {
+                        const patient = availablePatients.find(p => p.id === patientId);
+                        if (patient) {
+                          handlePatientSelect(patient);
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="patient-select">
+                        <SelectValue placeholder="Select a patient profile to view" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availablePatients.map((patient) => (
+                          <SelectItem key={patient.id} value={patient.id}>
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4" />
+                              <div>
+                                <div className="font-medium">{patient.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  ID: {patient.shareable_id}
+                                </div>
+                              </div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {patientData && (
+                      <p className="text-sm text-muted-foreground">
+                        Currently viewing: <span className="font-medium">{patientData.name}</span>
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {patientData && (
               <>
