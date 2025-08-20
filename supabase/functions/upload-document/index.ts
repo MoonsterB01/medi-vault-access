@@ -26,6 +26,31 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: {
+            Authorization: req.headers.get('Authorization')!,
+          },
+        },
+      }
+    );
+
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        {
+          status: 401,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        }
+      );
+    }
+
+    // Use service role client for admin operations
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -33,11 +58,23 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { shareableId, file, documentType, description, tags }: UploadRequest = await req.json();
 
-    console.log(`Uploading document for shareable ID: ${shareableId}`);
+    console.log(`Uploading document for shareable ID: ${shareableId} by user: ${user.id}`);
+
+    // Get uploader's details for traceability
+    const { data: uploaderUser, error: uploaderError } = await supabase
+      .from('users')
+      .select('user_shareable_id')
+      .eq('id', user.id)
+      .single();
+
+    if (uploaderError) {
+      console.error('Failed to get uploader details:', uploaderError);
+    }
 
     // Resolve patient by shareableId (supports MED-XXXXXXXX and USER-XXXXXXXX)
     const upperId = shareableId.toUpperCase();
     let patient: { id: string; name: string } | null = null;
+    let hasPermission = false;
 
     if (upperId.startsWith('MED-')) {
       const { data: p, error: pErr } = await supabase
@@ -49,6 +86,15 @@ const handler = async (req: Request): Promise<Response> => {
         console.error('Patient not found via MED ID:', pErr);
       } else {
         patient = p;
+        // Check if user has permission to upload to this patient
+        const { data: access } = await supabase
+          .from('family_access')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('patient_id', p.id)
+          .eq('can_view', true)
+          .single();
+        hasPermission = !!access;
       }
     } else if (upperId.startsWith('USER-')) {
       // Find the user by their user_shareable_id, then map to a patient via family_access
@@ -76,6 +122,15 @@ const handler = async (req: Request): Promise<Response> => {
             .single();
           if (!p2Err && p2) {
             patient = p2;
+            // Check if the current user has permission to upload to this patient
+            const { data: userAccess } = await supabase
+              .from('family_access')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('patient_id', p2.id)
+              .eq('can_view', true)
+              .single();
+            hasPermission = !!userAccess;
           } else {
             console.error('Patient lookup by family_access failed:', p2Err);
           }
@@ -92,6 +147,16 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ error: 'Invalid shareable ID' }),
         {
           status: 404,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        }
+      );
+    }
+
+    if (!hasPermission) {
+      return new Response(
+        JSON.stringify({ error: 'You do not have permission to upload documents for this patient' }),
+        {
+          status: 403,
           headers: { 'Content-Type': 'application/json', ...corsHeaders }
         }
       );
@@ -136,7 +201,8 @@ const handler = async (req: Request): Promise<Response> => {
         document_type: documentType,
         description: description || null,
         tags: tags || [],
-        uploaded_by: 'a3d61033-287d-4ae5-adba-f12d6e75daa9', // Default uploader for public uploads
+        uploaded_by: user.id, // Track actual uploader
+        uploaded_by_user_shareable_id: uploaderUser?.user_shareable_id || null,
         searchable_content: `${file.name} ${documentType} ${description || ''} ${tags?.join(' ') || ''}`
       })
       .select()

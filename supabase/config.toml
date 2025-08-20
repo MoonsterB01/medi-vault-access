@@ -13,7 +13,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.upload-document]
-verify_jwt = false
+verify_jwt = true
 
 [functions.search-documents]
 verify_jwt = true

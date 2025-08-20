@@ -27,7 +27,8 @@ export type Database = {
           searchable_content: string | null
           tags: string[] | null
           uploaded_at: string | null
-          uploaded_by: string | null
+          uploaded_by: string
+          uploaded_by_user_shareable_id: string | null
         }
         Insert: {
           content_type?: string | null
@@ -41,7 +42,8 @@ export type Database = {
           searchable_content?: string | null
           tags?: string[] | null
           uploaded_at?: string | null
-          uploaded_by?: string | null
+          uploaded_by: string
+          uploaded_by_user_shareable_id?: string | null
         }
         Update: {
           content_type?: string | null
@@ -55,7 +57,8 @@ export type Database = {
           searchable_content?: string | null
           tags?: string[] | null
           uploaded_at?: string | null
-          uploaded_by?: string | null
+          uploaded_by?: string
+          uploaded_by_user_shareable_id?: string | null
         }
         Relationships: [
           {

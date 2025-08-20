@@ -9,6 +9,7 @@ import { User, FileText, LogOut, Share2, Copy, Upload, Download, Calendar, Clock
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentUpload from "@/components/DocumentUpload";
+import FamilyAccessManager from "@/components/FamilyAccessManager";
 
 export default function PatientDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -449,7 +450,7 @@ export default function PatientDashboard() {
             </div>
             
             <Tabs defaultValue="documents" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="documents" className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
                   My Documents
@@ -457,6 +458,10 @@ export default function PatientDashboard() {
                 <TabsTrigger value="upload" className="flex items-center gap-2">
                   <Upload className="h-4 w-4" />
                   Upload
+                </TabsTrigger>
+                <TabsTrigger value="family" className="flex items-center gap-2">
+                  <Share2 className="h-4 w-4" />
+                  Family Access
                 </TabsTrigger>
               </TabsList>
 
@@ -574,6 +579,13 @@ export default function PatientDashboard() {
                     });
                     onUploadSuccess();
                   }}
+                />
+              </TabsContent>
+
+              <TabsContent value="family" className="mt-6">
+                <FamilyAccessManager 
+                  patientId={patientData?.id || ""}
+                  patientShareableId={patientData?.shareable_id || ""}
                 />
               </TabsContent>
             </Tabs>

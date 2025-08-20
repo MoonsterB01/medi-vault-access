@@ -7,25 +7,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileText } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import ProfileSelector from "@/components/ProfileSelector";
 
 interface DocumentUploadProps {
   shareableId?: string;
   onUploadSuccess?: () => void;
 }
 
-export default function DocumentUpload({ shareableId, onUploadSuccess }: DocumentUploadProps) {
+export default function DocumentUpload({ shareableId: propShareableId, onUploadSuccess }: DocumentUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
-  const [inputShareableId, setInputShareableId] = useState(shareableId || "");
-const { toast } = useToast();
+  const [shareableId, setShareableId] = useState(propShareableId || "");
+  const [selectedPatientName, setSelectedPatientName] = useState("");
+  const { toast } = useToast();
 
   // Keep input in sync if parent provides/updates shareableId
   useEffect(() => {
-    setInputShareableId(shareableId || "");
-  }, [shareableId]);
+    setShareableId(propShareableId || "");
+  }, [propShareableId]);
+
+  const handleProfileChange = (newShareableId: string, patientName: string) => {
+    setShareableId(newShareableId);
+    setSelectedPatientName(patientName);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -58,7 +66,7 @@ const { toast } = useToast();
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!file || !documentType || !inputShareableId) {
+    if (!file || !documentType || !shareableId) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields and select a file",
@@ -68,7 +76,7 @@ const { toast } = useToast();
     }
 
     // Normalize and validate shareable ID (accept MED-XXXXXXXX or USER-XXXXXXXX)
-    const normalizedId = inputShareableId.trim().toUpperCase();
+    const normalizedId = shareableId.trim().toUpperCase();
     const isValidMedId = /^MED-[A-Z0-9]{8}$/.test(normalizedId);
     const isValidUserId = /^USER-[A-Z0-9]{8}$/.test(normalizedId);
     if (!isValidMedId && !isValidUserId) {
@@ -77,60 +85,61 @@ const { toast } = useToast();
         description: "Enter a valid MED-XXXXXXXX or USER-XXXXXXXX ID.",
         variant: "destructive",
       });
-      setInputShareableId(normalizedId);
       return;
     }
 
     setUploading(true);
     try {
+      // Get current user session for authenticated request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to upload documents",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const fileContent = await convertFileToBase64(file);
       const tagsArray = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
 
-      const response = await fetch(
-        'https://qiqepumdtaozjzfjbggl.supabase.co/functions/v1/upload-document',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+      const { data, error } = await supabase.functions.invoke('upload-document', {
+        body: {
+          shareableId: normalizedId,
+          file: {
+            name: file.name,
+            content: fileContent,
+            type: file.type,
+            size: file.size,
           },
-            body: JSON.stringify({
-              shareableId: normalizedId,
-              file: {
-                name: file.name,
-                content: fileContent,
-                type: file.type,
-                size: file.size
-              },
-            documentType,
-            description: description || undefined,
-            tags: tagsArray.length > 0 ? tagsArray : undefined
-          }),
-        }
-      );
+          documentType,
+          description: description || undefined,
+          tags: tagsArray.length > 0 ? tagsArray : undefined,
+        },
+      });
 
-      const result = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: "Upload Successful!",
-          description: result.message || "Document uploaded successfully",
-        });
-        
-        // Reset form
-        setFile(null);
-        setDocumentType("");
-        setDescription("");
-        setTags("");
-        if (!shareableId) setInputShareableId("");
-        
-        // Reset file input
-        const fileInput = document.getElementById('file-input') as HTMLInputElement;
-        if (fileInput) fileInput.value = '';
-        
-        onUploadSuccess?.();
-      } else {
-        throw new Error(result.error || 'Upload failed');
+      if (error) {
+        throw new Error(error.message || 'Upload failed');
       }
+
+      toast({
+        title: "Upload Successful!",
+        description: data?.message || "Document uploaded successfully",
+      });
+      
+      // Reset form
+      setFile(null);
+      setDocumentType("");
+      setDescription("");
+      setTags("");
+      if (!propShareableId) setShareableId("");
+      
+      // Reset file input
+      const fileInput = document.getElementById('file-input') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+      
+      onUploadSuccess?.();
     } catch (error: any) {
       toast({
         title: "Upload Failed",
@@ -143,33 +152,47 @@ const { toast } = useToast();
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Upload className="h-5 w-5" />
-          Upload Medical Document
-        </CardTitle>
-        <CardDescription>
-          Upload documents using a patient's shareable ID
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleUpload} className="space-y-4">
-          {!shareableId && (
-            <div className="space-y-2">
-              <Label htmlFor="shareable-id">Patient Shareable ID *</Label>
-              <Input
-                id="shareable-id"
-                placeholder="e.g., MED-ABC12345 or USER-ABC12345"
-                value={inputShareableId}
-                onChange={(e) => setInputShareableId(e.target.value.toUpperCase())}
-                required
-              />
-              <p className="text-sm text-gray-600">
-                Tip: You can use MED-XXXXXXXX or your USER-XXXXXXXX ID.
-              </p>
-            </div>
-          )}
+    <div className="w-full max-w-2xl mx-auto space-y-6">
+      {/* Profile Selector for family members */}
+      {!propShareableId && (
+        <ProfileSelector 
+          onProfileChange={handleProfileChange}
+          selectedShareableId={shareableId}
+        />
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5" />
+            Upload Medical Document
+            {selectedPatientName && (
+              <span className="text-sm font-normal text-muted-foreground ml-2">
+                → {selectedPatientName}
+              </span>
+            )}
+          </CardTitle>
+          <CardDescription>
+            Upload documents using a patient's shareable ID
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleUpload} className="space-y-4">
+            {!propShareableId && !shareableId && (
+              <div className="space-y-2">
+                <Label htmlFor="shareable-id">Patient Shareable ID *</Label>
+                <Input
+                  id="shareable-id"
+                  placeholder="e.g., MED-ABC12345 or USER-ABC12345"
+                  value={shareableId}
+                  onChange={(e) => setShareableId(e.target.value.toUpperCase())}
+                  required
+                />
+                <p className="text-sm text-gray-600">
+                  Tip: You can use MED-XXXXXXXX or your USER-XXXXXXXX ID.
+                </p>
+              </div>
+            )}
 
           <div className="space-y-2">
             <Label htmlFor="file-input">Document File *</Label>
@@ -233,8 +256,9 @@ const { toast } = useToast();
           <Button type="submit" className="w-full" disabled={uploading}>
             {uploading ? "Uploading..." : "Upload Document"}
           </Button>
-        </form>
-      </CardContent>
-    </Card>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
