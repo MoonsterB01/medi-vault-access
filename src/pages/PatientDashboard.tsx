@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { User, FileText, LogOut, Share2, Copy, Upload, Download, Calendar, Clock } from "lucide-react";
+import { User, FileText, LogOut, Share2, Copy, Upload, Download, Calendar, Clock, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentUpload from "@/components/DocumentUpload";
@@ -282,6 +282,39 @@ export default function PatientDashboard() {
     }
   };
 
+  const handleDeleteDocument = async (documentId: string, filename: string) => {
+    if (!confirm(`Are you sure you want to delete "${filename}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', documentId);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Document Deleted",
+        description: `${filename} has been deleted successfully.`,
+      });
+
+      // Refresh the documents list
+      if (patientData?.id) {
+        fetchDocuments(patientData.id);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete document. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -520,38 +553,52 @@ export default function PatientDashboard() {
                                 </div>
                               )}
                               
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="w-full"
-                                onClick={async () => {
-                                  try {
-                                    const { data } = await supabase.storage
-                                      .from('medical-documents')
-                                      .createSignedUrl(doc.file_path, 3600);
-                                    
-                                    if (data?.signedUrl) {
-                                      window.open(data.signedUrl, '_blank');
-                                    } else {
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="flex-1"
+                                  onClick={async () => {
+                                    try {
+                                      const { data } = await supabase.storage
+                                        .from('medical-documents')
+                                        .createSignedUrl(doc.file_path, 3600);
+                                      
+                                      if (data?.signedUrl) {
+                                        window.open(data.signedUrl, '_blank');
+                                      } else {
+                                        toast({
+                                          title: "Error",
+                                          description: "Could not generate download link",
+                                          variant: "destructive",
+                                        });
+                                      }
+                                    } catch (error) {
+                                      console.error('Error creating signed URL:', error);
                                       toast({
                                         title: "Error",
-                                        description: "Could not generate download link",
+                                        description: "Failed to open document",
                                         variant: "destructive",
                                       });
                                     }
-                                  } catch (error) {
-                                    console.error('Error creating signed URL:', error);
-                                    toast({
-                                      title: "Error",
-                                      description: "Failed to open document",
-                                      variant: "destructive",
-                                    });
-                                  }
-                                }}
-                              >
-                                <Download className="h-4 w-4 mr-2" />
-                                View
-                              </Button>
+                                  }}
+                                >
+                                  <Download className="h-4 w-4 mr-2" />
+                                  View
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive" 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteDocument(doc.id, doc.filename);
+                                  }}
+                                  className="px-3"
+                                  title="Delete document"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           </Card>
                         ))}

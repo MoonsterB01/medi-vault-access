@@ -13,7 +13,8 @@ import {
   Search, 
   Download, 
   Tag,
-  Filter
+  Filter,
+  Trash2
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -131,6 +132,37 @@ export default function DocumentTimeline() {
       toast({
         title: "Error",
         description: "An error occurred while loading documents",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: string, filename: string) => {
+    if (!confirm(`Are you sure you want to delete "${filename}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', documentId);
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Document Deleted",
+        description: `${filename} has been deleted successfully.`,
+      });
+
+      // Remove the document from the local state
+      setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== documentId));
+    } catch (error: any) {
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete document. Please try again.",
         variant: "destructive",
       });
     }
@@ -314,13 +346,23 @@ export default function DocumentTimeline() {
                                 </Badge>
                               </div>
                             </div>
-                            <Button 
-                              size="sm" 
-                              variant="ghost"
-                              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                              <Button size="sm" variant="ghost">
+                                <Download className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteDocument(doc.id, doc.filename);
+                                }}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                title="Delete document"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </CardHeader>
 
