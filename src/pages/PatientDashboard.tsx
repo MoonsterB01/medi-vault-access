@@ -84,14 +84,14 @@ export default function PatientDashboard() {
     try {
       console.log('=== Starting fetchPatientData for user:', userId);
       
-      // Find patient record associated with this user
-      const { data: fa, error: faErr } = await supabase
+      // Find all patient records associated with this user
+      const { data: familyAccess, error: faErr } = await supabase
         .from('family_access')
         .select('patient_id')
         .eq('user_id', userId)
-        .maybeSingle();
+        .eq('can_view', true);
 
-      console.log('Family access query result:', { fa, faErr });
+      console.log('Family access query result:', { familyAccess, faErr });
 
       if (faErr) {
         console.error('family_access fetch error:', faErr);
@@ -103,7 +103,7 @@ export default function PatientDashboard() {
         return;
       }
 
-      if (!fa?.patient_id) {
+      if (!familyAccess || familyAccess.length === 0) {
         console.log('No patient associated with this user');
         toast({
           title: "No Patient Record",
@@ -113,13 +113,16 @@ export default function PatientDashboard() {
         return;
       }
 
-      console.log('Found patient ID:', fa.patient_id);
+      // For now, use the first patient if user has access to multiple
+      // TODO: In the future, we could add a patient selector UI
+      const selectedPatientId = familyAccess[0].patient_id;
+      console.log(`Found ${familyAccess.length} patient(s), using first one:`, selectedPatientId);
 
       // Get patient details
       const { data: patient, error: pErr } = await supabase
         .from('patients')
         .select('*')
-        .eq('id', fa.patient_id)
+        .eq('id', selectedPatientId)
         .maybeSingle();
 
       console.log('Patient query result:', { patient, pErr });
@@ -148,7 +151,7 @@ export default function PatientDashboard() {
       setPatientData(patient);
       
       // Fetch documents directly
-      await fetchDocuments(fa.patient_id);
+      await fetchDocuments(selectedPatientId);
     } catch (error) {
       console.error('Error in fetchPatientData:', error);
       toast({
