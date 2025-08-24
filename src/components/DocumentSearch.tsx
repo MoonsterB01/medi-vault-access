@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Search, FileText, Download, Calendar, Tag } from "lucide-react";
+import { Search, FileText, Download, Calendar, Tag, Eye } from "lucide-react";
+import DocumentPreview from "./DocumentPreview";
 
 interface Document {
   id: string;
@@ -18,6 +19,7 @@ interface Document {
   file_size: number;
   tags: string[];
   signed_url?: string;
+  content_type?: string;
   patients: {
     name: string;
     shareable_id: string;
@@ -34,6 +36,8 @@ export default function DocumentSearch({ patientId }: DocumentSearchProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [documentType, setDocumentType] = useState("");
   const [selectedTags, setSelectedTags] = useState("");
+  const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
   const { toast } = useToast();
 
   const searchDocuments = async () => {
@@ -97,6 +101,16 @@ export default function DocumentSearch({ patientId }: DocumentSearchProps) {
     return type.split('_').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
+  };
+
+  const handlePreview = (document: Document) => {
+    setPreviewDocument(document);
+    setShowPreview(true);
+  };
+
+  const handleClosePreview = () => {
+    setShowPreview(false);
+    setPreviewDocument(null);
   };
 
   return (
@@ -220,12 +234,22 @@ export default function DocumentSearch({ patientId }: DocumentSearchProps) {
                     </div>
                     
                     {doc.signed_url && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={doc.signed_url} target="_blank" rel="noopener noreferrer">
-                          <Download className="h-4 w-4 mr-2" />
-                          View/Download
-                        </a>
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handlePreview(doc)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Preview
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={doc.signed_url} target="_blank" rel="noopener noreferrer">
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </a>
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -244,6 +268,12 @@ export default function DocumentSearch({ patientId }: DocumentSearchProps) {
           )}
         </CardContent>
       </Card>
+
+      <DocumentPreview
+        isOpen={showPreview}
+        onClose={handleClosePreview}
+        document={previewDocument}
+      />
     </div>
   );
 }
