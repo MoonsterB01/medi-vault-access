@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +16,8 @@ import {
   Download, 
   Tag,
   Filter,
-  Trash2
+  Trash2,
+  Users
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -39,6 +42,8 @@ export default function DocumentTimeline() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [availablePatients, setAvailablePatients] = useState<any[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -86,15 +91,65 @@ export default function DocumentTimeline() {
 
       setUser(userData);
 
-      // Get patient ID for this user
-      const { data: familyAccess } = await supabase
+      // Get all patients this user has access to
+      const { data: familyAccess, error: faErr } = await supabase
         .from('family_access')
-        .select('patient_id')
+        .select(`
+          patient_id,
+          patients:patient_id (
+            id,
+            name,
+            dob,
+            gender,
+            primary_contact,
+            hospital_id,
+            created_by,
+            created_at,
+            updated_at,
+            shareable_id
+          )
+        `)
         .eq('user_id', user.id)
-        .maybeSingle();
+        .eq('can_view', true);
 
-      if (familyAccess?.patient_id) {
-        await fetchDocuments(familyAccess.patient_id);
+      if (faErr) {
+        console.error('family_access fetch error:', faErr);
+        toast({
+          title: "Database Error",
+          description: `Access check failed: ${faErr.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!familyAccess || familyAccess.length === 0) {
+        console.log('No patient associated with this user');
+        toast({
+          title: "No Patient Record",
+          description: "No patient record found for your account.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Extract patient data from the nested query result
+      const patients = familyAccess
+        .map(access => access.patients)
+        .filter(Boolean);
+
+      console.log(`Found ${patients.length} patient(s):`, patients);
+      setAvailablePatients(patients);
+
+      // Auto-select first patient if only one is available
+      if (patients.length === 1) {
+        setSelectedPatient(patients[0]);
+        await fetchDocuments(patients[0].id);
+      } else if (patients.length > 1) {
+        // If multiple patients, user needs to select one
+        toast({
+          title: "Multiple Patient Access",
+          description: `You have access to ${patients.length} patient records. Please select one to view.`,
+        });
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -106,6 +161,15 @@ export default function DocumentTimeline() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePatientSelect = async (patient: any) => {
+    setSelectedPatient(patient);
+    await fetchDocuments(patient.id);
+    toast({
+      title: "Patient Selected",
+      description: `Now viewing timeline for ${patient.name}`,
+    });
   };
 
   const fetchDocuments = async (patientId: string) => {
@@ -266,7 +330,12 @@ export default function DocumentTimeline() {
               <Clock className="h-6 w-6 text-primary" />
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Document Timeline</h1>
-                <p className="text-muted-foreground">Chronological view of your medical documents</p>
+                <p className="text-muted-foreground">
+                  {selectedPatient 
+                    ? `Chronological view of ${selectedPatient.name}'s medical documents`
+                    : 'Chronological view of medical documents'
+                  }
+                </p>
               </div>
             </div>
           </div>
@@ -274,36 +343,103 @@ export default function DocumentTimeline() {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Search and Filter Bar */}
-        <div className="mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search documents by name, type, or description..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
+        {/* Patient Selector - show when multiple patients available */}
+        {availablePatients.length > 1 && (
+          <div className="mb-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Select Patient Profile
+                </CardTitle>
+                <CardDescription>
+                  You have access to {availablePatients.length} patient profiles. Choose which one to view the timeline for.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <Label htmlFor="timeline-patient-select">Available Patients:</Label>
+                  <Select 
+                    value={selectedPatient?.id || ""} 
+                    onValueChange={(patientId) => {
+                      const patient = availablePatients.find(p => p.id === patientId);
+                      if (patient) {
+                        handlePatientSelect(patient);
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="timeline-patient-select">
+                      <SelectValue placeholder="Select a patient profile to view timeline" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availablePatients.map((patient) => (
+                        <SelectItem key={patient.id} value={patient.id}>
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            <div>
+                              <div className="font-medium">{patient.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                ID: {patient.shareable_id}
+                              </div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedPatient && (
+                    <p className="text-sm text-muted-foreground">
+                      Currently viewing timeline for: <span className="font-medium">{selectedPatient.name}</span>
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Search and Filter Bar - only show if a patient is selected */}
+        {selectedPatient && (
+          <div className="mb-8">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search documents by name, type, or description..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {filteredDocuments.length} of {documents.length} documents
+                    </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    {filteredDocuments.length} of {documents.length} documents
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Timeline */}
         <div className="relative">
-          {orderedGroups.length > 0 ? (
+          {!selectedPatient ? (
+            <div className="text-center py-16">
+              <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                Please Select a Patient
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                Choose a patient profile from the dropdown above to view their document timeline.
+              </p>
+            </div>
+          ) : orderedGroups.length > 0 ? (
             <div className="space-y-12">
               {/* Timeline Line */}
               <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-border hidden md:block"></div>
