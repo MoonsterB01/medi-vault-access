@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, UserPlus, Search, Users } from "lucide-react";
+import { Trash2, UserPlus, Search, Users, Heart, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -17,16 +17,39 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Separator } from "@/components/ui/separator";
 
 interface FamilyAccess {
   id: string;
   user_id: string;
+  patient_id: string;
   can_view: boolean;
   created_at: string;
+  granted_by: string;
   users: {
     name: string;
     email: string;
     user_shareable_id: string | null;
+  };
+  patients?: {
+    name: string;
+    shareable_id: string;
+  };
+}
+
+interface PatientAccess {
+  id: string;
+  patient_id: string;
+  can_view: boolean;
+  created_at: string;
+  granted_by: string;
+  patients: {
+    name: string;
+    shareable_id: string;
+  };
+  granted_by_user?: {
+    name: string;
+    email: string;
   };
 }
 
@@ -37,6 +60,7 @@ interface FamilyAccessManagerProps {
 
 export default function FamilyAccessManager({ patientId, patientShareableId }: FamilyAccessManagerProps) {
   const [familyAccess, setFamilyAccess] = useState<FamilyAccess[]>([]);
+  const [patientAccess, setPatientAccess] = useState<PatientAccess[]>([]);
   const [loading, setLoading] = useState(true);
   const [grantLoading, setGrantLoading] = useState(false);
   const [emailOrId, setEmailOrId] = useState("");
@@ -44,20 +68,40 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
   const [deleteAccess, setDeleteAccess] = useState<FamilyAccess | null>(null);
   const { toast } = useToast();
 
+  // Don't render if no patientId
+  if (!patientId) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="text-center py-8 text-muted-foreground">
+            Please select a patient to manage family access.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   useEffect(() => {
-    fetchFamilyAccess();
+    fetchFamilyData();
   }, [patientId]);
 
-  const fetchFamilyAccess = async () => {
+  const fetchFamilyData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch family members who have access to the current patient
+      const { data: familyData, error: familyError } = await supabase
         .from('family_access')
         .select(`
           id,
           user_id,
+          patient_id,
           can_view,
           created_at,
+          granted_by,
           users!user_id (
             name,
             email,
@@ -67,21 +111,48 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
         .eq('patient_id', patientId)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching family access:', error);
+      // Fetch patients that the current user has access to
+      const { data: patientData, error: patientError } = await supabase
+        .from('family_access')
+        .select(`
+          id,
+          patient_id,
+          can_view,
+          created_at,
+          granted_by,
+          patients!patient_id (
+            name,
+            shareable_id
+          ),
+          granted_by_user:users!granted_by (
+            name,
+            email
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (familyError) {
+        console.error('Error fetching family access:', familyError);
         toast({
           title: "Error",
           description: "Failed to load family access list",
           variant: "destructive",
         });
       } else {
-        setFamilyAccess(data || []);
+        setFamilyAccess(familyData || []);
+      }
+
+      if (patientError) {
+        console.error('Error fetching patient access:', patientError);
+      } else {
+        setPatientAccess(patientData || []);
       }
     } catch (error) {
       console.error('Error:', error);
       toast({
         title: "Error",
-        description: "Failed to load family access list",
+        description: "Failed to load family access data",
         variant: "destructive",
       });
     } finally {
@@ -122,7 +193,7 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
           description: data?.message || "Access granted successfully",
         });
         setEmailOrId("");
-        fetchFamilyAccess(); // Refresh the list
+        fetchFamilyData(); // Refresh the list
       }
     } catch (error: any) {
       console.error('Grant access catch error:', error);
@@ -156,7 +227,7 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
           title: "Success",
           description: "Access revoked successfully",
         });
-        fetchFamilyAccess(); // Refresh the list
+        fetchFamilyData(); // Refresh the list
       }
     } catch (error) {
       toast({
@@ -175,8 +246,56 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
     (access.users?.user_shareable_id && access.users.user_shareable_id.toLowerCase().includes(searchFilter.toLowerCase()))
   );
 
+  const filteredPatientAccess = patientAccess.filter(access =>
+    access.patients?.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
+    access.granted_by_user?.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
+    access.granted_by_user?.email.toLowerCase().includes(searchFilter.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
+      {/* Patients I Can Access */}
+      {patientAccess.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Heart className="h-5 w-5" />
+              Patients I Can Access ({patientAccess.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {filteredPatientAccess.map((access) => (
+                <div
+                  key={access.id}
+                  className="flex items-center justify-between p-4 border rounded-lg"
+                >
+                  <div className="flex-1">
+                    <div className="font-medium">{access.patients?.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Patient ID: {access.patients?.shareable_id}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Access granted by: {access.granted_by_user?.name} ({access.granted_by_user?.email})
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Granted on {new Date(access.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={access.can_view ? "default" : "secondary"}>
+                      {access.can_view ? "Can View & Upload" : "No Access"}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Separator />
+
       {/* Grant New Access */}
       <Card>
         <CardHeader>
@@ -215,14 +334,14 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
         </CardContent>
       </Card>
 
-      {/* Existing Access List */}
+      {/* Family Members with Access to My Records */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Family Members with Access ({filteredAccess.length})
+            <Shield className="h-5 w-5" />
+            Family Members with Access to My Records ({filteredAccess.length})
           </CardTitle>
-          {familyAccess.length > 0 && (
+          {(familyAccess.length > 0 || patientAccess.length > 0) && (
             <div className="flex items-center gap-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
