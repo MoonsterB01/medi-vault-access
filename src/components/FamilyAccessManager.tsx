@@ -106,6 +106,10 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
             name,
             email,
             user_shareable_id
+          ),
+          patients!patient_id (
+            name,
+            shareable_id
           )
         `)
         .eq('patient_id', patientId)
@@ -132,6 +136,29 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
+      // Fetch all access granted BY the current user (across all their patients)
+      const { data: grantedData, error: grantedError } = await supabase
+        .from('family_access')
+        .select(`
+          id,
+          user_id,
+          patient_id,
+          can_view,
+          created_at,
+          granted_by,
+          users!user_id (
+            name,
+            email,
+            user_shareable_id
+          ),
+          patients!patient_id (
+            name,
+            shareable_id
+          )
+        `)
+        .eq('granted_by', user.id)
+        .order('created_at', { ascending: false });
+
       if (familyError) {
         console.error('Error fetching family access:', familyError);
         toast({
@@ -140,7 +167,19 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
           variant: "destructive",
         });
       } else {
-        setFamilyAccess(familyData || []);
+        // Combine current patient access with all granted access
+        const allGrantedAccess = grantedData || [];
+        const currentPatientAccess = familyData || [];
+        
+        // Filter to avoid duplicates and merge
+        const uniqueAccess = [...currentPatientAccess];
+        allGrantedAccess.forEach(access => {
+          if (!uniqueAccess.find(existing => existing.id === access.id)) {
+            uniqueAccess.push(access);
+          }
+        });
+        
+        setFamilyAccess(uniqueAccess);
       }
 
       if (patientError) {
@@ -243,6 +282,7 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
   const filteredAccess = familyAccess.filter(access =>
     access.users?.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
     access.users?.email.toLowerCase().includes(searchFilter.toLowerCase()) ||
+    access.patients?.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
     (access.users?.user_shareable_id && access.users.user_shareable_id.toLowerCase().includes(searchFilter.toLowerCase()))
   );
 
@@ -334,12 +374,12 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
         </CardContent>
       </Card>
 
-      {/* Family Members with Access to My Records */}
+      {/* All Family Access Relationships */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Family Members with Access to My Records ({filteredAccess.length})
+            All Family Access Relationships ({filteredAccess.length})
           </CardTitle>
           {(familyAccess.length > 0 || patientAccess.length > 0) && (
             <div className="flex items-center gap-2">
@@ -367,38 +407,52 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredAccess.map((access) => (
-                <div
-                  key={access.id}
-                  className="flex items-center justify-between p-4 border rounded-lg"
-                >
-                  <div className="flex-1">
-                    <div className="font-medium">{access.users?.name || 'Unknown User'}</div>
-                    <div className="text-sm text-muted-foreground">{access.users?.email}</div>
-                    {access.users?.user_shareable_id && (
-                      <div className="text-xs text-muted-foreground font-mono">
-                        ID: {access.users.user_shareable_id}
+              {filteredAccess.map((access) => {
+                const isCurrentUser = access.user_id === access.granted_by;
+                const isGrantedByCurrentUser = access.granted_by && access.users;
+                
+                return (
+                  <div
+                    key={access.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <div className="font-medium">
+                        {access.users?.name || 'Unknown User'}
+                        {isCurrentUser && <Badge variant="outline" className="ml-2 text-xs">You</Badge>}
                       </div>
-                    )}
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Granted on {new Date(access.created_at).toLocaleDateString()}
+                      <div className="text-sm text-muted-foreground">{access.users?.email}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Patient: <span className="font-medium">{access.patients?.name}</span> ({access.patients?.shareable_id})
+                      </div>
+                      {access.users?.user_shareable_id && (
+                        <div className="text-xs text-muted-foreground font-mono">
+                          User ID: {access.users.user_shareable_id}
+                        </div>
+                      )}
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {isGrantedByCurrentUser ? 
+                          `You granted access on ${new Date(access.created_at).toLocaleDateString()}` :
+                          `Access granted on ${new Date(access.created_at).toLocaleDateString()}`
+                        }
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={access.can_view ? "default" : "secondary"}>
+                        {access.can_view ? "Can Upload" : "No Access"}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDeleteAccess(access)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={access.can_view ? "default" : "secondary"}>
-                      {access.can_view ? "Can Upload" : "No Access"}
-                    </Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDeleteAccess(access)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
