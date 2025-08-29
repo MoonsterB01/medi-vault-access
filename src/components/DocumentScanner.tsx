@@ -34,14 +34,19 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
 
   const captureImage = async () => {
     try {
+      console.log('Starting camera capture...');
+      
       const image = await Camera.getPhoto({
-        quality: 90,
-        allowEditing: true,
+        quality: 80,
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Camera,
-        width: 1920,
-        height: 1920,
+        width: 1024,
+        height: 1024,
+        correctOrientation: true,
+        saveToGallery: false,
       });
+
+      console.log('Camera capture successful, processing image...');
 
       if (image.dataUrl) {
         const newImage: ScannedImage = {
@@ -49,17 +54,40 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
           dataUrl: image.dataUrl,
           timestamp: new Date(),
         };
-        setScannedImages(prev => [...prev, newImage]);
+        
+        console.log('Adding image to state...');
+        setScannedImages(prev => {
+          const updated = [...prev, newImage];
+          console.log('Updated scanned images count:', updated.length);
+          return updated;
+        });
+        
         toast({
           title: "Image captured",
           description: "Document page captured successfully",
         });
+        
+        console.log('Image capture process completed successfully');
+      } else {
+        console.error('No dataUrl received from camera');
+        throw new Error('No image data received');
       }
     } catch (error) {
       console.error('Error capturing image:', error);
+      
+      // More specific error handling
+      let errorMessage = "Failed to capture image. Please try again.";
+      if (error instanceof Error) {
+        if (error.message.includes('User cancelled')) {
+          errorMessage = "Camera capture was cancelled.";
+        } else if (error.message.includes('permission')) {
+          errorMessage = "Camera permission is required. Please enable camera access.";
+        }
+      }
+      
       toast({
         title: "Camera Error",
-        description: "Failed to capture image. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
