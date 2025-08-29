@@ -7,11 +7,12 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { User, FileText, LogOut, Share2, Copy, Upload, Download, Calendar, Clock, Trash2, Users } from "lucide-react";
+import { User, FileText, LogOut, Share2, Copy, Upload, Download, Calendar, Clock, Trash2, Users, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentUpload from "@/components/DocumentUpload";
 import FamilyAccessManager from "@/components/FamilyAccessManager";
+import DocumentSearch from "@/components/DocumentSearch";
 
 export default function PatientDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -545,10 +546,14 @@ export default function PatientDashboard() {
             </div>
             
             <Tabs defaultValue="documents" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="documents" className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
                   My Documents
+                </TabsTrigger>
+                <TabsTrigger value="search" className="flex items-center gap-2">
+                  <Search className="h-4 w-4" />
+                  Search
                 </TabsTrigger>
                 <TabsTrigger value="upload" className="flex items-center gap-2">
                   <Upload className="h-4 w-4" />
@@ -676,6 +681,10 @@ export default function PatientDashboard() {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="search" className="mt-6">
+                <DocumentSearch patientId={patientData?.id} />
               </TabsContent>
 
               <TabsContent value="upload" className="mt-6">
