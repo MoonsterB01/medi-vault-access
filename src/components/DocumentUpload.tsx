@@ -6,9 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText } from "lucide-react";
+import { Upload, FileText, Camera } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ProfileSelector from "@/components/ProfileSelector";
+import { DocumentScanner } from "@/components/DocumentScanner";
 
 interface DocumentUploadProps {
   shareableId?: string;
@@ -23,6 +24,7 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
   const [tags, setTags] = useState("");
   const [shareableId, setShareableId] = useState(propShareableId || "");
   const [selectedPatientName, setSelectedPatientName] = useState("");
+  const [showScanner, setShowScanner] = useState(false);
   const { toast } = useToast();
 
   // Keep input in sync if parent provides/updates shareableId
@@ -49,6 +51,15 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
       }
       setFile(selectedFile);
     }
+  };
+
+  const handleScanComplete = (scannedFile: File) => {
+    setFile(scannedFile);
+    setDocumentType("other"); // Default type for scanned documents
+    toast({
+      title: "Document Scanned",
+      description: "Your scanned document is ready for upload",
+    });
   };
 
   const convertFileToBase64 = (file: File): Promise<string> => {
@@ -194,19 +205,43 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
               </div>
             )}
 
-          <div className="space-y-2">
-            <Label htmlFor="file-input">Document File *</Label>
-            <Input
-              id="file-input"
-              type="file"
-              onChange={handleFileChange}
-              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-              required
-            />
+          <div className="space-y-4">
+            <Label>Document File *</Label>
+            
+            {/* File Upload Options */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="file-input" className="text-sm font-medium">
+                  Upload from Device
+                </Label>
+                <Input
+                  id="file-input"
+                  type="file"
+                  onChange={handleFileChange}
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">
+                  Scan Document
+                </Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowScanner(true)}
+                  className="w-full"
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  Open Camera
+                </Button>
+              </div>
+            </div>
+            
             {file && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 bg-muted rounded-md">
                 <FileText className="h-4 w-4" />
-                {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
               </div>
             )}
           </div>
@@ -259,6 +294,13 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
           </form>
         </CardContent>
       </Card>
+
+      {/* Document Scanner Modal */}
+      <DocumentScanner
+        open={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScanComplete={handleScanComplete}
+      />
     </div>
   );
 }
