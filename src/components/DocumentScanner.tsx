@@ -30,11 +30,48 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
   const [scannedImages, setScannedImages] = useState<ScannedImage[]>([]);
   const [documentName, setDocumentName] = useState('');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const { toast } = useToast();
 
+  // Prevent navigation when modal is open
+  React.useEffect(() => {
+    if (open) {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = '';
+      };
+      
+      const handlePopState = (e: PopStateEvent) => {
+        e.preventDefault();
+        history.pushState(null, '', location.href);
+      };
+      
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      window.addEventListener('popstate', handlePopState);
+      
+      // Push a state to handle back button
+      history.pushState(null, '', location.href);
+      
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        window.removeEventListener('popstate', handlePopState);
+      };
+    }
+  }, [open]);
+
   const captureImage = async () => {
+    if (isCapturing) return; // Prevent multiple captures
+    
     try {
+      setIsCapturing(true);
       console.log('Starting camera capture...');
+      
+      // Store current state in localStorage as backup
+      localStorage.setItem('scannerState', JSON.stringify({
+        scannedImages,
+        documentName,
+        timestamp: Date.now()
+      }));
       
       const image = await Camera.getPhoto({
         quality: 80,
@@ -44,6 +81,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
         height: 1024,
         correctOrientation: true,
         saveToGallery: false,
+        presentationStyle: 'fullscreen', // Force fullscreen on mobile
       });
 
       console.log('Camera capture successful, processing image...');
@@ -59,6 +97,10 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
         setScannedImages(prev => {
           const updated = [...prev, newImage];
           console.log('Updated scanned images count:', updated.length);
+          
+          // Save to localStorage immediately
+          localStorage.setItem('scannerImages', JSON.stringify(updated));
+          
           return updated;
         });
         
@@ -68,6 +110,9 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
         });
         
         console.log('Image capture process completed successfully');
+        
+        // Clear backup state
+        localStorage.removeItem('scannerState');
       } else {
         console.error('No dataUrl received from camera');
         throw new Error('No image data received');
@@ -90,6 +135,8 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
         description: errorMessage,
         variant: "destructive",
       });
+    } finally {
+      setIsCapturing(false);
     }
   };
 
@@ -182,10 +229,30 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
   };
 
   const handleClose = () => {
+    // Clear localStorage when closing
+    localStorage.removeItem('scannerImages');
+    localStorage.removeItem('scannerState');
     setScannedImages([]);
     setDocumentName('');
+    setIsCapturing(false);
     onClose();
   };
+
+  // Restore state on mount if available
+  React.useEffect(() => {
+    if (open) {
+      const savedImages = localStorage.getItem('scannerImages');
+      if (savedImages) {
+        try {
+          const images = JSON.parse(savedImages);
+          setScannedImages(images);
+          console.log('Restored scanner images from localStorage:', images.length);
+        } catch (error) {
+          console.error('Failed to restore scanner images:', error);
+        }
+      }
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -211,9 +278,10 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                 onClick={captureImage} 
                 className="w-full"
                 size="lg"
+                disabled={isCapturing}
               >
                 <CameraIcon className="mr-2 h-5 w-5" />
-                Capture Page {scannedImages.length + 1}
+                {isCapturing ? 'Opening Camera...' : `Capture Page ${scannedImages.length + 1}`}
               </Button>
             </CardContent>
           </Card>
