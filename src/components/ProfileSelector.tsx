@@ -111,8 +111,8 @@ export default function ProfileSelector({ onProfileChange, selectedShareableId }
                 <SelectValue placeholder="Select a profile to upload documents to" />
               </SelectTrigger>
               <SelectContent>
-                {availablePatients.map((patient) => (
-                  <SelectItem key={patient.id} value={patient.shareable_id || ""}>
+                {availablePatients.filter(patient => patient.shareable_id).map((patient) => (
+                  <SelectItem key={patient.id} value={patient.shareable_id}>
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4" />
                       <div>

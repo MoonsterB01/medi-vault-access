@@ -91,7 +91,7 @@ export function EnhancedDocumentSearch({ patientId, onDocumentSelect }: Enhanced
           query: query.trim(),
           userId: user.data.user.id,
           patientId,
-          documentType: documentType || undefined,
+          documentType: documentType && documentType !== 'all_types' ? documentType : undefined,
           categories: selectedCategories.length > 0 ? selectedCategories : undefined,
           limit: 50,
           offset: 0,
@@ -177,7 +177,7 @@ export function EnhancedDocumentSearch({ patientId, onDocumentSelect }: Enhanced
                   <SelectValue placeholder="Document Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="all_types">All Types</SelectItem>
                   <SelectItem value="lab_result">Lab Result</SelectItem>
                   <SelectItem value="prescription">Prescription</SelectItem>
                   <SelectItem value="imaging">Imaging</SelectItem>
