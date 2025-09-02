@@ -63,27 +63,56 @@ async function analyzeContentWithGemini(text: string, filename: string): Promise
     throw new Error('Gemini API key not configured');
   }
 
-  const prompt = `Analyze this medical document and extract:
-1. Important medical keywords (max 15) - focus on conditions, procedures, medications, body parts, test results
-2. Medical categories that best describe this document (max 5) - such as "Lab Results", "Prescription", "Imaging", "Consultation Notes", "Discharge Summary", etc.
+  const prompt = `You are a medical document analysis AI. Analyze this medical document and extract structured information.
 
-Document filename: ${filename}
+DOCUMENT ANALYSIS:
+Filename: ${filename}
 Content: ${text}
 
-Even if the content is limited (like just a filename), infer the likely medical categories and keywords based on the filename and document type.
+EXTRACT THE FOLLOWING:
 
-Respond ONLY in valid JSON format:
+1. MEDICAL ENTITIES (extract specific entities if found):
+   - Doctor/Physician names
+   - Patient name or ID (if visible)
+   - Medical conditions/diagnoses
+   - Medications/prescriptions
+   - Test names and results
+   - Medical procedures
+   - Dates (appointment, test, prescription dates)
+   - Hospital/clinic names
+   - Medical specialties
+
+2. KEYWORDS (max 15 relevant medical terms):
+   Focus on: conditions, procedures, medications, body parts, test types, medical specialties
+
+3. CATEGORIES (max 3 most relevant):
+   Choose from: "Lab Results", "Prescription", "Imaging Report", "Consultation Notes", "Discharge Summary", "Referral Letter", "Surgical Report", "Vaccination Record", "Insurance Document", "General Medical"
+
+4. CONFIDENCE SCORE (0.0-1.0):
+   Based on content clarity and extraction certainty
+
+RESPOND ONLY in this exact JSON format:
 {
-  "keywords": ["keyword1", "keyword2", ...],
-  "categories": ["category1", "category2", ...],
+  "entities": {
+    "doctors": ["Dr. Smith", "Dr. Johnson"],
+    "patient_info": ["Patient ID", "Name"],
+    "conditions": ["diabetes", "hypertension"],
+    "medications": ["metformin", "lisinopril"],
+    "tests": ["blood glucose", "HbA1c"],
+    "procedures": ["colonoscopy", "biopsy"],
+    "dates": ["2024-01-15", "2024-02-20"],
+    "facilities": ["General Hospital", "City Clinic"],
+    "specialties": ["cardiology", "endocrinology"]
+  },
+  "keywords": ["diabetes", "blood test", "prescription", "cardiology"],
+  "categories": ["Lab Results", "Prescription"],
   "confidence": 0.85
 }
 
-Examples of good medical keywords: "blood test", "x-ray", "prescription", "diabetes", "cardiology", "laboratory"
-Examples of good categories: "Lab Results", "Prescription", "Imaging", "Consultation Notes"`;
+If content is limited (filename only), infer likely categories and keywords based on filename patterns and medical document types.`;
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
