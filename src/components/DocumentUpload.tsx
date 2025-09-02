@@ -10,6 +10,7 @@ import { Upload, FileText, Camera } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ProfileSelector from "@/components/ProfileSelector";
 import { DocumentScanner } from "@/components/DocumentScanner";
+import { ContentAnalyzer } from "@/components/ContentAnalyzer";
 
 interface DocumentUploadProps {
   shareableId?: string;
@@ -25,6 +26,9 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
   const [shareableId, setShareableId] = useState(propShareableId || "");
   const [selectedPatientName, setSelectedPatientName] = useState("");
   const [showScanner, setShowScanner] = useState(false);
+  const [showAnalyzer, setShowAnalyzer] = useState(false);
+  const [uploadedDocumentId, setUploadedDocumentId] = useState<string | null>(null);
+  const [fileContent, setFileContent] = useState<string>("");
   const { toast } = useToast();
 
   // Keep input in sync if parent provides/updates shareableId
@@ -139,16 +143,15 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
         description: data?.message || "Document uploaded successfully",
       });
       
-      // Reset form
-      setFile(null);
-      setDocumentType("");
-      setDescription("");
-      setTags("");
-      if (!propShareableId) setShareableId("");
-      
-      // Reset file input
-      const fileInput = document.getElementById('file-input') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
+      // Store document ID and file content for analysis
+      if (data?.documentId) {
+        setUploadedDocumentId(data.documentId);
+        setFileContent(fileContent);
+        setShowAnalyzer(true);
+      } else {
+        // Reset form if no analysis needed
+        resetForm();
+      }
       
       onUploadSuccess?.();
     } catch (error: any) {
@@ -160,6 +163,25 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     } finally {
       setUploading(false);
     }
+  };
+
+  const resetForm = () => {
+    setFile(null);
+    setDocumentType("");
+    setDescription("");
+    setTags("");
+    if (!propShareableId) setShareableId("");
+    
+    // Reset file input
+    const fileInput = document.getElementById('file-input') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
+
+  const handleAnalysisComplete = () => {
+    resetForm();
+    setShowAnalyzer(false);
+    setUploadedDocumentId(null);
+    setFileContent("");
   };
 
   return (
@@ -301,6 +323,17 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
         onClose={() => setShowScanner(false)}
         onScanComplete={handleScanComplete}
       />
+
+      {/* Content Analyzer */}
+      {showAnalyzer && uploadedDocumentId && file && (
+        <ContentAnalyzer
+          documentId={uploadedDocumentId}
+          filename={file.name}
+          contentType={file.type}
+          fileContent={fileContent}
+          onAnalysisComplete={handleAnalysisComplete}
+        />
+      )}
     </div>
   );
 }

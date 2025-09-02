@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentUpload from "@/components/DocumentUpload";
 import FamilyAccessManager from "@/components/FamilyAccessManager";
-import DocumentSearch from "@/components/DocumentSearch";
+import { EnhancedDocumentSearch } from "@/components/EnhancedDocumentSearch";
 
 export default function PatientDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -595,15 +595,51 @@ export default function PatientDashboard() {
                                 <p className="text-sm text-gray-600 line-clamp-2">{doc.description}</p>
                               )}
                               
-                              <div className="space-y-1">
-                                <p className="text-xs text-gray-500">
-                                  <Calendar className="h-3 w-3 inline mr-1" />
-                                  {new Date(doc.uploaded_at).toLocaleDateString()}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  Size: {formatFileSize(doc.file_size)}
-                                </p>
-                              </div>
+                               <div className="space-y-1">
+                                 <p className="text-xs text-gray-500">
+                                   <Calendar className="h-3 w-3 inline mr-1" />
+                                   {new Date(doc.uploaded_at).toLocaleDateString()}
+                                 </p>
+                                 <p className="text-xs text-gray-500">
+                                   Size: {formatFileSize(doc.file_size)}
+                                 </p>
+                                 {doc.content_confidence && doc.content_confidence > 0 && (
+                                   <p className="text-xs text-green-600">
+                                     ✓ AI Analyzed ({Math.round(doc.content_confidence * 100)}% confidence)
+                                   </p>
+                                 )}
+                               </div>
+                               
+                               {/* Display AI-extracted keywords */}
+                               {doc.content_keywords && doc.content_keywords.length > 0 && (
+                                 <div className="space-y-1">
+                                   <p className="text-xs text-gray-500 font-medium">Keywords:</p>
+                                   <div className="flex flex-wrap gap-1">
+                                     {doc.content_keywords.slice(0, 3).map((keyword: string, idx: number) => (
+                                       <Badge key={idx} variant="outline" className="text-xs">
+                                         {keyword}
+                                       </Badge>
+                                     ))}
+                                     {doc.content_keywords.length > 3 && (
+                                       <span className="text-xs text-gray-400">+{doc.content_keywords.length - 3}</span>
+                                     )}
+                                   </div>
+                                 </div>
+                               )}
+                               
+                               {/* Display AI categories */}
+                               {doc.auto_categories && doc.auto_categories.length > 0 && (
+                                 <div className="space-y-1">
+                                   <p className="text-xs text-gray-500 font-medium">Categories:</p>
+                                   <div className="flex flex-wrap gap-1">
+                                     {doc.auto_categories.slice(0, 2).map((category: string, idx: number) => (
+                                       <Badge key={idx} variant="secondary" className="text-xs">
+                                         {category}
+                                       </Badge>
+                                     ))}
+                                   </div>
+                                 </div>
+                               )}
                               
                               {doc.tags && doc.tags.length > 0 && (
                                 <div className="flex flex-wrap gap-1">
@@ -684,7 +720,7 @@ export default function PatientDashboard() {
               </TabsContent>
 
               <TabsContent value="search" className="mt-6">
-                <DocumentSearch patientId={patientData?.id} />
+                <EnhancedDocumentSearch patientId={patientData?.id} />
               </TabsContent>
 
               <TabsContent value="upload" className="mt-6">
