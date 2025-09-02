@@ -14,11 +14,91 @@ export type Database = {
   }
   public: {
     Tables: {
+      content_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          keywords: string[] | null
+          medical_specialty: string | null
+          name: string
+          parent_category_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          keywords?: string[] | null
+          medical_specialty?: string | null
+          name: string
+          parent_category_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          keywords?: string[] | null
+          medical_specialty?: string | null
+          name?: string
+          parent_category_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_categories_parent_category_id_fkey"
+            columns: ["parent_category_id"]
+            isOneToOne: false
+            referencedRelation: "content_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_keywords: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          document_id: string
+          id: string
+          keyword: string
+          keyword_type: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          document_id: string
+          id?: string
+          keyword: string
+          keyword_type?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          document_id?: string
+          id?: string
+          keyword?: string
+          keyword_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_keywords_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
+          auto_categories: string[] | null
+          content_confidence: number | null
+          content_keywords: string[] | null
           content_type: string | null
           description: string | null
           document_type: string | null
+          extracted_text: string | null
           file_path: string
           file_size: number | null
           filename: string
@@ -31,9 +111,13 @@ export type Database = {
           uploaded_by_user_shareable_id: string | null
         }
         Insert: {
+          auto_categories?: string[] | null
+          content_confidence?: number | null
+          content_keywords?: string[] | null
           content_type?: string | null
           description?: string | null
           document_type?: string | null
+          extracted_text?: string | null
           file_path: string
           file_size?: number | null
           filename: string
@@ -46,9 +130,13 @@ export type Database = {
           uploaded_by_user_shareable_id?: string | null
         }
         Update: {
+          auto_categories?: string[] | null
+          content_confidence?: number | null
+          content_keywords?: string[] | null
           content_type?: string | null
           description?: string | null
           document_type?: string | null
+          extracted_text?: string | null
           file_path?: string
           file_size?: number | null
           filename?: string
