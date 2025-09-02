@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, Brain, CheckCircle, Loader2, Tag } from 'lucide-react';
+import { AlertCircle, Brain, CheckCircle, Loader2, Tag, Users, Stethoscope, Pill, Calendar, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ContentAnalyzerProps {
@@ -20,6 +20,8 @@ interface AnalysisResult {
   categories: string[];
   confidence: number;
   extractedText: string;
+  entities?: any;
+  entitiesCount?: number;
 }
 
 export function ContentAnalyzer({ 
@@ -64,6 +66,8 @@ export function ContentAnalyzer({
         categories: data.categories || [],
         confidence: data.confidence || 0,
         extractedText: data.extractedText || '',
+        entities: data.entities || {},
+        entitiesCount: data.entitiesCount || 0,
       };
 
       setAnalysisResult(result);
@@ -71,7 +75,7 @@ export function ContentAnalyzer({
 
       toast({
         title: "Analysis Complete",
-        description: `Found ${result.keywords.length} keywords and ${result.categories.length} categories`,
+        description: `Found ${result.keywords.length} keywords, ${result.categories.length} categories, and ${result.entitiesCount || 0} medical entities`,
       });
 
     } catch (err) {
@@ -107,18 +111,18 @@ export function ContentAnalyzer({
           Content Analysis
         </CardTitle>
         <CardDescription>
-          Analyze document content to extract keywords and categories
+          AI-powered medical document analysis to extract keywords, categories, and medical entities
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {!analysisResult && !isAnalyzing && (
-          <Button 
+            <Button 
             onClick={handleAnalyze}
             className="w-full"
             disabled={isAnalyzing}
           >
             <Brain className="mr-2 h-4 w-4" />
-            Analyze Document Content
+            Analyze Medical Document
           </Button>
         )}
 
@@ -127,7 +131,7 @@ export function ContentAnalyzer({
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm text-muted-foreground">
-                Analyzing document content...
+                Analyzing medical content with AI...
               </span>
             </div>
             <Progress value={undefined} className="w-full" />
@@ -212,6 +216,112 @@ export function ContentAnalyzer({
                   <p className="text-xs text-muted-foreground line-clamp-3">
                     {analysisResult.extractedText}
                   </p>
+                </div>
+              </div>
+            )}
+
+            {analysisResult.entities && Object.keys(analysisResult.entities).length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Stethoscope className="h-4 w-4" />
+                  <span className="text-sm font-medium">Medical Entities Found</span>
+                </div>
+                <div className="space-y-3">
+                  {analysisResult.entities.doctors && analysisResult.entities.doctors.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <Users className="h-3 w-3" />
+                        <span className="text-xs font-medium text-muted-foreground">Doctors</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {analysisResult.entities.doctors.map((doctor: string, index: number) => (
+                          <Badge key={index} variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                            {doctor}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {analysisResult.entities.conditions && analysisResult.entities.conditions.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <AlertCircle className="h-3 w-3" />
+                        <span className="text-xs font-medium text-muted-foreground">Conditions</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {analysisResult.entities.conditions.map((condition: string, index: number) => (
+                          <Badge key={index} variant="secondary" className="text-xs bg-red-100 text-red-700">
+                            {condition}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {analysisResult.entities.medications && analysisResult.entities.medications.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <Pill className="h-3 w-3" />
+                        <span className="text-xs font-medium text-muted-foreground">Medications</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {analysisResult.entities.medications.map((medication: string, index: number) => (
+                          <Badge key={index} variant="secondary" className="text-xs bg-green-100 text-green-700">
+                            {medication}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {analysisResult.entities.tests && analysisResult.entities.tests.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <Brain className="h-3 w-3" />
+                        <span className="text-xs font-medium text-muted-foreground">Tests</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {analysisResult.entities.tests.map((test: string, index: number) => (
+                          <Badge key={index} variant="secondary" className="text-xs bg-purple-100 text-purple-700">
+                            {test}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {analysisResult.entities.dates && analysisResult.entities.dates.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <Calendar className="h-3 w-3" />
+                        <span className="text-xs font-medium text-muted-foreground">Important Dates</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {analysisResult.entities.dates.map((date: string, index: number) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {date}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {analysisResult.entities.facilities && analysisResult.entities.facilities.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <MapPin className="h-3 w-3" />
+                        <span className="text-xs font-medium text-muted-foreground">Facilities</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {analysisResult.entities.facilities.map((facility: string, index: number) => (
+                          <Badge key={index} variant="secondary" className="text-xs bg-orange-100 text-orange-700">
+                            {facility}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

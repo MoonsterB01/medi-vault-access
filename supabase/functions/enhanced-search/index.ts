@@ -72,6 +72,43 @@ function calculateRelevanceScore(
     }
   }
   
+  // Enhanced: Medical entities match (high priority for structured data)
+  if (document.extracted_entities) {
+    Object.keys(document.extracted_entities).forEach(entityType => {
+      const entities = document.extracted_entities[entityType];
+      if (Array.isArray(entities)) {
+        entities.forEach((entity: string) => {
+          if (entity.toLowerCase().includes(queryLower)) {
+            // Higher score for medical entity matches
+            if (entityType === 'doctors') score += 90;
+            else if (entityType === 'conditions') score += 85;
+            else if (entityType === 'medications') score += 85;
+            else if (entityType === 'tests') score += 70;
+            else score += 50;
+          }
+        });
+      }
+    });
+  }
+  
+  // Medical specialties match
+  if (document.medical_specialties) {
+    for (const specialty of document.medical_specialties) {
+      if (specialty.toLowerCase().includes(queryLower)) {
+        score += 65;
+      }
+    }
+  }
+  
+  // Extracted dates match
+  if (document.extracted_dates) {
+    for (const date of document.extracted_dates) {
+      if (date.includes(queryLower)) {
+        score += 45;
+      }
+    }
+  }
+  
   // Keyword matches (weighted by confidence)
   score += matchedKeywords.length * 20 * (document.content_confidence || 0.5);
   
@@ -142,6 +179,9 @@ serve(async (req) => {
         auto_categories,
         content_confidence,
         extracted_text,
+        extracted_entities,
+        medical_specialties,
+        extracted_dates,
         file_path,
         patients!inner(name)
       `)
@@ -222,6 +262,39 @@ serve(async (req) => {
         // Check extracted text
         if (doc.extracted_text?.toLowerCase().includes(queryLower)) {
           isRelevant = true;
+        }
+
+        // Enhanced: Check medical entities for matches
+        if (doc.extracted_entities) {
+          Object.values(doc.extracted_entities).forEach((entities: any) => {
+            if (Array.isArray(entities)) {
+              entities.forEach((entity: string) => {
+                if (entity.toLowerCase().includes(queryLower)) {
+                  isRelevant = true;
+                }
+              });
+            }
+          });
+        }
+
+        // Check medical specialties
+        if (doc.medical_specialties) {
+          for (const specialty of doc.medical_specialties) {
+            if (specialty.toLowerCase().includes(queryLower)) {
+              isRelevant = true;
+              break;
+            }
+          }
+        }
+
+        // Check extracted dates
+        if (doc.extracted_dates) {
+          for (const date of doc.extracted_dates) {
+            if (date.includes(queryLower)) {
+              isRelevant = true;
+              break;
+            }
+          }
         }
       }
 

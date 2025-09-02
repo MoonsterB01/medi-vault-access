@@ -60,6 +60,8 @@ export type Database = {
           confidence: number | null
           created_at: string | null
           document_id: string
+          entity_category: string | null
+          entity_type: string | null
           id: string
           keyword: string
           keyword_type: string | null
@@ -68,6 +70,8 @@ export type Database = {
           confidence?: number | null
           created_at?: string | null
           document_id: string
+          entity_category?: string | null
+          entity_type?: string | null
           id?: string
           keyword: string
           keyword_type?: string | null
@@ -76,6 +80,8 @@ export type Database = {
           confidence?: number | null
           created_at?: string | null
           document_id?: string
+          entity_category?: string | null
+          entity_type?: string | null
           id?: string
           keyword?: string
           keyword_type?: string | null
@@ -98,11 +104,15 @@ export type Database = {
           content_type: string | null
           description: string | null
           document_type: string | null
+          extracted_dates: string[] | null
+          extracted_entities: Json | null
           extracted_text: string | null
+          extraction_metadata: Json | null
           file_path: string
           file_size: number | null
           filename: string
           id: string
+          medical_specialties: string[] | null
           patient_id: string
           searchable_content: string | null
           tags: string[] | null
@@ -117,11 +127,15 @@ export type Database = {
           content_type?: string | null
           description?: string | null
           document_type?: string | null
+          extracted_dates?: string[] | null
+          extracted_entities?: Json | null
           extracted_text?: string | null
+          extraction_metadata?: Json | null
           file_path: string
           file_size?: number | null
           filename: string
           id?: string
+          medical_specialties?: string[] | null
           patient_id: string
           searchable_content?: string | null
           tags?: string[] | null
@@ -136,11 +150,15 @@ export type Database = {
           content_type?: string | null
           description?: string | null
           document_type?: string | null
+          extracted_dates?: string[] | null
+          extracted_entities?: Json | null
           extracted_text?: string | null
+          extraction_metadata?: Json | null
           file_path?: string
           file_size?: number | null
           filename?: string
           id?: string
+          medical_specialties?: string[] | null
           patient_id?: string
           searchable_content?: string | null
           tags?: string[] | null

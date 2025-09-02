@@ -58,6 +58,7 @@ async function analyzeContentWithGemini(text: string, filename: string): Promise
   keywords: string[];
   categories: string[];
   confidence: number;
+  entities: any;
 }> {
   if (!geminiApiKey) {
     throw new Error('Gemini API key not configured');
@@ -156,6 +157,7 @@ If content is limited (filename only), infer likely categories and keywords base
       keywords: Array.isArray(analysis.keywords) ? analysis.keywords.slice(0, 15) : [],
       categories: Array.isArray(analysis.categories) ? analysis.categories.slice(0, 5) : [],
       confidence: typeof analysis.confidence === 'number' ? analysis.confidence : 0.7,
+      entities: analysis.entities || {},
     };
 
   } catch (error) {
@@ -173,6 +175,7 @@ If content is limited (filename only), infer likely categories and keywords base
       keywords: medicalKeywords,
       categories: ['General Medical'],
       confidence: 0.3,
+      entities: {},
     };
   }
 }
@@ -203,6 +206,15 @@ serve(async (req) => {
         content_keywords: analysis.keywords,
         auto_categories: analysis.categories,
         content_confidence: analysis.confidence,
+        extracted_entities: analysis.entities,
+        medical_specialties: analysis.entities.specialties || [],
+        extracted_dates: analysis.entities.dates || [],
+        extraction_metadata: {
+          extraction_method: 'gemini-1.5-flash',
+          extraction_timestamp: new Date().toISOString(),
+          content_type: contentType,
+          filename: filename,
+        },
       })
       .eq('id', documentId);
 
@@ -210,14 +222,36 @@ serve(async (req) => {
       throw new Error(`Failed to update document: ${updateError.message}`);
     }
 
-    // Insert keywords into document_keywords table
+    // Insert keywords with entity types into document_keywords table
     if (analysis.keywords.length > 0) {
-      const keywordInserts = analysis.keywords.map(keyword => ({
-        document_id: documentId,
-        keyword,
-        keyword_type: 'medical',
-        confidence: analysis.confidence,
-      }));
+      const keywordInserts = [];
+      
+      // Add general keywords
+      analysis.keywords.forEach(keyword => {
+        keywordInserts.push({
+          document_id: documentId,
+          keyword,
+          keyword_type: 'general',
+          confidence: analysis.confidence,
+        });
+      });
+
+      // Add entity-specific keywords with types
+      if (analysis.entities) {
+        Object.entries(analysis.entities).forEach(([entityType, entities]: [string, any]) => {
+          if (Array.isArray(entities)) {
+            entities.forEach(entity => {
+              keywordInserts.push({
+                document_id: documentId,
+                keyword: entity,
+                keyword_type: entityType,
+                entity_category: entityType,
+                confidence: analysis.confidence,
+              });
+            });
+          }
+        });
+      }
 
       const { error: keywordError } = await supabase
         .from('document_keywords')
@@ -236,6 +270,10 @@ serve(async (req) => {
       keywords: analysis.keywords,
       categories: analysis.categories,
       confidence: analysis.confidence,
+      entities: analysis.entities,
+      entitiesCount: Object.keys(analysis.entities).reduce((count, key) => {
+        return count + (Array.isArray(analysis.entities[key]) ? analysis.entities[key].length : 0);
+      }, 0),
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
