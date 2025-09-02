@@ -218,6 +218,16 @@ serve(async (req) => {
       let matchedKeywords: string[] = [];
       let isRelevant = false;
 
+      // First, apply category filter if specified (applies regardless of query)
+      if (categories && categories.length > 0) {
+        const hasMatchingCategory = doc.auto_categories?.some(cat => 
+          categories.some(filterCat => cat.toLowerCase().includes(filterCat.toLowerCase()))
+        );
+        if (!hasMatchingCategory) {
+          continue; // Skip if doesn't match category filter
+        }
+      }
+
       // Check if document matches the query
       if (query.trim() === '') {
         isRelevant = true; // Show all if no query
@@ -229,23 +239,13 @@ serve(async (req) => {
           isRelevant = true;
         }
 
-        // Check categories
+        // Check categories for query matching
         if (doc.auto_categories) {
           for (const category of doc.auto_categories) {
             if (category.toLowerCase().includes(queryLower)) {
               isRelevant = true;
               break;
             }
-          }
-        }
-
-        // Check category filter
-        if (categories && categories.length > 0) {
-          const hasMatchingCategory = doc.auto_categories?.some(cat => 
-            categories.some(filterCat => cat.toLowerCase().includes(filterCat.toLowerCase()))
-          );
-          if (!hasMatchingCategory) {
-            continue; // Skip if doesn't match category filter
           }
         }
 
