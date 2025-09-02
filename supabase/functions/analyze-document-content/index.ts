@@ -20,15 +20,38 @@ interface AnalyzeRequest {
   filename: string;
 }
 
-async function extractTextFromContent(fileContent: string, contentType: string): Promise<string> {
-  // For now, handle text-based content directly
-  // In a full implementation, you'd add OCR for images and PDF parsing
-  if (contentType.includes('text/')) {
-    return atob(fileContent); // Decode base64 text content
-  }
+async function extractTextFromContent(fileContent: string, contentType: string, filename: string): Promise<string> {
+  console.log(`Extracting text from ${contentType} file: ${filename}`);
   
-  // For other types, return filename for now (would implement OCR/PDF parsing here)
-  return '';
+  try {
+    // Handle text-based content directly
+    if (contentType.includes('text/')) {
+      const decoded = atob(fileContent);
+      console.log(`Extracted ${decoded.length} characters from text file`);
+      return decoded;
+    }
+    
+    // For PDFs, we'll extract basic text for now
+    // In production, you'd use a proper PDF parsing library
+    if (contentType.includes('pdf')) {
+      console.log('PDF detected - using filename and basic analysis');
+      // For now, return filename and document type as searchable content
+      // This allows the AI to at least categorize based on filename
+      return `PDF Document: ${filename}`;
+    }
+    
+    // For images (could be scanned documents)
+    if (contentType.includes('image/')) {
+      console.log('Image detected - using filename for analysis');
+      return `Image Document: ${filename}`;
+    }
+    
+    console.log(`Unsupported content type: ${contentType}`);
+    return `Document: ${filename}`;
+  } catch (error) {
+    console.error('Error extracting text:', error);
+    return `Document: ${filename}`;
+  }
 }
 
 async function analyzeContentWithGemini(text: string, filename: string): Promise<{
@@ -40,21 +63,24 @@ async function analyzeContentWithGemini(text: string, filename: string): Promise
     throw new Error('Gemini API key not configured');
   }
 
-  const prompt = `Analyze this medical document content and extract:
-1. Important medical keywords (max 15)
-2. Medical categories that best describe this document (max 5)
+  const prompt = `Analyze this medical document and extract:
+1. Important medical keywords (max 15) - focus on conditions, procedures, medications, body parts, test results
+2. Medical categories that best describe this document (max 5) - such as "Lab Results", "Prescription", "Imaging", "Consultation Notes", "Discharge Summary", etc.
 
 Document filename: ${filename}
 Content: ${text}
 
-Respond in JSON format:
+Even if the content is limited (like just a filename), infer the likely medical categories and keywords based on the filename and document type.
+
+Respond ONLY in valid JSON format:
 {
   "keywords": ["keyword1", "keyword2", ...],
   "categories": ["category1", "category2", ...],
   "confidence": 0.85
 }
 
-Focus on medical terms, conditions, procedures, medications, and relevant categories.`;
+Examples of good medical keywords: "blood test", "x-ray", "prescription", "diabetes", "cardiology", "laboratory"
+Examples of good categories: "Lab Results", "Prescription", "Imaging", "Consultation Notes"`;
 
   try {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`, {
@@ -130,13 +156,15 @@ serve(async (req) => {
   try {
     const { documentId, fileContent, contentType, filename }: AnalyzeRequest = await req.json();
 
-    console.log(`Analyzing document ${documentId} with type ${contentType}`);
+    console.log(`Analyzing document ${documentId} with type ${contentType}, filename: ${filename}`);
 
     // Extract text content
-    const extractedText = await extractTextFromContent(fileContent, contentType);
+    const extractedText = await extractTextFromContent(fileContent, contentType, filename);
+    console.log(`Extracted text length: ${extractedText.length}`);
     
     // Analyze content with Gemini
     const analysis = await analyzeContentWithGemini(extractedText, filename);
+    console.log(`Analysis completed with ${analysis.keywords.length} keywords and confidence ${analysis.confidence}`);
     
     // Update document with extracted content and analysis
     const { error: updateError } = await supabase
