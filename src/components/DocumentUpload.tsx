@@ -5,16 +5,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, Camera } from "lucide-react";
+import { Upload, FileText, Camera, CheckCircle, AlertTriangle, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ProfileSelector from "@/components/ProfileSelector";
 import { DocumentScanner } from "@/components/DocumentScanner";
 import { ContentAnalyzer } from "@/components/ContentAnalyzer";
+import OCRProcessor from "@/components/OCRProcessor";
 
 interface DocumentUploadProps {
   shareableId?: string;
   onUploadSuccess?: () => void;
+}
+
+interface OCRResult {
+  text: string;
+  confidence: number;
+  textDensityScore: number;
+  medicalKeywordCount: number;
+  detectedKeywords: string[];
+  verificationStatus: 'verified_medical' | 'user_verified_medical' | 'unverified' | 'miscellaneous';
+  formatSupported: boolean;
+  processingNotes: string;
+  structuralCues: {
+    hasDates: boolean;
+    hasUnits: boolean;
+    hasNumbers: boolean;
+    hasTableStructure: boolean;
+  };
 }
 
 export default function DocumentUpload({ shareableId: propShareableId, onUploadSuccess }: DocumentUploadProps) {
@@ -27,8 +46,11 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
   const [selectedPatientName, setSelectedPatientName] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [showAnalyzer, setShowAnalyzer] = useState(false);
+  const [showOCR, setShowOCR] = useState(false);
+  const [ocrResult, setOcrResult] = useState<OCRResult | null>(null);
   const [uploadedDocumentId, setUploadedDocumentId] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>("");
+  const [requiresUserVerification, setRequiresUserVerification] = useState(false);
   const { toast } = useToast();
 
   // Keep input in sync if parent provides/updates shareableId
@@ -54,15 +76,22 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
         return;
       }
       setFile(selectedFile);
+      setOcrResult(null);
+      setRequiresUserVerification(false);
+      // Auto-start OCR for supported formats
+      if (selectedFile.type.startsWith('image/') || selectedFile.type === 'application/pdf') {
+        setShowOCR(true);
+      }
     }
   };
 
   const handleScanComplete = (scannedFile: File) => {
     setFile(scannedFile);
     setDocumentType("other"); // Default type for scanned documents
+    setShowOCR(true); // Auto-start OCR for scanned documents
     toast({
       title: "Document Scanned",
-      description: "Your scanned document is ready for upload",
+      description: "Starting OCR analysis of scanned document...",
     });
   };
 
@@ -78,6 +107,59 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     });
   };
 
+  const handleOCRComplete = (result: OCRResult) => {
+    setOcrResult(result);
+    setShowOCR(false);
+    
+    // Handle verification status
+    if (result.verificationStatus === 'user_verified_medical') {
+      setRequiresUserVerification(true);
+      toast({
+        title: "Verification Required",
+        description: result.processingNotes,
+        variant: "default",
+      });
+    } else if (result.verificationStatus === 'verified_medical') {
+      toast({
+        title: "Document Verified",
+        description: "Automatically verified as medical document",
+      });
+    } else if (result.verificationStatus === 'miscellaneous') {
+      toast({
+        title: "Unsupported Format",
+        description: result.processingNotes,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOCRError = (error: string) => {
+    setShowOCR(false);
+    toast({
+      title: "OCR Processing Failed",
+      description: error,
+      variant: "destructive",
+    });
+  };
+
+  const handleUserVerification = (isConfirmed: boolean, userCategory?: string) => {
+    if (ocrResult) {
+      const updatedResult = {
+        ...ocrResult,
+        verificationStatus: isConfirmed ? 'user_verified_medical' as const : 'unverified' as const,
+        processingNotes: isConfirmed 
+          ? `User verified as medical document${userCategory ? ` - ${userCategory}` : ''}`
+          : 'User marked as non-medical document'
+      };
+      setOcrResult(updatedResult);
+      setRequiresUserVerification(false);
+      
+      if (userCategory) {
+        setDocumentType(userCategory);
+      }
+    }
+  };
+
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -85,6 +167,16 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields and select a file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if user verification is required but not completed
+    if (requiresUserVerification) {
+      toast({
+        title: "Verification Required",
+        description: "Please verify if this document is medical or not",
         variant: "destructive",
       });
       return;
@@ -119,19 +211,23 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
       const fileContent = await convertFileToBase64(file);
       const tagsArray = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
 
-      const { data, error } = await supabase.functions.invoke('upload-document', {
-        body: {
-          shareableId: normalizedId,
-          file: {
-            name: file.name,
-            content: fileContent,
-            type: file.type,
-            size: file.size,
-          },
-          documentType,
-          description: description || undefined,
-          tags: tagsArray.length > 0 ? tagsArray : undefined,
+      // Enhanced upload payload with OCR results
+      const uploadPayload = {
+        shareableId: normalizedId,
+        file: {
+          name: file.name,
+          content: fileContent,
+          type: file.type,
+          size: file.size,
         },
+        documentType,
+        description: description || undefined,
+        tags: tagsArray.length > 0 ? tagsArray : undefined,
+        ocrResult: ocrResult || undefined, // Include OCR analysis results
+      };
+
+      const { data, error } = await supabase.functions.invoke('upload-document', {
+        body: uploadPayload,
       });
 
       if (error) {
@@ -143,7 +239,7 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
         description: data?.message || "Document uploaded successfully",
       });
       
-      // Store document ID and file content for analysis
+      // Store document ID and file content for enhanced analysis
       if (data?.documentId) {
         setUploadedDocumentId(data.documentId);
         setFileContent(fileContent);
@@ -171,6 +267,9 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     setDescription("");
     setTags("");
     if (!propShareableId) setShareableId("");
+    setOcrResult(null);
+    setRequiresUserVerification(false);
+    setShowOCR(false);
     
     // Reset file input
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
@@ -182,6 +281,26 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     setShowAnalyzer(false);
     setUploadedDocumentId(null);
     setFileContent("");
+  };
+
+  const getVerificationStatusColor = (status: string) => {
+    switch (status) {
+      case 'verified_medical': return 'bg-green-100 text-green-800 border-green-200';
+      case 'user_verified_medical': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'unverified': return 'bg-red-100 text-red-800 border-red-200';
+      case 'miscellaneous': return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'verified_medical': return <CheckCircle className="h-4 w-4" />;
+      case 'user_verified_medical': return <Eye className="h-4 w-4" />;
+      case 'unverified': return <AlertTriangle className="h-4 w-4" />;
+      case 'miscellaneous': return <FileText className="h-4 w-4" />;
+      default: return <FileText className="h-4 w-4" />;
+    }
   };
 
   return (
@@ -261,9 +380,95 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
             </div>
             
             {file && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 bg-muted rounded-md">
-                <FileText className="h-4 w-4" />
-                <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 bg-muted rounded-md">
+                  <FileText className="h-4 w-4" />
+                  <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                </div>
+                
+                {/* OCR Results Display */}
+                {ocrResult && (
+                  <Card className="border-2">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        {getStatusIcon(ocrResult.verificationStatus)}
+                        Document Analysis Results
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <Badge className={`${getVerificationStatusColor(ocrResult.verificationStatus)} font-medium`}>
+                        {ocrResult.verificationStatus.replace('_', ' ').toUpperCase()}
+                      </Badge>
+                      
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="font-medium">Text Density:</span> {ocrResult.textDensityScore} words
+                        </div>
+                        <div>
+                          <span className="font-medium">Medical Keywords:</span> {ocrResult.medicalKeywordCount}
+                        </div>
+                        {ocrResult.confidence > 0 && (
+                          <div>
+                            <span className="font-medium">OCR Confidence:</span> {(ocrResult.confidence * 100).toFixed(0)}%
+                          </div>
+                        )}
+                        <div>
+                          <span className="font-medium">Format:</span> {ocrResult.formatSupported ? 'Supported' : 'Unsupported'}
+                        </div>
+                      </div>
+                      
+                      {ocrResult.detectedKeywords.length > 0 && (
+                        <div>
+                          <span className="text-xs font-medium text-muted-foreground">Detected Keywords:</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {ocrResult.detectedKeywords.slice(0, 8).map((keyword, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs">
+                                {keyword}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                        {ocrResult.processingNotes}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* User Verification Required */}
+                {requiresUserVerification && ocrResult && (
+                  <Card className="border-2 border-yellow-200 bg-yellow-50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm text-yellow-800">
+                        <AlertTriangle className="h-4 w-4 inline mr-2" />
+                        Verification Required
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <p className="text-sm text-yellow-700">
+                        Is this document medical-related? This helps us organize your records properly.
+                      </p>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleUserVerification(true)}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          Yes, Medical Document
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleUserVerification(false)}
+                        >
+                          No, Not Medical
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             )}
           </div>
@@ -310,12 +515,21 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={uploading}>
+          <Button type="submit" className="w-full" disabled={uploading || requiresUserVerification}>
             {uploading ? "Uploading..." : "Upload Document"}
           </Button>
           </form>
         </CardContent>
       </Card>
+
+      {/* OCR Processor Modal */}
+      {showOCR && file && (
+        <OCRProcessor 
+          file={file}
+          onOCRComplete={handleOCRComplete}
+          onError={handleOCRError}
+        />
+      )}
 
       {/* Document Scanner Modal */}
       <DocumentScanner

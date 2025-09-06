@@ -55,6 +55,47 @@ export type Database = {
           },
         ]
       }
+      document_feedback: {
+        Row: {
+          corrected_verification_status: string
+          created_at: string | null
+          document_id: string
+          feedback_notes: string | null
+          id: string
+          original_verification_status: string
+          user_assigned_category: string | null
+          user_id: string
+        }
+        Insert: {
+          corrected_verification_status: string
+          created_at?: string | null
+          document_id: string
+          feedback_notes?: string | null
+          id?: string
+          original_verification_status: string
+          user_assigned_category?: string | null
+          user_id: string
+        }
+        Update: {
+          corrected_verification_status?: string
+          created_at?: string | null
+          document_id?: string
+          feedback_notes?: string | null
+          id?: string
+          original_verification_status?: string
+          user_assigned_category?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_feedback_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_keywords: {
         Row: {
           confidence: number | null
@@ -111,14 +152,22 @@ export type Database = {
           file_path: string
           file_size: number | null
           filename: string
+          format_supported: boolean | null
           id: string
+          medical_keyword_count: number | null
           medical_specialties: string[] | null
+          ocr_extracted_text: string | null
           patient_id: string
+          processing_notes: string | null
           searchable_content: string | null
+          structural_cues: Json | null
           tags: string[] | null
+          text_density_score: number | null
           uploaded_at: string | null
           uploaded_by: string
           uploaded_by_user_shareable_id: string | null
+          user_verified_category: string | null
+          verification_status: string | null
         }
         Insert: {
           auto_categories?: string[] | null
@@ -134,14 +183,22 @@ export type Database = {
           file_path: string
           file_size?: number | null
           filename: string
+          format_supported?: boolean | null
           id?: string
+          medical_keyword_count?: number | null
           medical_specialties?: string[] | null
+          ocr_extracted_text?: string | null
           patient_id: string
+          processing_notes?: string | null
           searchable_content?: string | null
+          structural_cues?: Json | null
           tags?: string[] | null
+          text_density_score?: number | null
           uploaded_at?: string | null
           uploaded_by: string
           uploaded_by_user_shareable_id?: string | null
+          user_verified_category?: string | null
+          verification_status?: string | null
         }
         Update: {
           auto_categories?: string[] | null
@@ -157,14 +214,22 @@ export type Database = {
           file_path?: string
           file_size?: number | null
           filename?: string
+          format_supported?: boolean | null
           id?: string
+          medical_keyword_count?: number | null
           medical_specialties?: string[] | null
+          ocr_extracted_text?: string | null
           patient_id?: string
+          processing_notes?: string | null
           searchable_content?: string | null
+          structural_cues?: Json | null
           tags?: string[] | null
+          text_density_score?: number | null
           uploaded_at?: string | null
           uploaded_by?: string
           uploaded_by_user_shareable_id?: string | null
+          user_verified_category?: string | null
+          verification_status?: string | null
         }
         Relationships: [
           {
@@ -259,6 +324,33 @@ export type Database = {
           name?: string
           updated_at?: string
           verified?: boolean
+        }
+        Relationships: []
+      }
+      medical_keywords: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          keyword: string
+          updated_at: string | null
+          weight: number | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          keyword: string
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          keyword?: string
+          updated_at?: string | null
+          weight?: number | null
         }
         Relationships: []
       }
