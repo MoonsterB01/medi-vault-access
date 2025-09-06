@@ -7,12 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, Camera, CheckCircle, AlertTriangle, Eye } from "lucide-react";
+import { Upload, FileText, Camera, CheckCircle, AlertTriangle, Eye, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ProfileSelector from "@/components/ProfileSelector";
 import { DocumentScanner } from "@/components/DocumentScanner";
 import { ContentAnalyzer } from "@/components/ContentAnalyzer";
 import OCRProcessor from "@/components/OCRProcessor";
+import { generateFileHash, getFileHashInfo } from "@/lib/fileHash";
 
 interface DocumentUploadProps {
   shareableId?: string;
@@ -51,6 +52,9 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
   const [uploadedDocumentId, setUploadedDocumentId] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>("");
   const [requiresUserVerification, setRequiresUserVerification] = useState(false);
+  const [fileHash, setFileHash] = useState<string | null>(null);
+  const [isFileBlocked, setIsFileBlocked] = useState(false);
+  const [blockReason, setBlockReason] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Keep input in sync if parent provides/updates shareableId
@@ -63,25 +67,66 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     setSelectedPatientName(patientName);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      // Check file size (10MB limit)
-      if (selectedFile.size > 10 * 1024 * 1024) {
+    if (!selectedFile) return;
+
+    // Check file size (10MB limit)
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select a file smaller than 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Generate file hash and check if blocked
+    try {
+      const hashInfo = await getFileHashInfo(selectedFile);
+      setFileHash(hashInfo.hash);
+      
+      // Check if file is blocked
+      const { data: isBlocked } = await supabase.rpc('is_file_blocked', { hash_input: hashInfo.hash });
+      
+      if (isBlocked) {
+        setIsFileBlocked(true);
+        setBlockReason("This file was previously marked as non-medical");
         toast({
-          title: "File too large",
-          description: "Please select a file smaller than 10MB",
+          title: "File Blocked",
+          description: "This file was previously marked as non-medical document",
           variant: "destructive",
         });
         return;
       }
-      setFile(selectedFile);
-      setOcrResult(null);
-      setRequiresUserVerification(false);
-      // Auto-start OCR for supported formats
-      if (selectedFile.type.startsWith('image/') || selectedFile.type === 'application/pdf') {
-        setShowOCR(true);
-      }
+      
+      // Register file hash
+      await supabase.rpc('register_file_hash', {
+        hash_input: hashInfo.hash,
+        filename_input: hashInfo.filename,
+        size_input: hashInfo.size,
+        content_type_input: hashInfo.contentType
+      });
+      
+    } catch (error) {
+      console.error('Error checking file hash:', error);
+      toast({
+        title: "Error",
+        description: "Error checking file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setFile(selectedFile);
+    setIsFileBlocked(false);
+    setBlockReason(null);
+    setOcrResult(null);
+    setRequiresUserVerification(false);
+    
+    // Auto-start OCR for supported formats
+    if (selectedFile.type.startsWith('image/') || selectedFile.type === 'application/pdf') {
+      setShowOCR(true);
     }
   };
 
@@ -142,8 +187,39 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     });
   };
 
-  const handleUserVerification = (isConfirmed: boolean, userCategory?: string) => {
+  const handleUserVerification = async (isConfirmed: boolean, userCategory?: string) => {
     if (ocrResult) {
+      if (!isConfirmed && fileHash) {
+        // Block the file if marked as not medical
+        try {
+          const { data: user } = await supabase.auth.getUser();
+          if (user.user) {
+            await supabase.from('blocked_files').insert({
+              file_hash: fileHash,
+              blocked_by: user.user.id,
+              reason: 'not_medical',
+              user_feedback: 'User explicitly marked as non-medical document'
+            });
+            
+            toast({
+              title: "File Blocked",
+              description: "File blocked and will not be processed again",
+            });
+            
+            // Reset form since file is blocked
+            resetForm();
+            return;
+          }
+        } catch (error) {
+          console.error('Error blocking file:', error);
+          toast({
+            title: "Error",
+            description: "Error blocking file",
+            variant: "destructive",
+          });
+        }
+      }
+
       const updatedResult = {
         ...ocrResult,
         verificationStatus: isConfirmed ? 'user_verified_medical' as const : 'unverified' as const,
@@ -211,7 +287,7 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
       const fileContent = await convertFileToBase64(file);
       const tagsArray = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
 
-      // Enhanced upload payload with OCR results
+      // Enhanced upload payload with OCR results and file hash
       const uploadPayload = {
         shareableId: normalizedId,
         file: {
@@ -223,7 +299,8 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
         documentType,
         description: description || undefined,
         tags: tagsArray.length > 0 ? tagsArray : undefined,
-        ocrResult: ocrResult || undefined, // Include OCR analysis results
+        ocrResult: ocrResult || undefined,
+        fileHash: fileHash || undefined,
       };
 
       const { data, error } = await supabase.functions.invoke('upload-document', {
@@ -270,6 +347,9 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     setOcrResult(null);
     setRequiresUserVerification(false);
     setShowOCR(false);
+    setFileHash(null);
+    setIsFileBlocked(false);
+    setBlockReason(null);
     
     // Reset file input
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
@@ -379,7 +459,33 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
               </div>
             </div>
             
-            {file && (
+            {isFileBlocked && (
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="h-4 w-4 text-destructive" />
+                  <span className="font-medium text-destructive">File Blocked</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {blockReason || "This file has been blocked from medical processing."}
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => {
+                    setFile(null);
+                    setIsFileBlocked(false);
+                    setBlockReason(null);
+                    const fileInput = document.getElementById('file-input') as HTMLInputElement;
+                    if (fileInput) fileInput.value = '';
+                  }}
+                >
+                  Select Different File
+                </Button>
+              </div>
+            )}
+            
+            {file && !isFileBlocked && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 bg-muted rounded-md">
                   <FileText className="h-4 w-4" />
@@ -515,7 +621,7 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={uploading || requiresUserVerification}>
+          <Button type="submit" className="w-full" disabled={uploading || requiresUserVerification || isFileBlocked}>
             {uploading ? "Uploading..." : "Upload Document"}
           </Button>
           </form>
