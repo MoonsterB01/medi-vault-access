@@ -237,9 +237,24 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
 
     } catch (error: any) {
       console.error('AI analysis error:', error);
+      
+      // Set a fallback AI result to allow user verification to work
+      const fallbackAiResult: AIAnalysisResult = {
+        keywords: [],
+        categories: [],
+        confidence: 0,
+        entities: {},
+        verificationStatus: 'unverified',
+        textDensityScore: ocrResult.textDensityScore || 0,
+        medicalKeywordCount: ocrResult.medicalKeywordCount || 0,
+        processingNotes: 'AI analysis failed - user verification required',
+        requiresUserVerification: true
+      };
+      setAiAnalysisResult(fallbackAiResult);
+      
       toast({
-        title: "Analysis Error",
-        description: "Could not analyze document. Manual verification required.",
+        title: "AI Analysis Failed",
+        description: "Could not analyze document automatically. Please verify manually.",
         variant: "destructive",
       });
       setRequiresUserVerification(true);
@@ -291,21 +306,58 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     }
 
     // User confirmed it's medical - proceed with verification
-    if (isConfirmed && ocrResult && aiAnalysisResult) {
-      const updatedOcrResult = {
-        ...ocrResult,
-        verificationStatus: 'user_verified_medical' as const,
-        processingNotes: `User verified as medical document${userCategory ? ` - ${userCategory}` : ''}`
-      };
+    if (isConfirmed) {
+      // Create default OCR result if missing
+      if (!ocrResult) {
+        const defaultOcrResult: OCRResult = {
+          text: `Document: ${file?.name || 'Unknown'}`,
+          confidence: 0.5,
+          textDensityScore: 0.5,
+          medicalKeywordCount: 1,
+          detectedKeywords: ['document'],
+          verificationStatus: 'user_verified_medical',
+          formatSupported: true,
+          processingNotes: `User verified as medical document${userCategory ? ` - ${userCategory}` : ''}`,
+          structuralCues: {
+            hasDates: false,
+            hasUnits: false,
+            hasNumbers: false,
+            hasTableStructure: false,
+          }
+        };
+        setOcrResult(defaultOcrResult);
+      } else {
+        const updatedOcrResult = {
+          ...ocrResult,
+          verificationStatus: 'user_verified_medical' as const,
+          processingNotes: `User verified as medical document${userCategory ? ` - ${userCategory}` : ''}`
+        };
+        setOcrResult(updatedOcrResult);
+      }
       
-      const updatedAiResult = {
-        ...aiAnalysisResult,
-        verificationStatus: 'user_verified_medical',
-        processingNotes: `User verified as medical document${userCategory ? ` - ${userCategory}` : ''}`
-      };
+      // Create default AI result if missing
+      if (!aiAnalysisResult) {
+        const defaultAiResult: AIAnalysisResult = {
+          keywords: ['medical', 'document'],
+          categories: ['general'],
+          confidence: 0.7,
+          entities: {},
+          verificationStatus: 'user_verified_medical',
+          textDensityScore: 0.5,
+          medicalKeywordCount: 1,
+          processingNotes: `User verified as medical document${userCategory ? ` - ${userCategory}` : ''}`,
+          requiresUserVerification: false
+        };
+        setAiAnalysisResult(defaultAiResult);
+      } else {
+        const updatedAiResult = {
+          ...aiAnalysisResult,
+          verificationStatus: 'user_verified_medical',
+          processingNotes: `User verified as medical document${userCategory ? ` - ${userCategory}` : ''}`
+        };
+        setAiAnalysisResult(updatedAiResult);
+      }
       
-      setOcrResult(updatedOcrResult);
-      setAiAnalysisResult(updatedAiResult);
       setRequiresUserVerification(false);
       
       if (userCategory) {
@@ -702,7 +754,7 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
                 )}
 
                 {/* User Verification Required */}
-                {requiresUserVerification && (ocrResult || aiAnalysisResult) && (
+                {requiresUserVerification && (ocrResult || file) && (
                   <Card className="border-2 border-yellow-200 bg-yellow-50">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm text-yellow-800">

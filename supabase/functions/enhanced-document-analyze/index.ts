@@ -247,41 +247,43 @@ serve(async (req) => {
     const analysis = await analyzeWithHybridFiltering(extractedText, filename, ocrResult);
     console.log(`Analysis completed: ${analysis.keywords.length} keywords, verification: ${analysis.verificationStatus}`);
     
-    // Update document with comprehensive analysis results
-    const { error: updateError } = await supabase
-      .from('documents')
-      .update({
-        // Original fields
-        extracted_text: extractedText,
-        content_keywords: analysis.keywords,
-        auto_categories: analysis.categories,
-        content_confidence: analysis.confidence,
-        extracted_entities: analysis.entities,
-        medical_specialties: analysis.entities.specialties || [],
-        extracted_dates: analysis.entities.dates || [],
-        extraction_metadata: {
-          extraction_method: ocrResult ? 'tesseract-hybrid' : 'gemini-fallback',
-          extraction_timestamp: new Date().toISOString(),
-          content_type: contentType,
-          filename: filename,
-        },
-        // New hybrid filtering fields
-        verification_status: analysis.verificationStatus,
-        text_density_score: analysis.textDensityScore,
-        medical_keyword_count: analysis.medicalKeywordCount,
-        structural_cues: analysis.structuralCues,
-        format_supported: ocrResult?.formatSupported ?? true,
-        ocr_extracted_text: ocrResult?.text || null,
-        processing_notes: analysis.processingNotes,
-      })
-      .eq('id', documentId);
+    // Only update document if it's a real document ID (not temp-analysis)
+    if (documentId !== 'temp-analysis') {
+      const { error: updateError } = await supabase
+        .from('documents')
+        .update({
+          // Original fields
+          extracted_text: extractedText,
+          content_keywords: analysis.keywords,
+          auto_categories: analysis.categories,
+          content_confidence: analysis.confidence,
+          extracted_entities: analysis.entities,
+          medical_specialties: analysis.entities.specialties || [],
+          extracted_dates: analysis.entities.dates || [],
+          extraction_metadata: {
+            extraction_method: ocrResult ? 'tesseract-hybrid' : 'gemini-fallback',
+            extraction_timestamp: new Date().toISOString(),
+            content_type: contentType,
+            filename: filename,
+          },
+          // New hybrid filtering fields
+          verification_status: analysis.verificationStatus,
+          text_density_score: analysis.textDensityScore,
+          medical_keyword_count: analysis.medicalKeywordCount,
+          structural_cues: analysis.structuralCues,
+          format_supported: ocrResult?.formatSupported ?? true,
+          ocr_extracted_text: ocrResult?.text || null,
+          processing_notes: analysis.processingNotes,
+        })
+        .eq('id', documentId);
 
-    if (updateError) {
-      throw new Error(`Failed to update document: ${updateError.message}`);
+      if (updateError) {
+        throw new Error(`Failed to update document: ${updateError.message}`);
+      }
     }
 
-    // Insert enhanced keywords into document_keywords table
-    if (analysis.keywords.length > 0) {
+    // Insert enhanced keywords into document_keywords table (only for real documents)
+    if (analysis.keywords.length > 0 && documentId !== 'temp-analysis') {
       const keywordInserts = [];
       
       // Add general keywords
