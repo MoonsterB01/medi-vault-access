@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      blocked_files: {
+        Row: {
+          blocked_at: string | null
+          blocked_by: string
+          created_at: string | null
+          file_hash: string
+          id: string
+          reason: string | null
+          similarity_patterns: Json | null
+          user_feedback: string | null
+        }
+        Insert: {
+          blocked_at?: string | null
+          blocked_by: string
+          created_at?: string | null
+          file_hash: string
+          id?: string
+          reason?: string | null
+          similarity_patterns?: Json | null
+          user_feedback?: string | null
+        }
+        Update: {
+          blocked_at?: string | null
+          blocked_by?: string
+          created_at?: string | null
+          file_hash?: string
+          id?: string
+          reason?: string | null
+          similarity_patterns?: Json | null
+          user_feedback?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocked_files_file_hash_fkey"
+            columns: ["file_hash"]
+            isOneToOne: false
+            referencedRelation: "file_hashes"
+            referencedColumns: ["file_hash"]
+          },
+        ]
+      }
       content_categories: {
         Row: {
           created_at: string | null
@@ -149,6 +190,7 @@ export type Database = {
           extracted_entities: Json | null
           extracted_text: string | null
           extraction_metadata: Json | null
+          file_hash: string | null
           file_path: string
           file_size: number | null
           filename: string
@@ -180,6 +222,7 @@ export type Database = {
           extracted_entities?: Json | null
           extracted_text?: string | null
           extraction_metadata?: Json | null
+          file_hash?: string | null
           file_path: string
           file_size?: number | null
           filename: string
@@ -211,6 +254,7 @@ export type Database = {
           extracted_entities?: Json | null
           extracted_text?: string | null
           extraction_metadata?: Json | null
+          file_hash?: string | null
           file_path?: string
           file_size?: number | null
           filename?: string
@@ -296,6 +340,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      file_hashes: {
+        Row: {
+          content_type: string | null
+          created_at: string | null
+          file_hash: string
+          file_size: number | null
+          first_uploaded_at: string | null
+          id: string
+          last_seen_at: string | null
+          original_filename: string
+          upload_count: number | null
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string | null
+          file_hash: string
+          file_size?: number | null
+          first_uploaded_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          original_filename: string
+          upload_count?: number | null
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string | null
+          file_hash?: string
+          file_size?: number | null
+          first_uploaded_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          original_filename?: string
+          upload_count?: number | null
+        }
+        Relationships: []
       }
       hospitals: {
         Row: {
@@ -473,6 +553,19 @@ export type Database = {
       get_user_role: {
         Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      is_file_blocked: {
+        Args: { hash_input: string }
+        Returns: boolean
+      }
+      register_file_hash: {
+        Args: {
+          content_type_input: string
+          filename_input: string
+          hash_input: string
+          size_input: number
+        }
+        Returns: string
       }
       user_has_patient_access: {
         Args: { patient_id_param: string; user_id_param: string }
