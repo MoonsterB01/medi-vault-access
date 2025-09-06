@@ -37,6 +37,18 @@ interface OCRResult {
   };
 }
 
+interface AIAnalysisResult {
+  keywords: string[];
+  categories: string[];
+  confidence: number;
+  entities: any;
+  verificationStatus: string;
+  textDensityScore: number;
+  medicalKeywordCount: number;
+  processingNotes: string;
+  requiresUserVerification: boolean;
+}
+
 export default function DocumentUpload({ shareableId: propShareableId, onUploadSuccess }: DocumentUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -49,12 +61,14 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
   const [showAnalyzer, setShowAnalyzer] = useState(false);
   const [showOCR, setShowOCR] = useState(false);
   const [ocrResult, setOcrResult] = useState<OCRResult | null>(null);
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<AIAnalysisResult | null>(null);
   const [uploadedDocumentId, setUploadedDocumentId] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>("");
   const [requiresUserVerification, setRequiresUserVerification] = useState(false);
   const [fileHash, setFileHash] = useState<string | null>(null);
   const [isFileBlocked, setIsFileBlocked] = useState(false);
   const [blockReason, setBlockReason] = useState<string | null>(null);
+  const [isAnalyzingWithAI, setIsAnalyzingWithAI] = useState(false);
   const { toast } = useToast();
 
   // Keep input in sync if parent provides/updates shareableId
@@ -152,29 +166,85 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     });
   };
 
-  const handleOCRComplete = (result: OCRResult) => {
+  const handleOCRComplete = async (result: OCRResult) => {
     setOcrResult(result);
     setShowOCR(false);
     
-    // Handle verification status
-    if (result.verificationStatus === 'user_verified_medical') {
-      setRequiresUserVerification(true);
-      toast({
-        title: "Verification Required",
-        description: result.processingNotes,
-        variant: "default",
+    // Run AI analysis immediately after OCR
+    if (file) {
+      await runAIAnalysis(result);
+    }
+  };
+
+  const runAIAnalysis = async (ocrResult: OCRResult) => {
+    setIsAnalyzingWithAI(true);
+    
+    try {
+      const fileContent = await convertFileToBase64(file!);
+      
+      const { data, error } = await supabase.functions.invoke('enhanced-document-analyze', {
+        body: {
+          documentId: 'temp-analysis', // Temporary ID for pre-upload analysis
+          fileContent,
+          contentType: file!.type,
+          filename: file!.name,
+          ocrResult
+        }
       });
-    } else if (result.verificationStatus === 'verified_medical') {
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      const aiResult: AIAnalysisResult = {
+        keywords: data.keywords || [],
+        categories: data.categories || [],
+        confidence: data.confidence || 0,
+        entities: data.entities || {},
+        verificationStatus: data.verificationStatus || 'unverified',
+        textDensityScore: data.textDensityScore || 0,
+        medicalKeywordCount: data.medicalKeywordCount || 0,
+        processingNotes: data.processingNotes || '',
+        requiresUserVerification: data.requiresUserVerification || false
+      };
+
+      setAiAnalysisResult(aiResult);
+
+      // Determine if user verification is needed based on AI confidence
+      if (aiResult.confidence >= 0.8 && aiResult.medicalKeywordCount >= 2) {
+        // High confidence medical document - auto approve
+        toast({
+          title: "Document Verified",
+          description: `Automatically verified as medical document (${Math.round(aiResult.confidence * 100)}% confidence)`,
+        });
+      } else if (aiResult.confidence >= 0.3 || aiResult.medicalKeywordCount >= 1) {
+        // Medium confidence - ask user
+        setRequiresUserVerification(true);
+        toast({
+          title: "Verification Required",
+          description: `AI analysis suggests possible medical content (${Math.round(aiResult.confidence * 100)}% confidence). Please verify.`,
+          variant: "default",
+        });
+      } else {
+        // Low confidence - likely not medical
+        setRequiresUserVerification(true);
+        toast({
+          title: "Document Analysis",
+          description: `Low medical content detected (${Math.round(aiResult.confidence * 100)}% confidence). Please verify if this is a medical document.`,
+          variant: "default",
+        });
+      }
+
+    } catch (error: any) {
+      console.error('AI analysis error:', error);
       toast({
-        title: "Document Verified",
-        description: "Automatically verified as medical document",
-      });
-    } else if (result.verificationStatus === 'miscellaneous') {
-      toast({
-        title: "Unsupported Format",
-        description: result.processingNotes,
+        title: "Analysis Error",
+        description: "Could not analyze document. Manual verification required.",
         variant: "destructive",
       });
+      setRequiresUserVerification(true);
+    } finally {
+      setIsAnalyzingWithAI(false);
     }
   };
 
@@ -188,51 +258,64 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
   };
 
   const handleUserVerification = async (isConfirmed: boolean, userCategory?: string) => {
-    if (ocrResult) {
-      if (!isConfirmed && fileHash) {
-        // Block the file if marked as not medical
-        try {
-          const { data: user } = await supabase.auth.getUser();
-          if (user.user) {
-            await supabase.from('blocked_files').insert({
-              file_hash: fileHash,
-              blocked_by: user.user.id,
-              reason: 'not_medical',
-              user_feedback: 'User explicitly marked as non-medical document'
-            });
-            
-            toast({
-              title: "File Blocked",
-              description: "File blocked and will not be processed again",
-            });
-            
-            // Reset form since file is blocked
-            resetForm();
-            return;
-          }
-        } catch (error) {
-          console.error('Error blocking file:', error);
-          toast({
-            title: "Error",
-            description: "Error blocking file",
-            variant: "destructive",
+    if (!isConfirmed && fileHash) {
+      // User marked as NOT medical - block the file and stop all processing
+      try {
+        const { data: user } = await supabase.auth.getUser();
+        if (user.user) {
+          await supabase.from('blocked_files').insert({
+            file_hash: fileHash,
+            blocked_by: user.user.id,
+            reason: 'not_medical',
+            user_feedback: 'User explicitly marked as non-medical document'
           });
+          
+          toast({
+            title: "File Blocked",
+            description: "File marked as non-medical and blocked permanently. Please select a different file.",
+          });
+          
+          // Completely reset form and stop all processing
+          resetForm();
+          return;
         }
+      } catch (error) {
+        console.error('Error blocking file:', error);
+        toast({
+          title: "Error",
+          description: "Error blocking file",
+          variant: "destructive",
+        });
+        return;
       }
+    }
 
-      const updatedResult = {
+    // User confirmed it's medical - proceed with verification
+    if (isConfirmed && ocrResult && aiAnalysisResult) {
+      const updatedOcrResult = {
         ...ocrResult,
-        verificationStatus: isConfirmed ? 'user_verified_medical' as const : 'unverified' as const,
-        processingNotes: isConfirmed 
-          ? `User verified as medical document${userCategory ? ` - ${userCategory}` : ''}`
-          : 'User marked as non-medical document'
+        verificationStatus: 'user_verified_medical' as const,
+        processingNotes: `User verified as medical document${userCategory ? ` - ${userCategory}` : ''}`
       };
-      setOcrResult(updatedResult);
+      
+      const updatedAiResult = {
+        ...aiAnalysisResult,
+        verificationStatus: 'user_verified_medical',
+        processingNotes: `User verified as medical document${userCategory ? ` - ${userCategory}` : ''}`
+      };
+      
+      setOcrResult(updatedOcrResult);
+      setAiAnalysisResult(updatedAiResult);
       setRequiresUserVerification(false);
       
       if (userCategory) {
         setDocumentType(userCategory);
       }
+
+      toast({
+        title: "Document Verified",
+        description: "Document verified as medical. Ready to upload.",
+      });
     }
   };
 
@@ -253,6 +336,26 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
       toast({
         title: "Verification Required",
         description: "Please verify if this document is medical or not",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Prevent upload of blocked files
+    if (isFileBlocked) {
+      toast({
+        title: "Upload Blocked",
+        description: "This file has been blocked and cannot be uploaded",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Ensure we have AI analysis results for medical documents
+    if (!aiAnalysisResult && ocrResult) {
+      toast({
+        title: "Analysis Required",
+        description: "Document analysis is still in progress. Please wait.",
         variant: "destructive",
       });
       return;
@@ -287,7 +390,7 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
       const fileContent = await convertFileToBase64(file);
       const tagsArray = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
 
-      // Enhanced upload payload with OCR results and file hash
+      // Enhanced upload payload with OCR and AI analysis results
       const uploadPayload = {
         shareableId: normalizedId,
         file: {
@@ -300,6 +403,7 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
         description: description || undefined,
         tags: tagsArray.length > 0 ? tagsArray : undefined,
         ocrResult: ocrResult || undefined,
+        aiAnalysisResult: aiAnalysisResult || undefined,
         fileHash: fileHash || undefined,
       };
 
@@ -316,11 +420,18 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
         description: data?.message || "Document uploaded successfully",
       });
       
-      // Store document ID and file content for enhanced analysis
+      // Check if analysis is needed based on upload response
       if (data?.documentId) {
         setUploadedDocumentId(data.documentId);
         setFileContent(fileContent);
-        setShowAnalyzer(true);
+        
+        // Only show ContentAnalyzer if additional analysis is needed
+        if (!data.skipAnalysis) {
+          setShowAnalyzer(true);
+        } else {
+          // Analysis is complete, reset form
+          resetForm();
+        }
       } else {
         // Reset form if no analysis needed
         resetForm();
@@ -345,11 +456,13 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     setTags("");
     if (!propShareableId) setShareableId("");
     setOcrResult(null);
+    setAiAnalysisResult(null);
     setRequiresUserVerification(false);
     setShowOCR(false);
     setFileHash(null);
     setIsFileBlocked(false);
     setBlockReason(null);
+    setIsAnalyzingWithAI(false);
     
     // Reset file input
     const fileInput = document.getElementById('file-input') as HTMLInputElement;
@@ -492,7 +605,22 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
                   <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
                 </div>
                 
-                {/* OCR Results Display */}
+                {/* Processing States */}
+                {isAnalyzingWithAI && (
+                  <Card className="border-2 border-blue-200 bg-blue-50">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        <span className="text-sm font-medium text-blue-800">Analyzing document with AI...</span>
+                      </div>
+                      <p className="text-xs text-blue-600 mt-1">
+                        Detecting medical content and analyzing document structure.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Combined OCR and AI Analysis Results */}
                 {ocrResult && (
                   <Card className="border-2">
                     <CardHeader className="pb-2">
@@ -518,33 +646,63 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
                             <span className="font-medium">OCR Confidence:</span> {(ocrResult.confidence * 100).toFixed(0)}%
                           </div>
                         )}
+                        {aiAnalysisResult && (
+                          <div>
+                            <span className="font-medium">AI Confidence:</span> {(aiAnalysisResult.confidence * 100).toFixed(0)}%
+                          </div>
+                        )}
                         <div>
                           <span className="font-medium">Format:</span> {ocrResult.formatSupported ? 'Supported' : 'Unsupported'}
                         </div>
                       </div>
                       
-                      {ocrResult.detectedKeywords.length > 0 && (
+                      {/* AI Analysis Categories */}
+                      {aiAnalysisResult && aiAnalysisResult.categories.length > 0 && (
                         <div>
-                          <span className="text-xs font-medium text-muted-foreground">Detected Keywords:</span>
+                          <span className="text-xs font-medium text-muted-foreground">AI Detected Categories:</span>
                           <div className="flex flex-wrap gap-1 mt-1">
-                            {ocrResult.detectedKeywords.slice(0, 8).map((keyword, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
-                                {keyword}
+                            {aiAnalysisResult.categories.slice(0, 3).map((category, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {category}
                               </Badge>
                             ))}
                           </div>
                         </div>
                       )}
                       
+                      {/* Combined Keywords */}
+                      {(ocrResult.detectedKeywords.length > 0 || (aiAnalysisResult && aiAnalysisResult.keywords.length > 0)) && (
+                        <div>
+                          <span className="text-xs font-medium text-muted-foreground">Detected Medical Terms:</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {/* OCR Keywords */}
+                            {ocrResult.detectedKeywords.slice(0, 4).map((keyword, idx) => (
+                              <Badge key={`ocr-${idx}`} variant="outline" className="text-xs border-blue-200">
+                                {keyword}
+                              </Badge>
+                            ))}
+                            {/* AI Keywords (filtered to avoid duplicates) */}
+                            {aiAnalysisResult && aiAnalysisResult.keywords
+                              .filter(keyword => !ocrResult.detectedKeywords.includes(keyword))
+                              .slice(0, 4)
+                              .map((keyword, idx) => (
+                                <Badge key={`ai-${idx}`} variant="outline" className="text-xs border-green-200">
+                                  {keyword}
+                                </Badge>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
-                        {ocrResult.processingNotes}
+                        {aiAnalysisResult ? aiAnalysisResult.processingNotes : ocrResult.processingNotes}
                       </div>
                     </CardContent>
                   </Card>
                 )}
 
                 {/* User Verification Required */}
-                {requiresUserVerification && ocrResult && (
+                {requiresUserVerification && (ocrResult || aiAnalysisResult) && (
                   <Card className="border-2 border-yellow-200 bg-yellow-50">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm text-yellow-800">
@@ -553,9 +711,21 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <p className="text-sm text-yellow-700">
-                        Is this document medical-related? This helps us organize your records properly.
-                      </p>
+                      <div className="text-sm text-yellow-700 space-y-2">
+                        <p>Is this document medical-related? This helps us organize your records properly.</p>
+                        {aiAnalysisResult && (
+                          <div className="bg-yellow-100 p-2 rounded text-xs">
+                            <strong>AI Analysis Summary:</strong>
+                            <br />• Confidence: {(aiAnalysisResult.confidence * 100).toFixed(0)}%
+                            <br />• Medical terms found: {aiAnalysisResult.medicalKeywordCount}
+                            {aiAnalysisResult.categories.length > 0 && (
+                              <>
+                                <br />• Suggested categories: {aiAnalysisResult.categories.slice(0, 2).join(', ')}
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       <div className="flex gap-2">
                         <Button 
                           size="sm" 
@@ -621,8 +791,17 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={uploading || requiresUserVerification || isFileBlocked}>
-            {uploading ? "Uploading..." : "Upload Document"}
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={uploading || requiresUserVerification || isFileBlocked || isAnalyzingWithAI}
+          >
+            {uploading 
+              ? "Uploading..." 
+              : isAnalyzingWithAI 
+                ? "Analyzing Document..." 
+                : "Upload Document"
+            }
           </Button>
           </form>
         </CardContent>

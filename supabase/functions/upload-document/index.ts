@@ -17,6 +17,28 @@ interface UploadRequest {
   documentType: string;
   description?: string;
   tags?: string[];
+  ocrResult?: {
+    text: string;
+    confidence: number;
+    textDensityScore: number;
+    medicalKeywordCount: number;
+    detectedKeywords: string[];
+    verificationStatus: string;
+    formatSupported: boolean;
+    processingNotes: string;
+    structuralCues: any;
+  };
+  aiAnalysisResult?: {
+    keywords: string[];
+    categories: string[];
+    confidence: number;
+    entities: any;
+    verificationStatus: string;
+    textDensityScore: number;
+    medicalKeywordCount: number;
+    processingNotes: string;
+  };
+  fileHash?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -56,9 +78,34 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { shareableId, file, documentType, description, tags }: UploadRequest = await req.json();
+    const { 
+      shareableId, 
+      file, 
+      documentType, 
+      description, 
+      tags,
+      ocrResult,
+      aiAnalysisResult,
+      fileHash
+    }: UploadRequest = await req.json();
 
     console.log(`Uploading document for shareable ID: ${shareableId} by user: ${user.id}`);
+
+    // Check if file is blocked (security measure)
+    if (fileHash) {
+      const { data: isBlocked } = await supabase
+        .rpc('is_file_blocked', { hash_input: fileHash });
+      
+      if (isBlocked) {
+        console.log(`Blocked file upload attempt: ${fileHash}`);
+        return new Response(JSON.stringify({ 
+          error: 'This file has been blocked and cannot be uploaded' 
+        }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
+    }
 
     // Get uploader's details for traceability
     const { data: uploaderUser, error: uploaderError } = await supabase
@@ -189,7 +236,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Save document metadata  
+    // Save document metadata with enhanced analysis data
     const { data: documentData, error: documentError } = await supabase
       .from('documents')
       .insert({
@@ -203,7 +250,30 @@ const handler = async (req: Request): Promise<Response> => {
         tags: tags || [],
         uploaded_by: user.id, // Track actual uploader
         uploaded_by_user_shareable_id: uploaderUser?.user_shareable_id || null,
-        searchable_content: `${file.name} ${documentType} ${description || ''} ${tags?.join(' ') || ''}`
+        searchable_content: `${file.name} ${documentType} ${description || ''} ${tags?.join(' ') || ''}`,
+        file_hash: fileHash || null,
+        // OCR Results
+        ocr_extracted_text: ocrResult?.text || null,
+        text_density_score: ocrResult?.textDensityScore || aiAnalysisResult?.textDensityScore || 0,
+        medical_keyword_count: ocrResult?.medicalKeywordCount || aiAnalysisResult?.medicalKeywordCount || 0,
+        structural_cues: ocrResult?.structuralCues || {},
+        format_supported: ocrResult?.formatSupported ?? true,
+        processing_notes: ocrResult?.processingNotes || aiAnalysisResult?.processingNotes || null,
+        // AI Analysis Results  
+        verification_status: aiAnalysisResult?.verificationStatus || ocrResult?.verificationStatus || 'unverified',
+        content_keywords: aiAnalysisResult?.keywords || [],
+        auto_categories: aiAnalysisResult?.categories || [],
+        content_confidence: aiAnalysisResult?.confidence || 0,
+        extracted_entities: aiAnalysisResult?.entities || {},
+        medical_specialties: aiAnalysisResult?.entities?.specialties || [],
+        extracted_dates: aiAnalysisResult?.entities?.dates || [],
+        extraction_metadata: {
+          upload_timestamp: new Date().toISOString(),
+          has_ocr_results: !!ocrResult,
+          has_ai_analysis: !!aiAnalysisResult,
+          content_type: file.type,
+          filename: file.name,
+        }
       })
       .select()
       .single();
@@ -224,12 +294,63 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Document uploaded successfully:', documentData.id);
 
+    // Insert keywords into document_keywords table if we have AI analysis
+    if (aiAnalysisResult && aiAnalysisResult.keywords.length > 0) {
+      const keywordInserts = [];
+      
+      // Add general keywords
+      aiAnalysisResult.keywords.forEach(keyword => {
+        keywordInserts.push({
+          document_id: documentData.id,
+          keyword,
+          keyword_type: 'general',
+          confidence: aiAnalysisResult.confidence,
+        });
+      });
+
+      // Add entity-specific keywords
+      if (aiAnalysisResult.entities) {
+        Object.entries(aiAnalysisResult.entities).forEach(([entityType, entities]: [string, any]) => {
+          if (Array.isArray(entities)) {
+            entities.forEach(entity => {
+              keywordInserts.push({
+                document_id: documentData.id,
+                keyword: entity,
+                keyword_type: entityType,
+                entity_category: entityType,
+                confidence: aiAnalysisResult.confidence,
+              });
+            });
+          }
+        });
+      }
+
+      if (keywordInserts.length > 0) {
+        const { error: keywordError } = await supabase
+          .from('document_keywords')
+          .insert(keywordInserts);
+
+        if (keywordError) {
+          console.error('Failed to insert keywords:', keywordError);
+        } else {
+          console.log(`Inserted ${keywordInserts.length} keywords for document ${documentData.id}`);
+        }
+      }
+    }
+
+    // If we have comprehensive AI analysis, skip the enhanced analysis step
+    const skipEnhancedAnalysis = aiAnalysisResult && 
+      aiAnalysisResult.confidence > 0.5 && 
+      aiAnalysisResult.keywords.length > 0;
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         documentId: documentData.id,
         document: documentData,
-        message: `Document uploaded for ${patient.name}` 
+        message: `Document uploaded for ${patient.name}`,
+        skipAnalysis: skipEnhancedAnalysis,
+        analysisStatus: skipEnhancedAnalysis ? 'Complete' : 'Pending'
       }),
       {
         status: 200,
