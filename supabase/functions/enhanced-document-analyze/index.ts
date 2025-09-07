@@ -87,26 +87,66 @@ async function analyzeWithHybridFiltering(
     );
     textDensityScore = meaningfulWords.length;
 
-    // Get medical keywords from database
+    // Get medical keywords from database and apply weighted scoring
     const medicalKeywords = await getMedicalKeywords();
     const lowerText = analysisText.toLowerCase();
     
-    detectedKeywords = medicalKeywords
-      .filter(mk => lowerText.includes(mk.keyword.toLowerCase()))
-      .map(mk => mk.keyword);
+    let weightedScore = 0;
+    detectedKeywords = [];
     
-    medicalKeywordCount = detectedKeywords.length;
+    medicalKeywords.forEach(mk => {
+      if (lowerText.includes(mk.keyword.toLowerCase())) {
+        detectedKeywords.push(mk.keyword);
+        weightedScore += mk.weight;
+      }
+    });
     
-    // Determine verification status using hybrid filtering
-    if (textDensityScore >= 3 && medicalKeywordCount >= 2) {
+    // Enhanced pattern detection for medical content
+    const medicalRangePattern = /\b\d+[\.,]?\d*\s*[-–]\s*\d+[\.,]?\d*\s*\([^)]*range[^)]*\)/gi;
+    const medicalUnitsPattern = /\b\d+[\.,]?\d*\s*(mg\/dl|g\/dl|cells\/[μu]l|mmhg|bpm|meq\/l|iu\/l|ng\/ml|pg\/ml|[μu]g\/ml)\b/gi;
+    const labValuesPattern = /\b(hemoglobin|hgb|wbc|rbc|platelet|glucose|hba1c|cholesterol|creatinine|ast|alt|bilirubin)\s*[:\-]?\s*\d+/gi;
+    
+    const rangeMatches = analysisText.match(medicalRangePattern) || [];
+    const unitMatches = analysisText.match(medicalUnitsPattern) || [];
+    const labMatches = analysisText.match(labValuesPattern) || [];
+    
+    // Add pattern-based scoring
+    if (rangeMatches.length > 0) {
+      detectedKeywords.push('medical ranges detected');
+      weightedScore += rangeMatches.length * 2.0;
+    }
+    
+    if (unitMatches.length > 0) {
+      detectedKeywords.push('medical units detected');
+      weightedScore += unitMatches.length * 2.5;
+    }
+    
+    if (labMatches.length > 0) {
+      detectedKeywords.push('lab values detected');
+      weightedScore += labMatches.length * 3.0;
+    }
+    
+    medicalKeywordCount = Math.floor(weightedScore);
+    
+    // Enhanced verification status logic with pattern-based analysis
+    const hasStrongMedicalPatterns = (rangeMatches.length + unitMatches.length + labMatches.length) >= 2;
+    const hasLabIndicators = labMatches.length > 0 || detectedKeywords.some(k => k.includes('lab') || k.includes('test'));
+    
+    if (textDensityScore >= 5 && medicalKeywordCount >= 5) {
       verificationStatus = 'verified_medical';
-      processingNotes = 'Automatically verified based on text density and medical keywords.';
+      processingNotes = 'Automatically verified - high medical content and text density detected.';
+    } else if (hasStrongMedicalPatterns || (textDensityScore >= 3 && medicalKeywordCount >= 3)) {
+      verificationStatus = 'verified_medical';
+      processingNotes = 'Automatically verified - medical patterns and keywords detected.';
+    } else if (hasLabIndicators || (textDensityScore >= 2 && medicalKeywordCount >= 2)) {
+      verificationStatus = 'user_verified_medical';
+      processingNotes = 'Likely medical document - user verification recommended.';
     } else if (textDensityScore >= 1 && medicalKeywordCount >= 1) {
       verificationStatus = 'user_verified_medical';
-      processingNotes = 'Requires user verification. May be a medical document.';
+      processingNotes = 'Possible medical document - user verification required.';
     } else {
       verificationStatus = 'unverified';
-      processingNotes = 'Low medical content detected. User verification required.';
+      processingNotes = 'Low medical content detected. Manual verification required.';
     }
 
     // Detect structural cues
@@ -147,7 +187,7 @@ ENHANCED ANALYSIS REQUIRED:
    - Dates and measurements
 
 2. DOCUMENT CATEGORIES (max 3 most relevant):
-   Choose from: "Lab Results", "Prescription", "Imaging Report", "Consultation Notes", "Discharge Summary", "Referral Letter", "Surgical Report", "Vaccination Record", "Insurance Document", "General Medical"
+   Choose from: "Lab Results", "Pathology Report", "Radiology Report", "Prescription", "Consultation Notes", "Discharge Summary", "Blood Work", "Imaging Report", "Referral Letter", "Surgical Report", "Vaccination Record", "Insurance Document", "General Medical"
 
 3. ADDITIONAL KEYWORDS (medical terms not already detected)
 

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Eye, FileText, AlertTriangle, CheckCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface OCRResult {
   text: string;
@@ -20,6 +21,9 @@ interface OCRResult {
     hasUnits: boolean;
     hasNumbers: boolean;
     hasTableStructure: boolean;
+    hasMedicalRanges?: boolean;
+    hasLabValues?: boolean;
+    medicalPatternCount?: number;
   };
 }
 
@@ -29,16 +33,10 @@ interface OCRProcessorProps {
   onError: (error: string) => void;
 }
 
-// Medical keywords for hybrid filtering
-const MEDICAL_KEYWORDS = [
-  'prescription', 'hospital', 'diagnosis', 'patient', 'doctor', 'physician',
-  'medical', 'report', 'test', 'result', 'lab', 'laboratory', 'scan', 'imaging',
-  'consultation', 'appointment', 'clinic', 'emergency', 'procedure', 'treatment',
-  'therapy', 'heart', 'brain', 'blood', 'urea', 'glucose', 'hemoglobin',
-  'hba1c', 'b12', 'vitamin', 'mri', 'x-ray', 'ultrasound', 'ecg', 'mg',
-  'mmhg', 'diabetes', 'hypertension', 'asthma', 'cancer', 'cardiology',
-  'neurology', 'oncology'
-];
+// Enhanced medical detection patterns
+const MEDICAL_RANGE_PATTERN = /\b\d+[\.,]?\d*\s*[-–]\s*\d+[\.,]?\d*\s*\([^)]*range[^)]*\)/gi;
+const MEDICAL_UNITS_PATTERN = /\b\d+[\.,]?\d*\s*(mg\/dl|g\/dl|cells\/[μu]l|mmhg|bpm|meq\/l|iu\/l|ng\/ml|pg\/ml|[μu]g\/ml|mg|ml|units|dose|%)\b/gi;
+const LAB_VALUES_PATTERN = /\b(hemoglobin|hgb|wbc|rbc|platelet|glucose|hba1c|cholesterol|creatinine|ast|alt|bilirubin)\s*[:\-]?\s*\d+/gi;
 
 const SUPPORTED_IMAGE_FORMATS = ['image/jpeg', 'image/jpg', 'image/png', 'image/heic'];
 const SUPPORTED_DOCUMENT_FORMATS = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
@@ -58,23 +56,73 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
     return meaningfulWords.length;
   };
 
-  const detectMedicalKeywords = (text: string): { count: number; keywords: string[] } => {
-    const lowerText = text.toLowerCase();
-    const foundKeywords = MEDICAL_KEYWORDS.filter(keyword => 
-      lowerText.includes(keyword.toLowerCase())
-    );
-    return {
-      count: foundKeywords.length,
-      keywords: [...new Set(foundKeywords)] // Remove duplicates
-    };
+  const detectMedicalKeywords = async (text: string): Promise<{ count: number; keywords: string[] }> => {
+    try {
+      // Fetch medical keywords from database
+      const { data: medicalKeywords, error } = await supabase
+        .from('medical_keywords')
+        .select('keyword, category, weight');
+      
+      if (error) {
+        console.error('Error fetching medical keywords:', error);
+        return { count: 0, keywords: [] };
+      }
+      
+      const lowerText = text.toLowerCase();
+      const foundKeywords: string[] = [];
+      let totalScore = 0;
+      
+      // Check database keywords
+      medicalKeywords?.forEach(mk => {
+        if (lowerText.includes(mk.keyword.toLowerCase())) {
+          foundKeywords.push(mk.keyword);
+          totalScore += mk.weight;
+        }
+      });
+      
+      // Check for medical patterns
+      const rangeMatches = text.match(MEDICAL_RANGE_PATTERN) || [];
+      const unitMatches = text.match(MEDICAL_UNITS_PATTERN) || [];
+      const labMatches = text.match(LAB_VALUES_PATTERN) || [];
+      
+      if (rangeMatches.length > 0) {
+        foundKeywords.push('medical ranges detected');
+        totalScore += 2.0;
+      }
+      
+      if (unitMatches.length > 0) {
+        foundKeywords.push('medical units detected');
+        totalScore += 2.5;
+      }
+      
+      if (labMatches.length > 0) {
+        foundKeywords.push('lab values detected');
+        totalScore += 3.0;
+      }
+      
+      return {
+        count: Math.floor(totalScore), // Use weighted score for count
+        keywords: [...new Set(foundKeywords)] // Remove duplicates
+      };
+    } catch (error) {
+      console.error('Error in detectMedicalKeywords:', error);
+      return { count: 0, keywords: [] };
+    }
   };
 
   const detectStructuralCues = (text: string) => {
+    const rangeMatches = text.match(MEDICAL_RANGE_PATTERN) || [];
+    const unitMatches = text.match(MEDICAL_UNITS_PATTERN) || [];
+    const labMatches = text.match(LAB_VALUES_PATTERN) || [];
+    
     return {
       hasDates: /\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b|\b\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}\b/.test(text),
-      hasUnits: /\b\d+\s*(mg|ml|mmhg|bpm|units|dose|%)\b/i.test(text),
+      hasUnits: unitMatches.length > 0,
       hasNumbers: /\b\d+(\.\d+)?\b/.test(text),
-      hasTableStructure: text.includes('\t') || /\s{4,}/.test(text)
+      hasTableStructure: text.includes('\t') || /\s{4,}/.test(text),
+      hasMedicalRanges: rangeMatches.length > 0,
+      hasLabValues: labMatches.length > 0,
+      medicalPatternCount: rangeMatches.length + unitMatches.length + labMatches.length
     };
   };
 
@@ -151,40 +199,98 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
         return;
       }
 
-      // Handle PDF separately (basic text extraction)
+      // Handle PDF with real text extraction
       if (file.type === 'application/pdf') {
-        const result: OCRResult = {
-          text: `PDF Document: ${file.name}`,
-          confidence: 0.5,
-          textDensityScore: 2, // Assume some content in PDF
-          medicalKeywordCount: 0,
-          detectedKeywords: [],
-          verificationStatus: 'user_verified_medical',
-          formatSupported: true,
-          processingNotes: 'PDF detected. Text extraction limited. Consider converting to image for better OCR.',
-          structuralCues: {
-            hasDates: false,
-            hasUnits: false,
-            hasNumbers: false,
-            hasTableStructure: false
-          }
-        };
+        setCurrentStep('Extracting text from PDF...');
+        setProgress(20);
         
-        // Simple keyword detection from filename
-        const fileKeywords = detectMedicalKeywords(file.name);
-        result.medicalKeywordCount = fileKeywords.count;
-        result.detectedKeywords = fileKeywords.keywords;
-        
-        const verification = determineVerificationStatus(
-          result.textDensityScore,
-          result.medicalKeywordCount,
-          result.confidence,
-          result.formatSupported
-        );
-        result.verificationStatus = verification.status;
-        result.processingNotes = verification.notes;
-        
-        resolve(result);
+        try {
+          // Convert file to base64
+          const reader = new FileReader();
+          reader.onload = async () => {
+            try {
+              const base64Content = (reader.result as string).split(',')[1];
+              
+              setProgress(40);
+              
+              // Call PDF text extraction edge function
+              const { data: pdfData, error: pdfError } = await supabase.functions.invoke('pdf-text-extractor', {
+                body: {
+                  fileContent: base64Content,
+                  filename: file.name
+                }
+              });
+              
+              setProgress(70);
+              
+              if (pdfError) {
+                throw new Error(`PDF extraction failed: ${pdfError.message}`);
+              }
+              
+              const extractedText = pdfData?.extractedText || `PDF Document: ${file.name}`;
+              const textDensityScore = analyzeTextDensity(extractedText);
+              const medicalAnalysis = await detectMedicalKeywords(extractedText);
+              const structuralCues = detectStructuralCues(extractedText);
+              
+              setProgress(90);
+              
+              const verification = determineVerificationStatus(
+                textDensityScore,
+                medicalAnalysis.count,
+                0.8, // Higher confidence for successful PDF extraction
+                formatSupported
+              );
+              
+              const result: OCRResult = {
+                text: extractedText,
+                confidence: 0.8,
+                textDensityScore,
+                medicalKeywordCount: medicalAnalysis.count,
+                detectedKeywords: medicalAnalysis.keywords,
+                verificationStatus: verification.status,
+                formatSupported: true,
+                processingNotes: `PDF text extracted successfully. ${verification.notes}`,
+                structuralCues
+              };
+              
+              setProgress(100);
+              resolve(result);
+            } catch (error: any) {
+              // Fallback to basic PDF handling if extraction fails
+              console.error('PDF extraction error:', error);
+              
+              const basicResult: OCRResult = {
+                text: `PDF Document: ${file.name}`,
+                confidence: 0.3,
+                textDensityScore: 1,
+                medicalKeywordCount: 0,
+                detectedKeywords: [],
+                verificationStatus: 'user_verified_medical',
+                formatSupported: true,
+                processingNotes: 'PDF text extraction failed. Please verify if this is a medical document.',
+                structuralCues: {
+                  hasDates: false,
+                  hasUnits: false,
+                  hasNumbers: false,
+                  hasTableStructure: false,
+                  hasMedicalRanges: false,
+                  hasLabValues: false,
+                  medicalPatternCount: 0
+                }
+              };
+              
+              resolve(basicResult);
+            }
+          };
+          
+          reader.onerror = () => {
+            reject(new Error('Failed to read PDF file'));
+          };
+          
+          reader.readAsDataURL(file);
+        } catch (error: any) {
+          reject(new Error(`PDF processing failed: ${error.message}`));
+        }
         return;
       }
 
@@ -201,9 +307,9 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
               }
             }
           }
-        ).then(({ data: { text, confidence } }) => {
+        ).then(async ({ data: { text, confidence } }) => {
           const textDensityScore = analyzeTextDensity(text);
-          const medicalAnalysis = detectMedicalKeywords(text);
+          const medicalAnalysis = await detectMedicalKeywords(text);
           const structuralCues = detectStructuralCues(text);
           
           const verification = determineVerificationStatus(
