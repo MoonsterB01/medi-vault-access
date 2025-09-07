@@ -13,7 +13,8 @@ import jsPDF from 'jspdf';
 interface DocumentScannerProps {
   open: boolean;
   onClose: () => void;
-  onScanComplete: (pdfFile: File) => void;
+  onScanComplete: (file: File) => void;
+  onImagesComplete?: (images: File[]) => void;
 }
 
 interface ScannedImage {
@@ -26,10 +27,12 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
   open,
   onClose,
   onScanComplete,
+  onImagesComplete,
 }) => {
   const [scannedImages, setScannedImages] = useState<ScannedImage[]>([]);
   const [documentName, setDocumentName] = useState('');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const { toast } = useToast();
 
@@ -228,6 +231,76 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
     }
   };
 
+  const uploadImages = async () => {
+    if (scannedImages.length === 0) {
+      toast({
+        title: "No images",
+        description: "Please capture at least one image before uploading",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!documentName.trim()) {
+      toast({
+        title: "Document name required",
+        description: "Please enter a name for your document",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploadingImages(true);
+
+    try {
+      const imageFiles: File[] = [];
+      
+      for (let i = 0; i < scannedImages.length; i++) {
+        const image = scannedImages[i];
+        
+        // Convert dataUrl to blob and then to File
+        const response = await fetch(image.dataUrl);
+        const blob = await response.blob();
+        const fileName = scannedImages.length > 1 
+          ? `${documentName}_page_${i + 1}.jpg`
+          : `${documentName}.jpg`;
+          
+        const imageFile = new File([blob], fileName, {
+          type: 'image/jpeg',
+          lastModified: Date.now(),
+        });
+        
+        imageFiles.push(imageFile);
+      }
+
+      if (onImagesComplete) {
+        onImagesComplete(imageFiles);
+      } else {
+        // Fallback: upload first image using onScanComplete
+        onScanComplete(imageFiles[0]);
+      }
+      
+      // Reset state
+      setScannedImages([]);
+      setDocumentName('');
+      onClose();
+
+      toast({
+        title: "Images Ready",
+        description: `${imageFiles.length} image(s) ready for upload`,
+      });
+    } catch (error) {
+      console.error('Error preparing images:', error);
+      toast({
+        title: "Image Upload Failed",
+        description: "Failed to prepare images. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
+
   const handleClose = () => {
     // Clear localStorage when closing
     localStorage.removeItem('scannerImages');
@@ -362,22 +435,43 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                   Add Page
                 </Button>
               )}
-              <Button
-                onClick={generatePDF}
-                disabled={scannedImages.length === 0 || !documentName.trim() || isGeneratingPDF}
-              >
-                {isGeneratingPDF ? (
-                  <>
-                    <RotateCw className="mr-2 h-4 w-4 animate-spin" />
-                    Generating PDF...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Generate PDF
-                  </>
-                )}
-              </Button>
+              {scannedImages.length > 0 && (
+                <>
+                  <Button
+                    onClick={uploadImages}
+                    variant="secondary"
+                    disabled={scannedImages.length === 0 || !documentName.trim() || isUploadingImages}
+                  >
+                    {isUploadingImages ? (
+                      <>
+                        <RotateCw className="mr-2 h-4 w-4 animate-spin" />
+                        Preparing Images...
+                      </>
+                    ) : (
+                      <>
+                        <CameraIcon className="mr-2 h-4 w-4" />
+                        Upload as Images
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={generatePDF}
+                    disabled={scannedImages.length === 0 || !documentName.trim() || isGeneratingPDF}
+                  >
+                    {isGeneratingPDF ? (
+                      <>
+                        <RotateCw className="mr-2 h-4 w-4 animate-spin" />
+                        Generating PDF...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Generate PDF
+                      </>
+                    )}
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -154,6 +154,35 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     });
   };
 
+  const handleImagesComplete = async (imageFiles: File[]) => {
+    if (imageFiles.length === 0) return;
+
+    // If only one image, treat like single file
+    if (imageFiles.length === 1) {
+      handleScanComplete(imageFiles[0]);
+      return;
+    }
+
+    // For multiple images, upload them sequentially
+    toast({
+      title: "Multiple Images Captured",
+      description: `Processing ${imageFiles.length} images...`,
+    });
+
+    // Handle the first image in the UI
+    setFile(imageFiles[0]);
+    setDocumentType("other");
+    
+    // TODO: In a more advanced implementation, we could upload all images
+    // For now, we'll use the first image and show a message about the others
+    toast({
+      title: "Images Ready",
+      description: `${imageFiles.length} images captured. Processing first image for OCR.`,
+    });
+    
+    setShowOCR(true);
+  };
+
   const convertFileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -873,6 +902,7 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
         open={showScanner}
         onClose={() => setShowScanner(false)}
         onScanComplete={handleScanComplete}
+        onImagesComplete={handleImagesComplete}
       />
 
       {/* Content Analyzer */}
