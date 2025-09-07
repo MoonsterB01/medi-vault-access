@@ -158,13 +158,69 @@ async function analyzeWithHybridFiltering(
     };
   }
 
-  // Enhanced Gemini analysis with hybrid filtering context
-  let geminiAnalysis = {
-    keywords: detectedKeywords,
-    categories: ['General Medical'],
-    confidence: medicalKeywordCount >= 2 ? 0.8 : 0.4,
-    entities: {}
-  };
+    // Enhanced Gemini analysis with hybrid filtering context
+    let geminiAnalysis = {
+      keywords: detectedKeywords,
+      categories: [], // Start with empty categories for better classification
+      confidence: medicalKeywordCount >= 2 ? 0.8 : 0.4,
+      entities: {}
+    };
+
+    // Rule-based category assignment before Gemini
+    const textLower = analysisText.toLowerCase();
+    const categories = [];
+    
+    // Specific medical document categorization
+    if (labMatches.length > 0 || detectedKeywords.some(k => k.includes('lab') || k.includes('test') || k.includes('result'))) {
+      categories.push('Lab Results');
+    }
+    
+    if (textLower.includes('pathology') || textLower.includes('biopsy') || textLower.includes('tissue') || textLower.includes('cytology')) {
+      categories.push('Pathology Report');
+    }
+    
+    if (textLower.includes('radiology') || textLower.includes('imaging') || textLower.includes('x-ray') || textLower.includes('ct scan') || textLower.includes('mri') || textLower.includes('ultrasound')) {
+      categories.push('Radiology Report');
+    }
+    
+    if (textLower.includes('prescription') || textLower.includes('medication') || textLower.includes('dosage') || textLower.includes('pharmacy')) {
+      categories.push('Prescription');
+    }
+    
+    if (textLower.includes('consultation') || textLower.includes('visit') || textLower.includes('assessment') || textLower.includes('plan')) {
+      categories.push('Consultation Notes');
+    }
+    
+    if (textLower.includes('discharge') || textLower.includes('admission') || textLower.includes('hospital stay')) {
+      categories.push('Discharge Summary');
+    }
+    
+    if (unitMatches.length > 0 && rangeMatches.length > 0) {
+      categories.push('Blood Work');
+    }
+    
+    if (textLower.includes('vaccination') || textLower.includes('immunization') || textLower.includes('vaccine')) {
+      categories.push('Vaccination Record');
+    }
+    
+    if (textLower.includes('insurance') || textLower.includes('claim') || textLower.includes('coverage') || textLower.includes('copay')) {
+      categories.push('Insurance Document');
+    }
+    
+    if (textLower.includes('referral') || textLower.includes('refer to') || textLower.includes('specialist')) {
+      categories.push('Referral Letter');
+    }
+    
+    if (textLower.includes('surgery') || textLower.includes('operation') || textLower.includes('procedure') || textLower.includes('operative')) {
+      categories.push('Surgical Report');
+    }
+    
+    // Default to General Medical if no specific category found but has medical content
+    if (categories.length === 0 && medicalKeywordCount > 0) {
+      categories.push('General Medical');
+    }
+    
+    geminiAnalysis.categories = categories;
 
   if (geminiApiKey && analysisText.length > 10) {
     try {

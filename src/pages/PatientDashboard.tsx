@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentUpload from "@/components/DocumentUpload";
 import FamilyAccessManager from "@/components/FamilyAccessManager";
 import { EnhancedDocumentSearch } from "@/components/EnhancedDocumentSearch";
+import { ExtractTextDialog } from "@/components/ExtractTextDialog";
 
 export default function PatientDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -656,52 +657,63 @@ export default function PatientDashboard() {
                                 </div>
                               )}
                               
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="flex-1"
-                                  onClick={async () => {
-                                    try {
-                                      const { data } = await supabase.storage
-                                        .from('medical-documents')
-                                        .createSignedUrl(doc.file_path, 3600);
-                                      
-                                      if (data?.signedUrl) {
-                                        window.open(data.signedUrl, '_blank');
-                                      } else {
-                                        toast({
-                                          title: "Error",
-                                          description: "Could not generate download link",
-                                          variant: "destructive",
-                                        });
-                                      }
-                                    } catch (error) {
-                                      console.error('Error creating signed URL:', error);
-                                      toast({
-                                        title: "Error",
-                                        description: "Failed to open document",
-                                        variant: "destructive",
-                                      });
-                                    }
-                                  }}
-                                >
-                                  <Download className="h-4 w-4 mr-2" />
-                                  View
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="destructive" 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteDocument(doc.id, doc.filename);
-                                  }}
-                                  className="px-3"
-                                  title="Delete document"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
+                               <div className="flex gap-2">
+                                 <Button
+                                   size="sm"
+                                   variant="outline"
+                                   onClick={async () => {
+                                     try {
+                                       const { data } = await supabase.storage
+                                         .from('medical-documents')
+                                         .createSignedUrl(doc.file_path, 3600);
+                                       
+                                       if (data?.signedUrl) {
+                                         window.open(data.signedUrl, '_blank');
+                                       } else {
+                                         toast({
+                                           title: "Error",
+                                           description: "Could not generate download link",
+                                           variant: "destructive",
+                                         });
+                                       }
+                                     } catch (error) {
+                                       console.error('Error creating signed URL:', error);
+                                       toast({
+                                         title: "Error",
+                                         description: "Failed to open document",
+                                         variant: "destructive",
+                                       });
+                                     }
+                                   }}
+                                 >
+                                   <Download className="h-4 w-4 mr-2" />
+                                   View
+                                 </Button>
+                                 
+                                 <ExtractTextDialog document={doc}>
+                                   <Button
+                                     size="sm"
+                                     variant="outline"
+                                     title="Extract text and view analysis"
+                                   >
+                                     <FileText className="h-4 w-4 mr-2" />
+                                     Extract Text
+                                   </Button>
+                                 </ExtractTextDialog>
+                                 
+                                 <Button 
+                                   size="sm" 
+                                   variant="destructive" 
+                                   onClick={(e) => {
+                                     e.stopPropagation();
+                                     handleDeleteDocument(doc.id, doc.filename);
+                                   }}
+                                   className="px-3"
+                                   title="Delete document"
+                                 >
+                                   <Trash2 className="h-4 w-4" />
+                                 </Button>
+                               </div>
                             </div>
                           </Card>
                         ))}
