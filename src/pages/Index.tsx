@@ -90,8 +90,8 @@ export default function Index() {
           <Button size="lg" className="px-8 py-3" onClick={handleGetStarted}>
             Get Started
           </Button>
-          <Button variant="outline" size="lg" className="px-8 py-3" onClick={() => navigate('/auth')}>
-            Learn More
+          <Button variant="outline" size="lg" className="px-8 py-3" onClick={() => navigate('/how-it-works')}>
+            How It Works
           </Button>
         </div>
       </header>

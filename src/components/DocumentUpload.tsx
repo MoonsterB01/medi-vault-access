@@ -244,14 +244,14 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
         // High confidence medical document - auto approve
         toast({
           title: "Document Verified",
-          description: `Automatically verified as medical document (${Math.round(aiResult.confidence * 100)}% confidence)`,
+          description: "Document automatically verified as medical content",
         });
       } else if (aiResult.confidence >= 0.3 || aiResult.medicalKeywordCount >= 1) {
         // Medium confidence - ask user
         setRequiresUserVerification(true);
         toast({
           title: "Verification Required",
-          description: `AI analysis suggests possible medical content (${Math.round(aiResult.confidence * 100)}% confidence). Please verify.`,
+          description: "Please confirm if this document contains medical content",
           variant: "default",
         });
       } else {
@@ -259,7 +259,7 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
         setRequiresUserVerification(true);
         toast({
           title: "Document Analysis",
-          description: `Low medical content detected (${Math.round(aiResult.confidence * 100)}% confidence). Please verify if this is a medical document.`,
+          description: "Please verify if this is a medical document",
           variant: "default",
         });
       }
@@ -722,16 +722,6 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
                         <div>
                           <span className="font-medium">Medical Keywords:</span> {ocrResult.medicalKeywordCount}
                         </div>
-                        {ocrResult.confidence > 0 && (
-                          <div>
-                            <span className="font-medium">OCR Confidence:</span> {(ocrResult.confidence * 100).toFixed(0)}%
-                          </div>
-                        )}
-                        {aiAnalysisResult && (
-                          <div>
-                            <span className="font-medium">AI Confidence:</span> {(aiAnalysisResult.confidence * 100).toFixed(0)}%
-                          </div>
-                        )}
                         <div>
                           <span className="font-medium">Format:</span> {ocrResult.formatSupported ? 'Supported' : 'Unsupported'}
                         </div>
@@ -797,7 +787,6 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
                         {aiAnalysisResult && (
                           <div className="bg-yellow-100 p-2 rounded text-xs">
                             <strong>AI Analysis Summary:</strong>
-                            <br />• Confidence: {(aiAnalysisResult.confidence * 100).toFixed(0)}%
                             <br />• Medical terms found: {aiAnalysisResult.medicalKeywordCount}
                             {aiAnalysisResult.categories.length > 0 && (
                               <>
