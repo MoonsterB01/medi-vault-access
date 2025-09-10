@@ -346,17 +346,17 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="emailOrId">Family Member Email or User ID</Label>
+            <Label htmlFor="emailOrId">Family Member Email, User ID, or Patient ID</Label>
             <Input
               id="emailOrId"
               type="text"
               value={emailOrId}
               onChange={(e) => setEmailOrId(e.target.value)}
-              placeholder="Enter email (e.g., family@example.com) or User ID (e.g., USER-5CBE9C94)"
+              placeholder="Enter email, User ID (USER-XXXXXXXX), or Patient ID (MED-XXXXXXXX)"
               className="mt-1"
             />
             <p className="text-sm text-muted-foreground">
-              You can enter either an email address or a User ID. The person must already have an account.
+              You can enter an email address, User ID, or Patient ID. The person must already have an account.
             </p>
           </div>
           <Button 

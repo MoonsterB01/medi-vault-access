@@ -50,7 +50,7 @@ serve(async (req) => {
     const { patientId, familyMemberEmail, canView = true } = await req.json();
 
     if (!patientId || !familyMemberEmail) {
-      return new Response(JSON.stringify({ error: 'Patient ID and family member email/user ID are required' }), {
+      return new Response(JSON.stringify({ error: 'Patient ID and family member email/user ID/patient ID are required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -92,7 +92,7 @@ serve(async (req) => {
       });
     }
 
-    // Find the family member by email or user ID using service role client (bypasses RLS)
+    // Find the family member by email, user ID, or patient ID using service role client (bypasses RLS)
     let familyMember: { id: string; name: string; role: string } | null = null;
     
     console.log(`Searching for family member: ${familyMemberEmail}`);
@@ -110,7 +110,35 @@ serve(async (req) => {
       if (!error && data) {
         familyMember = data;
       }
-    } else {
+    } 
+    // Check if input looks like a Patient ID (MED-XXXXXXXX)
+    else if (familyMemberEmail.toUpperCase().startsWith('MED-')) {
+      console.log('Searching by patient shareable_id using service role');
+      
+      // First find the patient
+      const { data: patientData, error: patientError } = await supabaseAdmin
+        .from('patients')
+        .select('id, name, created_by')
+        .eq('shareable_id', familyMemberEmail.toUpperCase())
+        .single();
+      
+      if (!patientError && patientData) {
+        // Then find the user who created this patient (should be the patient themselves)
+        const { data: userData, error: userError } = await supabaseAdmin
+          .from('users')
+          .select('id, name, role')
+          .eq('id', patientData.created_by)
+          .single();
+        
+        console.log('Patient ID search result:', { patientData, userData, userError });
+        if (!userError && userData) {
+          familyMember = userData;
+        }
+      } else {
+        console.log('Patient ID search failed:', patientError);
+      }
+    } 
+    else {
       // Treat as email address
       console.log('Searching by email using service role');
       const { data, error } = await supabaseAdmin
