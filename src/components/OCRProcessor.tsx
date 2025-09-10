@@ -126,6 +126,33 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
     };
   };
 
+  // Add text validation method
+  const validateExtractedText = (text: string): boolean => {
+    if (!text || text.length < 10) return false;
+    
+    // Check for excessive non-printable or garbled characters
+    const garbagePattern = /[^\w\s.,!?;:()\-'"]/g;
+    const garbageMatches = text.match(garbagePattern) || [];
+    const garbageRatio = garbageMatches.length / text.length;
+    
+    // Check if text has reasonable word patterns
+    const words = text.split(/\s+/).filter(word => word.length > 0);
+    const meaningfulWords = words.filter(word => 
+      word.length >= 2 && 
+      /[a-zA-Z]/.test(word) && 
+      !/^[^a-zA-Z0-9]+$/.test(word) // Not just special characters
+    );
+    
+    const meaningfulRatio = words.length > 0 ? meaningfulWords.length / words.length : 0;
+    
+    // Text is valid if garbage ratio is low and meaningful word ratio is high
+    const isValid = garbageRatio < 0.3 && meaningfulRatio > 0.4;
+    
+    console.log(`Text validation - Length: ${text.length}, Garbage ratio: ${garbageRatio.toFixed(2)}, Meaningful ratio: ${meaningfulRatio.toFixed(2)}, Valid: ${isValid}`);
+    
+    return isValid;
+  };
+
   const determineVerificationStatus = (
     textDensityScore: number, 
     medicalKeywordCount: number, 
@@ -199,7 +226,7 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
         return;
       }
 
-      // Handle PDF with real text extraction
+      // Handle PDF with enhanced text extraction and validation
       if (file.type === 'application/pdf') {
         setCurrentStep('Extracting text from PDF...');
         setProgress(20);
@@ -213,7 +240,7 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
               
               setProgress(40);
               
-              // Call PDF text extraction edge function
+              // Call improved PDF text extraction edge function
               const { data: pdfData, error: pdfError } = await supabase.functions.invoke('pdf-text-extractor', {
                 body: {
                   fileContent: base64Content,
@@ -227,7 +254,38 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
                 throw new Error(`PDF extraction failed: ${pdfError.message}`);
               }
               
-              const extractedText = pdfData?.extractedText || `PDF Document: ${file.name}`;
+              const extractedText = pdfData?.extractedText || '';
+              
+              // Validate extracted text quality
+              const isValidText = validateExtractedText(extractedText);
+              
+              if (!isValidText) {
+                // If text extraction produced garbage, treat as image-based PDF
+                const imageFallbackResult: OCRResult = {
+                  text: `Image-based PDF: ${file.name}`,
+                  confidence: 0.4,
+                  textDensityScore: 1,
+                  medicalKeywordCount: 0,
+                  detectedKeywords: [],
+                  verificationStatus: 'user_verified_medical',
+                  formatSupported: true,
+                  processingNotes: 'This appears to be an image-based PDF. For better text extraction, try converting to images first or use OCR-capable software.',
+                  structuralCues: {
+                    hasDates: false,
+                    hasUnits: false,
+                    hasNumbers: false,
+                    hasTableStructure: false,
+                    hasMedicalRanges: false,
+                    hasLabValues: false,
+                    medicalPatternCount: 0
+                  }
+                };
+                
+                setProgress(100);
+                resolve(imageFallbackResult);
+                return;
+              }
+              
               const textDensityScore = analyzeTextDensity(extractedText);
               const medicalAnalysis = await detectMedicalKeywords(extractedText);
               const structuralCues = detectStructuralCues(extractedText);
@@ -256,18 +314,18 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
               setProgress(100);
               resolve(result);
             } catch (error: any) {
-              // Fallback to basic PDF handling if extraction fails
+              // Enhanced fallback handling
               console.error('PDF extraction error:', error);
               
-              const basicResult: OCRResult = {
-                text: `PDF Document: ${file.name}`,
-                confidence: 0.3,
-                textDensityScore: 1,
+              const fallbackResult: OCRResult = {
+                text: `PDF processing failed: ${file.name}`,
+                confidence: 0.2,
+                textDensityScore: 0,
                 medicalKeywordCount: 0,
                 detectedKeywords: [],
                 verificationStatus: 'user_verified_medical',
                 formatSupported: true,
-                processingNotes: 'PDF text extraction failed. Please verify if this is a medical document.',
+                processingNotes: 'PDF text extraction encountered an error. This may be an encrypted, password-protected, or image-only PDF. Please verify the document type.',
                 structuralCues: {
                   hasDates: false,
                   hasUnits: false,
@@ -279,7 +337,7 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
                 }
               };
               
-              resolve(basicResult);
+              resolve(fallbackResult);
             }
           };
           

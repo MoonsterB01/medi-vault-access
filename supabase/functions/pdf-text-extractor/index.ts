@@ -6,78 +6,113 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Simple PDF text extraction using basic PDF structure parsing
+// Validate if extracted text is readable (not garbage)
+function isTextReadable(text: string): boolean {
+  if (!text || text.length < 10) return false;
+  
+  // Check ratio of readable characters to total characters
+  const readableChars = text.match(/[a-zA-Z0-9\s.,!?;:()\-]/g) || [];
+  const readableRatio = readableChars.length / text.length;
+  
+  // Check if text has reasonable word patterns
+  const words = text.split(/\s+/).filter(word => word.length > 0);
+  const meaningfulWords = words.filter(word => 
+    word.length >= 2 && 
+    /[a-zA-Z]/.test(word) && 
+    !/[^\w\s.,!?;:()\-]/.test(word)
+  );
+  
+  const meaningfulRatio = words.length > 0 ? meaningfulWords.length / words.length : 0;
+  
+  // Text is readable if most characters are readable and most words are meaningful
+  return readableRatio > 0.7 && meaningfulRatio > 0.5;
+}
+
+// Enhanced PDF text extraction using multiple approaches
 async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<string> {
   try {
-    const pdfText = new TextDecoder().decode(pdfBuffer);
+    console.log('Attempting PDF text extraction...');
     
-    // Basic PDF text extraction - look for text objects
-    const textRegex = /BT\s+.*?ET/gs;
-    const textObjects = pdfText.match(textRegex) || [];
+    // Convert to string for text-based PDFs
+    const pdfText = new TextDecoder('utf-8', { fatal: false }).decode(pdfBuffer);
     
-    const extractedText: string[] = [];
+    // Method 1: Look for readable text in streams (for text-based PDFs)
+    const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
+    let extractedTexts: string[] = [];
+    let match;
     
-    for (const textObject of textObjects) {
-      // Extract text from Tj operators
+    while ((match = streamRegex.exec(pdfText)) !== null) {
+      const streamContent = match[1];
+      
+      // Look for readable text patterns in the stream
+      const readableMatches = streamContent.match(/[a-zA-Z][a-zA-Z0-9\s.,!?;:()\-]{5,}/g);
+      if (readableMatches) {
+        extractedTexts.push(...readableMatches);
+      }
+    }
+    
+    // Method 2: Extract text from PDF text objects (Tj operators)
+    const textObjectRegex = /BT\s+([\s\S]*?)\s+ET/g;
+    let textObjectMatch;
+    
+    while ((textObjectMatch = textObjectRegex.exec(pdfText)) !== null) {
+      const textObject = textObjectMatch[1];
+      
+      // Extract text from Tj operators with parentheses
       const tjMatches = textObject.match(/\(([^)]*)\)\s*Tj/g);
       if (tjMatches) {
-        for (const match of tjMatches) {
-          const text = match.match(/\(([^)]*)\)/)?.[1];
-          if (text) {
-            // Decode basic PDF text encoding
-            const decodedText = text
+        for (const tjMatch of tjMatches) {
+          const textMatch = tjMatch.match(/\(([^)]*)\)/);
+          if (textMatch && textMatch[1]) {
+            let text = textMatch[1];
+            // Basic PDF text decoding
+            text = text
               .replace(/\\n/g, '\n')
               .replace(/\\r/g, '\r')
               .replace(/\\t/g, '\t')
               .replace(/\\\(/g, '(')
               .replace(/\\\)/g, ')')
               .replace(/\\\\/g, '\\');
-            extractedText.push(decodedText);
-          }
-        }
-      }
-      
-      // Extract text from TJ operators (array format)
-      const tjArrayMatches = textObject.match(/\[([^\]]*)\]\s*TJ/g);
-      if (tjArrayMatches) {
-        for (const match of tjArrayMatches) {
-          const arrayContent = match.match(/\[([^\]]*)\]/)?.[1];
-          if (arrayContent) {
-            const stringMatches = arrayContent.match(/\(([^)]*)\)/g);
-            if (stringMatches) {
-              for (const stringMatch of stringMatches) {
-                const text = stringMatch.match(/\(([^)]*)\)/)?.[1];
-                if (text) {
-                  extractedText.push(text);
-                }
-              }
+            
+            if (text.length > 2 && /[a-zA-Z]/.test(text)) {
+              extractedTexts.push(text);
             }
           }
         }
       }
     }
     
-    let finalText = extractedText.join(' ').trim();
-    
-    // If basic extraction fails, try stream parsing
-    if (!finalText || finalText.length < 10) {
-      const streamRegex = /stream\s*(.*?)\s*endstream/gs;
-      const streams = pdfText.match(streamRegex) || [];
-      
-      for (const stream of streams) {
-        const streamContent = stream.replace(/^stream\s*/, '').replace(/\s*endstream$/, '');
-        // Look for readable text in streams
-        const readableText = streamContent.match(/[a-zA-Z0-9\s.,!?;:()%-]{10,}/g);
-        if (readableText) {
-          finalText += ' ' + readableText.join(' ');
-        }
-      }
+    // Method 3: Look for any readable text patterns in the entire PDF
+    const generalTextMatches = pdfText.match(/[a-zA-Z][a-zA-Z0-9\s.,!?;:()\-]{10,}/g);
+    if (generalTextMatches) {
+      extractedTexts.push(...generalTextMatches.slice(0, 50)); // Limit to avoid too much noise
     }
     
-    return finalText.trim() || 'PDF content could not be extracted';
+    // Combine and clean the extracted text
+    let finalText = extractedTexts
+      .filter(text => text && text.trim().length > 2)
+      .join(' ')
+      .trim();
+    
+    // Remove excessive whitespace and normalize
+    finalText = finalText
+      .replace(/\s+/g, ' ')
+      .replace(/[^\w\s.,!?;:()\-]/g, ' ')
+      .trim();
+    
+    // Validate if the extracted text is readable
+    if (finalText && isTextReadable(finalText)) {
+      console.log(`Successfully extracted ${finalText.length} characters of readable text`);
+      return finalText;
+    }
+    
+    // If no readable text found, return a message indicating image-based PDF
+    console.log('No readable text found - likely an image-based PDF');
+    return 'This appears to be an image-based PDF. Text extraction requires OCR processing.';
+    
   } catch (error) {
     console.error('PDF extraction error:', error);
-    return 'PDF text extraction failed';
+    return 'PDF text extraction failed. This may be an image-based PDF requiring OCR processing.';
   }
 }
 
