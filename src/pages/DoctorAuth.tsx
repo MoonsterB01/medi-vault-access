@@ -61,26 +61,32 @@ const DoctorAuth = () => {
         // Wait a moment to ensure the session is established
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // Create doctor profile
-        const { error: profileError } = await supabase
-          .from('doctors')
-          .insert([{
-            user_id: authData.user.id,
-            specialization: signUpData.specialization,
-            qualifications: signUpData.qualifications.split(',').map(q => q.trim()).filter(q => q.length > 0),
-            years_experience: parseInt(signUpData.yearsExperience) || 0,
-            consultation_fee: parseFloat(signUpData.consultationFee) || 0,
-            bio: signUpData.bio || '',
-            doctor_id: `DOC-${Math.random().toString(36).substr(2, 8).toUpperCase()}` // Temporary, will be overwritten by trigger
-          }]);
+        // Try to create doctor profile only if session exists
+        const { data: sessionData } = await supabase.auth.getSession();
+        const sessionUserId = sessionData.session?.user?.id;
 
-        if (profileError) {
-          console.error('Profile creation error:', profileError);
-          
-          // If profile creation fails, we should clean up the auth user
-          // But since we can't delete auth users from client side, just show the error
-          throw new Error(`Profile creation failed: ${profileError.message}. Please contact support.`);
+        if (sessionUserId) {
+          const { error: profileError } = await supabase
+            .from('doctors')
+            .insert([{
+              user_id: sessionUserId,
+              specialization: signUpData.specialization,
+              qualifications: signUpData.qualifications.split(',').map(q => q.trim()).filter(q => q.length > 0),
+              years_experience: parseInt(signUpData.yearsExperience) || 0,
+              consultation_fee: parseFloat(signUpData.consultationFee) || 0,
+              bio: signUpData.bio || '',
+              doctor_id: `DOC-${Math.random().toString(36).substr(2, 8).toUpperCase()}`
+            }]);
+
+          if (profileError) {
+            console.error('Profile creation error:', profileError);
+            throw new Error(`Profile creation failed: ${profileError.message}. Please try signing in again after verifying your email.`);
+          }
+        } else {
+          // No active session yet (likely email confirmation enabled)
+          console.warn('No active session after sign up; skipping doctor profile creation until first login');
         }
+
 
         toast({
           title: "Account created successfully!",
