@@ -119,7 +119,14 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
     
     const matchesSearch = doctor.users.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSpecialty = specialtyFilter === "all" || doctor.specialization === specialtyFilter;
+    
+    // Normalize specialization for comparison (handle both "General Medicine" and "general_medicine" formats)
+    const normalizeSpecialty = (specialty: string) => 
+      specialty.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z_]/g, '');
+    
+    const matchesSpecialty = specialtyFilter === "all" || 
+                           normalizeSpecialty(doctor.specialization) === normalizeSpecialty(specialtyFilter);
+    
     return matchesSearch && matchesSpecialty;
   });
 
