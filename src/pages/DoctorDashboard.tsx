@@ -106,6 +106,12 @@ const DoctorDashboard = () => {
 
       if (doctorError) {
         console.error('Error fetching doctor profile:', doctorError);
+        toast({
+          title: "Doctor Profile Missing",
+          description: "Please complete your doctor profile setup first.",
+          variant: "destructive",
+        });
+        navigate('/doctor-auth');
         return;
       }
 
