@@ -39,7 +39,8 @@ const DoctorAuth = () => {
     try {
       const redirectUrl = `${window.location.origin}/doctor-dashboard`;
       
-      const { data, error } = await supabase.auth.signUp({
+      // First create the auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: signUpData.email,
         password: signUpData.password,
         options: {
@@ -51,33 +52,58 @@ const DoctorAuth = () => {
         }
       });
 
-      if (error) throw error;
+      if (authError) {
+        console.error('Auth signup error:', authError);
+        throw authError;
+      }
 
-      if (data.user) {
-        // Create doctor profile with minimal required fields
+      if (authData.user) {
+        // Wait a moment to ensure the session is established
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Create doctor profile
         const { error: profileError } = await supabase
           .from('doctors')
           .insert([{
-            user_id: data.user.id,
+            user_id: authData.user.id,
             specialization: signUpData.specialization,
-            qualifications: signUpData.qualifications.split(',').map(q => q.trim()),
+            qualifications: signUpData.qualifications.split(',').map(q => q.trim()).filter(q => q.length > 0),
             years_experience: parseInt(signUpData.yearsExperience) || 0,
             consultation_fee: parseFloat(signUpData.consultationFee) || 0,
-            bio: signUpData.bio,
+            bio: signUpData.bio || '',
             doctor_id: `DOC-${Math.random().toString(36).substr(2, 8).toUpperCase()}` // Temporary, will be overwritten by trigger
-          }] as any);
+          }]);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          
+          // If profile creation fails, we should clean up the auth user
+          // But since we can't delete auth users from client side, just show the error
+          throw new Error(`Profile creation failed: ${profileError.message}. Please contact support.`);
+        }
 
         toast({
           title: "Account created successfully!",
-          description: "Please check your email to verify your account.",
+          description: "Please check your email to verify your account before signing in.",
+        });
+
+        // Clear the form
+        setSignUpData({
+          email: "",
+          password: "",
+          name: "",
+          specialization: "",
+          qualifications: "",
+          yearsExperience: "",
+          consultationFee: "",
+          bio: ""
         });
       }
     } catch (error: any) {
+      console.error('Signup process error:', error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Registration Error",
+        description: error.message || "Failed to create doctor account. Please try again.",
         variant: "destructive",
       });
     } finally {
