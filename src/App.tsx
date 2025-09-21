@@ -11,6 +11,8 @@ import DocumentTimeline from "./pages/DocumentTimeline";
 import PublicUpload from "./pages/PublicUpload";
 import HowItWorks from "./pages/HowItWorks";
 import NotFound from "./pages/NotFound";
+import DoctorAuth from "./pages/DoctorAuth";
+import DoctorDashboard from "./pages/DoctorDashboard";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,8 @@ const App = () => (
           <Route path="/document-timeline" element={<DocumentTimeline />} />
           <Route path="/upload" element={<PublicUpload />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/doctor-auth" element={<DoctorAuth />} />
+          <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
