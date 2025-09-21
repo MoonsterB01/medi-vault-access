@@ -114,6 +114,9 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
   };
 
   const filteredDoctors = doctors.filter(doctor => {
+    // Skip doctors with null users relationship
+    if (!doctor.users) return false;
+    
     const matchesSearch = doctor.users.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSpecialty = specialtyFilter === "all" || doctor.specialization === specialtyFilter;
