@@ -23,8 +23,9 @@ interface Doctor {
   years_experience: number;
   consultation_fee: number;
   bio: string;
-  users: {
-    id: string; // Add the id field that we need for notifications
+  user_id: string; // include for notifications without relying on nested users
+  users?: {
+    id: string;
     name: string;
     email: string;
   };
@@ -77,6 +78,7 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
         .from('doctors')
         .select(`
           id,
+          user_id,
           doctor_id,
           specialization,
           qualifications,
@@ -114,10 +116,8 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
   };
 
   const filteredDoctors = doctors.filter(doctor => {
-    // Skip doctors with null users relationship
-    if (!doctor.users) return false;
-    
-    const matchesSearch = doctor.users.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const nameOrId = (doctor.users?.name || doctor.doctor_id).toLowerCase();
+    const matchesSearch = nameOrId.includes(searchTerm.toLowerCase()) ||
                          doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase());
     
     // Normalize specialization for comparison (handle both "General Medicine" and "general_medicine" formats)
@@ -163,7 +163,7 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
       const { error: notificationError } = await supabase
         .from('notifications')
         .insert({
-          user_id: selectedDoctor.users.id, // Fix: get user_id from nested users object
+          user_id: selectedDoctor.user_id,
           notification_type: 'appointment_booked',
           title: 'New Appointment Request',
           message: `New appointment request from ${patients.find(p => p.id === selectedPatient)?.name} for ${format(selectedDate, 'MMM dd, yyyy')} at ${selectedTime}`,
@@ -250,7 +250,7 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="font-semibold">{doctor.users.name}</h3>
+                  <h3 className="font-semibold">{doctor.users?.name ?? `Doctor ${doctor.doctor_id}`}</h3>
                   <p className="text-sm text-muted-foreground">ID: {doctor.doctor_id}</p>
                 </div>
               </div>
@@ -303,7 +303,7 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                      <DialogTitle>Book Appointment with Dr. {doctor.users.name}</DialogTitle>
+                      <DialogTitle>Book Appointment with Dr. {doctor.users?.name ?? doctor.doctor_id}</DialogTitle>
                       <DialogDescription>
                         {doctor.specialization.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} • ${doctor.consultation_fee}
                       </DialogDescription>
@@ -415,7 +415,7 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
                         <div className="bg-muted p-4 rounded-lg">
                           <h4 className="font-semibold mb-2">Appointment Summary</h4>
                           <div className="space-y-1 text-sm">
-                            <p><strong>Doctor:</strong> Dr. {doctor.users.name}</p>
+                            <p><strong>Doctor:</strong> Dr. {doctor.users?.name ?? doctor.doctor_id}</p>
                             <p><strong>Specialty:</strong> {doctor.specialization.replace('_', ' ')}</p>
                             <p><strong>Fee:</strong> ${doctor.consultation_fee}</p>
                             {selectedDate && <p><strong>Date:</strong> {format(selectedDate, "PPP")}</p>}
