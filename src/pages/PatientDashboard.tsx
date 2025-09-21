@@ -14,6 +14,9 @@ import DocumentUpload from "@/components/DocumentUpload";
 import FamilyAccessManager from "@/components/FamilyAccessManager";
 import { EnhancedDocumentSearch } from "@/components/EnhancedDocumentSearch";
 import { ExtractTextDialog } from "@/components/ExtractTextDialog";
+import AppointmentBooking from "@/components/AppointmentBooking";
+import AppointmentTracker from "@/components/AppointmentTracker";
+import NotificationCenter from "@/components/NotificationCenter";
 
 export default function PatientDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -353,10 +356,13 @@ export default function PatientDashboard() {
               <p className="text-gray-600">Welcome, {user.name}</p>
             </div>
           </div>
-          <Button onClick={handleSignOut} variant="outline">
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-4">
+            <NotificationCenter user={user} />
+            <Button onClick={handleSignOut} variant="outline">
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -547,14 +553,22 @@ export default function PatientDashboard() {
             </div>
             
             <Tabs defaultValue="documents" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="documents" className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  My Documents
+                  Documents
                 </TabsTrigger>
                 <TabsTrigger value="search" className="flex items-center gap-2">
                   <Search className="h-4 w-4" />
                   Search
+                </TabsTrigger>
+                <TabsTrigger value="appointments" className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Appointments
+                </TabsTrigger>
+                <TabsTrigger value="book-appointment" className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Book Appointment
                 </TabsTrigger>
                 <TabsTrigger value="upload" className="flex items-center gap-2">
                   <Upload className="h-4 w-4" />
@@ -733,6 +747,14 @@ export default function PatientDashboard() {
 
               <TabsContent value="search" className="mt-6">
                 <EnhancedDocumentSearch patientId={patientData?.id} />
+              </TabsContent>
+
+              <TabsContent value="appointments" className="mt-6">
+                <AppointmentTracker user={user} />
+              </TabsContent>
+
+              <TabsContent value="book-appointment" className="mt-6">
+                <AppointmentBooking user={user} />
               </TabsContent>
 
               <TabsContent value="upload" className="mt-6">

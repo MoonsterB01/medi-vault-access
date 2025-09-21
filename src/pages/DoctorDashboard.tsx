@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Clock, Users, FileText, LogOut, Stethoscope, CheckCircle, XCircle, RotateCcw, User } from "lucide-react";
 import { format } from "date-fns";
+import NotificationCenter from "@/components/NotificationCenter";
 
 interface Doctor {
   id: string;
@@ -194,6 +195,20 @@ const DoctorDashboard = () => {
 
       if (error) throw error;
 
+      // Send notification to patients/family members
+      const { error: notificationError } = await supabase.functions.invoke('appointment-notifications', {
+        body: {
+          appointmentId,
+          status,
+          updatedBy: user.id
+        }
+      });
+
+      if (notificationError) {
+        console.error('Error sending notifications:', notificationError);
+        // Don't fail the update if notification fails
+      }
+
       toast({
         title: "Success",
         description: `Appointment ${status} successfully.`,
@@ -264,6 +279,7 @@ const DoctorDashboard = () => {
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              <NotificationCenter user={user} />
               <div className="text-right">
                 <p className="text-sm font-medium">{doctor?.users.name}</p>
                 <p className="text-xs text-muted-foreground">{doctor?.doctor_id}</p>
