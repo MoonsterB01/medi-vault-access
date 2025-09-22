@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Clock, Users, FileText, LogOut, Stethoscope, CheckCircle, XCircle, RotateCcw, User } from "lucide-react";
 import { format } from "date-fns";
+import AppointmentManagement from "@/components/AppointmentManagement";
 import NotificationCenter from "@/components/NotificationCenter";
 
 interface Doctor {
@@ -201,7 +202,7 @@ const DoctorDashboard = () => {
 
       if (error) throw error;
 
-      // Send notification to patients/family members
+      // Send notification to patients/family members using the improved function
       const { error: notificationError } = await supabase.functions.invoke('appointment-notifications', {
         body: {
           appointmentId,
@@ -212,13 +213,18 @@ const DoctorDashboard = () => {
 
       if (notificationError) {
         console.error('Error sending notifications:', notificationError);
-        // Don't fail the update if notification fails
+        // Don't fail the update if notification fails - just log it
+        toast({
+          title: "Partial Success",
+          description: `Appointment ${status} successfully, but some notifications may not have been sent.`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: `Appointment ${status} successfully and notifications sent.`,
+        });
       }
-
-      toast({
-        title: "Success",
-        description: `Appointment ${status} successfully.`,
-      });
 
       // Refresh appointments
       if (doctor) {
@@ -372,107 +378,7 @@ const DoctorDashboard = () => {
           </TabsList>
 
           <TabsContent value="appointments" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Appointment Management</CardTitle>
-                <CardDescription>Review and manage your upcoming appointments</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {appointments.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No appointments scheduled</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {appointments.map((appointment) => (
-                      <div key={appointment.id} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <Avatar>
-                              <AvatarFallback>
-                                <User className="w-4 h-4" />
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <h4 className="font-semibold">{appointment.patients.name}</h4>
-                              <p className="text-sm text-muted-foreground">
-                                {appointment.patients.gender} • {appointment.patients.primary_contact}
-                              </p>
-                            </div>
-                          </div>
-                          <Badge className={getStatusColor(appointment.status)}>
-                            {getStatusIcon(appointment.status)}
-                            <span className="ml-1 capitalize">{appointment.status}</span>
-                          </Badge>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">Date</p>
-                            <p className="font-medium">{format(new Date(appointment.appointment_date), 'MMM dd, yyyy')}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Time</p>
-                            <p className="font-medium">{appointment.appointment_time}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Type</p>
-                            <p className="font-medium capitalize">{appointment.appointment_type.replace('_', ' ')}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">ID</p>
-                            <p className="font-medium">{appointment.appointment_id}</p>
-                          </div>
-                        </div>
-
-                        {appointment.chief_complaint && (
-                          <div>
-                            <p className="text-muted-foreground text-sm">Chief Complaint</p>
-                            <p className="text-sm">{appointment.chief_complaint}</p>
-                          </div>
-                        )}
-
-                        {appointment.patient_notes && (
-                          <div>
-                            <p className="text-muted-foreground text-sm">Patient Notes</p>
-                            <p className="text-sm">{appointment.patient_notes}</p>
-                          </div>
-                        )}
-
-                        {appointment.status === 'pending' && (
-                          <div className="flex space-x-2 pt-2">
-                            <Button
-                              size="sm"
-                              onClick={() => updateAppointmentStatus(appointment.id, 'confirmed')}
-                            >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Confirm
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updateAppointmentStatus(appointment.id, 'cancelled')}
-                            >
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Cancel
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => updateAppointmentStatus(appointment.id, 'rescheduled')}
-                            >
-                              <RotateCcw className="w-4 h-4 mr-1" />
-                              Reschedule
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <AppointmentManagement doctorId={doctor.id} userId={user.id} />
           </TabsContent>
 
           <TabsContent value="patients" className="space-y-6">

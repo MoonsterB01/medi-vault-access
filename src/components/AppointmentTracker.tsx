@@ -88,17 +88,19 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
         return;
       }
 
+      // Use simpler query with joins instead of foreign key references
       const { data, error } = await supabase
         .from('appointments')
         .select(`
           *,
-          doctors!appointments_doctor_id_fkey(
+          doctors!inner(
             doctor_id,
             specialization,
             consultation_fee,
-            users!doctors_user_id_fkey(name, email)
+            user_id,
+            users!inner(name, email)
           ),
-          patients!appointments_patient_id_fkey(name, shareable_id)
+          patients!inner(name, shareable_id)
         `)
         .in('patient_id', patientIds)
         .order('appointment_date', { ascending: true })
@@ -378,7 +380,7 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
                   <div>
                     <h4 className="font-semibold mb-2">Doctor Information</h4>
                     <div className="space-y-2">
-                      <p><strong>Name:</strong> Dr. {selectedAppointment.doctors.users.name}</p>
+                      <p><strong>Name:</strong> Dr. {selectedAppointment.doctors?.users?.name || selectedAppointment.doctors?.doctor_id || 'Unknown Doctor'}</p>
                       <p><strong>Specialty:</strong> {selectedAppointment.doctors.specialization.replace('_', ' ')}</p>
                       <p><strong>Fee:</strong> ${selectedAppointment.doctors.consultation_fee}</p>
                       <p><strong>ID:</strong> {selectedAppointment.doctors.doctor_id}</p>
@@ -477,7 +479,7 @@ const AppointmentCard = ({
             </AvatarFallback>
           </Avatar>
           <div>
-            <h4 className="font-semibold">Dr. {appointment.doctors.users.name}</h4>
+            <h4 className="font-semibold">Dr. {appointment.doctors?.users?.name || appointment.doctors?.doctor_id || 'Unknown Doctor'}</h4>
             <p className="text-sm text-muted-foreground">
               {appointment.doctors.specialization.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
             </p>
