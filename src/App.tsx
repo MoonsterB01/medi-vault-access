@@ -13,6 +13,9 @@ import HowItWorks from "./pages/HowItWorks";
 import NotFound from "./pages/NotFound";
 import DoctorAuth from "./pages/DoctorAuth";
 import DoctorDashboard from "./pages/DoctorDashboard";
+import PatientDocuments from "./pages/PatientDocuments";
+import PatientAppointments from "./pages/PatientAppointments";
+import PatientBookAppointment from "./pages/PatientBookAppointment";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +30,9 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/hospital-dashboard" element={<HospitalDashboard />} />
           <Route path="/patient-dashboard" element={<PatientDashboard />} />
+          <Route path="/patient-dashboard/documents" element={<PatientDocuments />} />
+          <Route path="/patient-dashboard/appointments" element={<PatientAppointments />} />
+          <Route path="/patient-dashboard/book" element={<PatientBookAppointment />} />
           <Route path="/document-timeline" element={<DocumentTimeline />} />
           <Route path="/upload" element={<PublicUpload />} />
           <Route path="/how-it-works" element={<HowItWorks />} />

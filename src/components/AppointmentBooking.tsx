@@ -361,7 +361,24 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
                               <SelectValue placeholder="Select time" />
                             </SelectTrigger>
                             <SelectContent>
-                              {timeSlots.map((time) => (
+                              {timeSlots
+                                .filter((time) => {
+                                  if (!selectedDate) return true;
+                                  
+                                  // If selected date is today, filter out past time slots
+                                  const today = new Date();
+                                  const isToday = selectedDate.toDateString() === today.toDateString();
+                                  
+                                  if (!isToday) return true;
+                                  
+                                  // Parse time slot and compare with current time
+                                  const [hours, minutes] = time.split(':').map(Number);
+                                  const slotTime = new Date();
+                                  slotTime.setHours(hours, minutes, 0, 0);
+                                  
+                                  return slotTime > today;
+                                })
+                                .map((time) => (
                                 <SelectItem key={time} value={time}>
                                   <div className="flex items-center">
                                     <Clock className="w-4 h-4 mr-2" />
