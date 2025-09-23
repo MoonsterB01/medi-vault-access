@@ -117,7 +117,14 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
         });
       }
 
-      fetchAppointments();
+    // Also need to handle cancelled appointments differently - 
+    // Hide them from active appointments but keep them for history
+    if (status === 'cancelled') {
+      // For cancelled appointments, we should refresh the UI to remove them
+      // This will be handled by the real-time subscription in the frontend
+    }
+
+    fetchAppointments();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -150,6 +157,10 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
   };
 
   const getAppointmentsByStatus = (status: string) => {
+    if (status === 'active') {
+      // Show all appointments except cancelled ones
+      return appointments.filter(apt => apt.status !== 'cancelled');
+    }
     return appointments.filter(apt => apt.status === status);
   };
 
@@ -221,21 +232,21 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
         </Card>
       </div>
 
-      {/* Appointments List */}
+      {/* Appointments List - Filter out cancelled appointments */}
       <Card>
         <CardHeader>
           <CardTitle>Your Appointments</CardTitle>
           <CardDescription>Manage your patient appointments</CardDescription>
         </CardHeader>
         <CardContent>
-          {appointments.length === 0 ? (
+          {appointments.filter(apt => apt.status !== 'cancelled').length === 0 ? (
             <div className="text-center py-8">
               <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">No appointments scheduled</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {appointments.map((appointment) => (
+              {appointments.filter(apt => apt.status !== 'cancelled').map((appointment) => (
                 <div key={appointment.id} className="border rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">

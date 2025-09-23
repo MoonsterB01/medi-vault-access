@@ -31,18 +31,26 @@ serve(async (req) => {
       .from('appointments')
       .select(`
         *,
-        patients!inner(name, shareable_id),
-        doctors!inner(
+        patients(name, shareable_id),
+        doctors(
           doctor_id,
           specialization,
-          users!inner(name, email)
+          users(name, email)
         )
       `)
       .eq('id', appointmentId)
-      .single();
+      .maybeSingle();
 
-    if (appointmentError || !appointment) {
+    if (appointmentError) {
       console.error('Error fetching appointment:', appointmentError);
+      return new Response(
+        JSON.stringify({ error: 'Database error fetching appointment', details: appointmentError.message }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    if (!appointment) {
+      console.error('Appointment not found for ID:', appointmentId);
       return new Response(
         JSON.stringify({ error: 'Appointment not found' }),
         { status: 404, headers: corsHeaders }
@@ -52,7 +60,10 @@ serve(async (req) => {
     // Get all users who have access to this patient (family members)
     const { data: familyAccess, error: accessError } = await supabaseClient
       .from('family_access')
-      .select('user_id, users!inner(name, email)')
+      .select(`
+        user_id,
+        users(name, email)
+      `)
       .eq('patient_id', appointment.patient_id)
       .eq('can_view', true);
 
@@ -62,6 +73,15 @@ serve(async (req) => {
 
     const notifications = [];
     const doctorName = appointment.doctors?.users?.name || appointment.doctors?.doctor_id || 'Doctor';
+
+    console.log('Processing appointment notification:', {
+      appointmentId,
+      status,
+      updatedBy,
+      appointmentFound: !!appointment,
+      patientName: appointment?.patients?.name,
+      doctorName
+    });
 
     // Create notifications for family members with access
     if (familyAccess && familyAccess.length > 0) {

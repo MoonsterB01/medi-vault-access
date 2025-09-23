@@ -169,17 +169,24 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
     }
   };
 
-  const filterAppointments = (status?: string) => {
-    if (!status) return appointments;
+  const filterAppointments = (status: string) => {
+    if (status === 'all') {
+      return appointments;
+    }
+    if (status === 'active') {
+      // Show all non-cancelled appointments
+      return appointments.filter(apt => apt.status !== 'cancelled');
+    }
     return appointments.filter(apt => apt.status === status);
   };
 
-  const upcomingAppointments = appointments.filter(apt => 
-    apt.status === 'confirmed' && new Date(apt.appointment_date) >= new Date()
+  const upcomingAppointments = filterAppointments('active').filter(apt => 
+    (apt.status === 'confirmed' || apt.status === 'pending') && 
+    new Date(apt.appointment_date) >= new Date()
   );
-
   const pendingAppointments = filterAppointments('pending');
   const completedAppointments = filterAppointments('completed');
+  const cancelledAppointments = filterAppointments('cancelled');
 
   if (loading) {
     return (
@@ -233,10 +240,10 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
-              <Stethoscope className="w-5 h-5 text-purple-600" />
+              <XCircle className="w-5 h-5 text-red-600" />
               <div>
-                <p className="text-2xl font-bold">{appointments.length}</p>
-                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold">{cancelledAppointments.length}</p>
+                <p className="text-sm text-muted-foreground">Cancelled</p>
               </div>
             </div>
           </CardContent>
@@ -249,6 +256,7 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
           <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
           <TabsTrigger value="pending">Pending ({pendingAppointments.length})</TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
+          <TabsTrigger value="cancelled">Cancelled ({cancelledAppointments.length})</TabsTrigger>
           <TabsTrigger value="all">All</TabsTrigger>
         </TabsList>
 
@@ -317,6 +325,33 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
           ) : (
             <div className="space-y-4">
               {completedAppointments.map((appointment) => (
+                <AppointmentCard 
+                  key={appointment.id} 
+                  appointment={appointment}
+                  onViewDetails={(apt) => {
+                    setSelectedAppointment(apt);
+                    setPatientNotes(apt.patient_notes || "");
+                    setDialogOpen(true);
+                  }}
+                  getStatusColor={getStatusColor}
+                  getStatusIcon={getStatusIcon}
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="cancelled" className="space-y-4">
+          {cancelledAppointments.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <XCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No cancelled appointments</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {cancelledAppointments.map((appointment) => (
                 <AppointmentCard 
                   key={appointment.id} 
                   appointment={appointment}
@@ -467,22 +502,20 @@ const AppointmentCard = ({
   appointment: Appointment;
   onViewDetails: (appointment: Appointment) => void;
   getStatusColor: (status: string) => string;
-  getStatusIcon: (status: string) => React.ReactNode;
+  getStatusIcon: (status: string) => JSX.Element;
 }) => (
   <Card className="hover:shadow-md transition-shadow">
-    <CardContent className="p-6">
-      <div className="flex items-center justify-between mb-4">
+    <CardContent className="p-4">
+      <div className="flex justify-between items-start mb-3">
         <div className="flex items-center space-x-3">
           <Avatar>
             <AvatarFallback>
-              <Stethoscope className="w-4 h-4" />
+              <User className="w-4 h-4" />
             </AvatarFallback>
           </Avatar>
           <div>
             <h4 className="font-semibold">Dr. {appointment.doctors?.users?.name || appointment.doctors?.doctor_id || 'Unknown Doctor'}</h4>
-            <p className="text-sm text-muted-foreground">
-              {appointment.doctors.specialization.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-            </p>
+            <p className="text-sm text-muted-foreground">{appointment.doctors.specialization.replace('_', ' ')}</p>
           </div>
         </div>
         <Badge className={getStatusColor(appointment.status)}>
@@ -491,18 +524,10 @@ const AppointmentCard = ({
         </Badge>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
+      <div className="grid grid-cols-2 gap-4 text-sm mb-3">
         <div>
-          <p className="text-muted-foreground">Patient</p>
-          <p className="font-medium">{appointment.patients.name}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Date</p>
-          <p className="font-medium">{format(new Date(appointment.appointment_date), 'MMM dd, yyyy')}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Time</p>
-          <p className="font-medium">{appointment.appointment_time}</p>
+          <p className="text-muted-foreground">Date & Time</p>
+          <p className="font-medium">{format(new Date(appointment.appointment_date), 'MMM dd, yyyy')} at {appointment.appointment_time}</p>
         </div>
         <div>
           <p className="text-muted-foreground">Type</p>
@@ -510,18 +535,13 @@ const AppointmentCard = ({
         </div>
       </div>
 
-      {appointment.chief_complaint && (
-        <div className="mb-4">
-          <p className="text-muted-foreground text-sm">Chief Complaint</p>
-          <p className="text-sm line-clamp-2">{appointment.chief_complaint}</p>
-        </div>
-      )}
-
       <div className="flex justify-between items-center">
-        <p className="text-sm text-muted-foreground">
-          ID: {appointment.appointment_id}
-        </p>
-        <Button variant="outline" size="sm" onClick={() => onViewDetails(appointment)}>
+        <p className="text-sm text-muted-foreground">ID: {appointment.appointment_id}</p>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => onViewDetails(appointment)}
+        >
           View Details
         </Button>
       </div>
