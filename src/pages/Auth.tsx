@@ -9,6 +9,39 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Shield, Hospital, Users, User } from "lucide-react";
+import { z } from "zod";
+
+// Secure validation schemas
+const signInSchema = z.object({
+  email: z.string()
+    .trim()
+    .email({ message: "Please enter a valid email address" })
+    .max(255, { message: "Email must be less than 255 characters" }),
+  password: z.string()
+    .min(1, { message: "Password is required" })
+});
+
+const signUpSchema = z.object({
+  name: z.string()
+    .trim()
+    .min(2, { message: "Name must be at least 2 characters" })
+    .max(100, { message: "Name must be less than 100 characters" })
+    .regex(/^[a-zA-Z\s'-]+$/, { message: "Name can only contain letters, spaces, hyphens, and apostrophes" }),
+  email: z.string()
+    .trim()
+    .email({ message: "Please enter a valid email address" })
+    .max(255, { message: "Email must be less than 255 characters" }),
+  password: z.string()
+    .min(8, { message: "Password must be at least 8 characters" })
+    .max(128, { message: "Password must be less than 128 characters" })
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, { 
+      message: "Password must contain at least one lowercase letter, one uppercase letter, and one number" 
+    }),
+  role: z.string()
+    .refine((value) => ["hospital_staff", "patient", "family_member"].includes(value), {
+      message: "Please select a valid role"
+    })
+});
 
 export default function Auth() {
   const [loading, setLoading] = useState(false);
@@ -19,22 +52,32 @@ export default function Auth() {
     role: "",
     hospitalId: "",
   });
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setValidationErrors({});
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      // Validate input data
+      const validatedData = signUpSchema.parse({
+        name: formData.name,
         email: formData.email,
         password: formData.password,
+        role: formData.role
+      });
+
+      const { data, error } = await supabase.auth.signUp({
+        email: validatedData.email,
+        password: validatedData.password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
           data: {
-            name: formData.name,
-            role: formData.role,
+            name: validatedData.name,
+            role: validatedData.role,
           }
         }
       });
@@ -47,14 +90,16 @@ export default function Auth() {
           .from('users')
           .insert({
             id: data.user.id,
-            name: formData.name,
-            email: formData.email,
-            role: formData.role as any,
+            name: validatedData.name,
+            email: validatedData.email,
+            role: validatedData.role as any,
             hospital_id: formData.hospitalId || null,
           });
 
         if (profileError) {
-          console.error('Profile creation error:', profileError);
+          // Log error securely without exposing sensitive data
+          console.error('Profile creation failed');
+          throw new Error('Failed to create user profile. Please try again.');
         }
 
         toast({
@@ -63,11 +108,28 @@ export default function Auth() {
         });
       }
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      if (error instanceof z.ZodError) {
+        // Handle validation errors
+        const fieldErrors: Record<string, string> = {};
+        error.issues.forEach((issue) => {
+          if (issue.path[0]) {
+            fieldErrors[issue.path[0] as string] = issue.message;
+          }
+        });
+        setValidationErrors(fieldErrors);
+        
+        toast({
+          title: "Validation Error",
+          description: "Please check the form fields and try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "An unexpected error occurred. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -76,11 +138,18 @@ export default function Auth() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setValidationErrors({});
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // Validate input data
+      const validatedData = signInSchema.parse({
         email: formData.email,
-        password: formData.password,
+        password: formData.password
+      });
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: validatedData.email,
+        password: validatedData.password,
       });
 
       if (error) throw error;
@@ -106,11 +175,28 @@ export default function Auth() {
         }
       }
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      if (error instanceof z.ZodError) {
+        // Handle validation errors
+        const fieldErrors: Record<string, string> = {};
+        error.issues.forEach((issue) => {
+          if (issue.path[0]) {
+            fieldErrors[issue.path[0] as string] = issue.message;
+          }
+        });
+        setValidationErrors(fieldErrors);
+        
+        toast({
+          title: "Validation Error",
+          description: "Please check the form fields and try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message || "Authentication failed. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -152,7 +238,11 @@ export default function Auth() {
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       required
+                      className={validationErrors.email ? "border-red-500" : ""}
                     />
+                    {validationErrors.email && (
+                      <p className="text-sm text-red-500">{validationErrors.email}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signin-password">Password</Label>
@@ -163,7 +253,11 @@ export default function Auth() {
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       required
+                      className={validationErrors.password ? "border-red-500" : ""}
                     />
+                    {validationErrors.password && (
+                      <p className="text-sm text-red-500">{validationErrors.password}</p>
+                    )}
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Signing in..." : "Sign In"}
@@ -182,7 +276,11 @@ export default function Auth() {
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       required
+                      className={validationErrors.name ? "border-red-500" : ""}
                     />
+                    {validationErrors.name && (
+                      <p className="text-sm text-red-500">{validationErrors.name}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
@@ -193,23 +291,34 @@ export default function Auth() {
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       required
+                      className={validationErrors.email ? "border-red-500" : ""}
                     />
+                    {validationErrors.email && (
+                      <p className="text-sm text-red-500">{validationErrors.email}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
                     <Input
                       id="signup-password"
                       type="password"
-                      placeholder="Create a password"
+                      placeholder="Create a password (min 8 chars, uppercase, lowercase, number)"
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                       required
+                      className={validationErrors.password ? "border-red-500" : ""}
                     />
+                    {validationErrors.password && (
+                      <p className="text-sm text-red-500">{validationErrors.password}</p>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      Password must contain at least 8 characters with uppercase, lowercase, and number
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="role">Role</Label>
                     <Select onValueChange={(value) => setFormData({ ...formData, role: value })}>
-                      <SelectTrigger>
+                      <SelectTrigger className={validationErrors.role ? "border-red-500" : ""}>
                         <SelectValue placeholder="Select your role" />
                       </SelectTrigger>
                       <SelectContent>
@@ -233,6 +342,9 @@ export default function Auth() {
                         </SelectItem>
                       </SelectContent>
                     </Select>
+                    {validationErrors.role && (
+                      <p className="text-sm text-red-500">{validationErrors.role}</p>
+                    )}
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Creating account..." : "Create Account"}
