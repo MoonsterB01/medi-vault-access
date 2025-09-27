@@ -910,16 +910,8 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
-      get_user_hospital: {
-        Args: { user_id: string }
-        Returns: string
-      }
       get_user_primary_role: {
         Args: { _user_id: string }
-        Returns: Database["public"]["Enums"]["user_role"]
-      }
-      get_user_role: {
-        Args: { user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
       }
       has_role: {
