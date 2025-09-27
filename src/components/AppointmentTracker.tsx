@@ -72,6 +72,8 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
 
   const fetchAppointments = async () => {
     try {
+      console.log('Fetching appointments for user:', user.id);
+      
       // Get appointments for patients the user has access to
       const { data: familyAccess, error: accessError } = await supabase
         .from('family_access')
@@ -79,35 +81,80 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
         .eq('user_id', user.id)
         .eq('can_view', true);
 
-      if (accessError) throw accessError;
+      if (accessError) {
+        console.error('Error fetching family access:', accessError);
+        throw accessError;
+      }
 
+      console.log('Family access data:', familyAccess);
       const patientIds = familyAccess?.map(fa => fa.patient_id) || [];
 
       if (patientIds.length === 0) {
+        console.log('No patient access found for user');
         setAppointments([]);
         return;
       }
 
-      // Use simpler query with joins instead of foreign key references
-      const { data, error } = await supabase
+      console.log('Fetching appointments for patient IDs:', patientIds);
+
+      // Use separate queries to avoid join issues
+      const { data: appointmentsData, error: appointmentsError } = await supabase
         .from('appointments')
-        .select(`
-          *,
-          doctors!inner(
-            doctor_id,
-            specialization,
-            consultation_fee,
-            user_id,
-            users!inner(name, email)
-          ),
-          patients!inner(name, shareable_id)
-        `)
+        .select('*')
         .in('patient_id', patientIds)
         .order('appointment_date', { ascending: true })
         .order('appointment_time', { ascending: true });
 
-      if (error) throw error;
-      setAppointments(data || []);
+      if (appointmentsError) {
+        console.error('Error fetching appointments:', appointmentsError);
+        throw appointmentsError;
+      }
+
+      console.log('Raw appointments data:', appointmentsData);
+
+      if (!appointmentsData || appointmentsData.length === 0) {
+        console.log('No appointments found');
+        setAppointments([]);
+        return;
+      }
+
+      // Get doctor details separately
+      const doctorIds = [...new Set(appointmentsData.map(apt => apt.doctor_id))];
+      const { data: doctorsData, error: doctorsError } = await supabase
+        .from('doctors')
+        .select(`
+          id,
+          doctor_id,
+          specialization,
+          consultation_fee,
+          user_id,
+          users(name, email)
+        `)
+        .in('id', doctorIds);
+
+      if (doctorsError) {
+        console.error('Error fetching doctors:', doctorsError);
+      }
+
+      // Get patient details separately
+      const { data: patientsData, error: patientsError } = await supabase
+        .from('patients')
+        .select('id, name, shareable_id')
+        .in('id', patientIds);
+
+      if (patientsError) {
+        console.error('Error fetching patients:', patientsError);
+      }
+
+      // Combine the data
+      const enrichedAppointments = appointmentsData.map(appointment => ({
+        ...appointment,
+        doctors: doctorsData?.find(doc => doc.id === appointment.doctor_id) || null,
+        patients: patientsData?.find(patient => patient.id === appointment.patient_id) || null
+      }));
+
+      console.log('Enriched appointments:', enrichedAppointments);
+      setAppointments(enrichedAppointments);
     } catch (error) {
       console.error('Error fetching appointments:', error);
       toast({

@@ -12,32 +12,30 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Appointment notifications function called');
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
     )
 
-    const { appointmentId, status, updatedBy } = await req.json();
+    const requestBody = await req.json();
+    console.log('Request body:', requestBody);
+    
+    const { appointmentId, status, updatedBy } = requestBody;
 
     if (!appointmentId || !status || !updatedBy) {
+      console.error('Missing required fields:', { appointmentId, status, updatedBy });
       return new Response(
         JSON.stringify({ error: 'Missing required fields: appointmentId, status, updatedBy' }),
         { status: 400, headers: corsHeaders }
       );
     }
 
-    // Get appointment details with patient and doctor info
+    // Get appointment details first
     const { data: appointment, error: appointmentError } = await supabaseClient
       .from('appointments')
-      .select(`
-        *,
-        patients(name, shareable_id),
-        doctors(
-          doctor_id,
-          specialization,
-          users(name, email)
-        )
-      `)
+      .select('*')
       .eq('id', appointmentId)
       .maybeSingle();
 
@@ -57,6 +55,43 @@ serve(async (req) => {
       );
     }
 
+    console.log('Found appointment:', appointment);
+
+    // Get patient details separately
+    const { data: patient, error: patientError } = await supabaseClient
+      .from('patients')
+      .select('name, shareable_id')
+      .eq('id', appointment.patient_id)
+      .maybeSingle();
+
+    if (patientError) {
+      console.error('Error fetching patient:', patientError);
+    }
+
+    // Get doctor details separately
+    const { data: doctor, error: doctorError } = await supabaseClient
+      .from('doctors')
+      .select(`
+        doctor_id,
+        specialization,
+        user_id,
+        users(name, email)
+      `)
+      .eq('id', appointment.doctor_id)
+      .maybeSingle();
+
+    if (doctorError) {
+      console.error('Error fetching doctor:', doctorError);
+    }
+
+    // Construct appointment object with related data
+    const appointmentWithDetails = {
+      ...appointment,
+      patients: patient,
+      doctors: doctor
+    };
+
+
     // Get all users who have access to this patient (family members)
     const { data: familyAccess, error: accessError } = await supabaseClient
       .from('family_access')
@@ -64,23 +99,30 @@ serve(async (req) => {
         user_id,
         users(name, email)
       `)
-      .eq('patient_id', appointment.patient_id)
+      .eq('patient_id', appointmentWithDetails.patient_id)
       .eq('can_view', true);
 
     if (accessError) {
       console.error('Error fetching family access:', accessError);
+      return new Response(
+        JSON.stringify({ error: 'Database error fetching family access', details: accessError.message }),
+        { status: 500, headers: corsHeaders }
+      );
     }
 
+    console.log('Family access data:', familyAccess);
+
     const notifications = [];
-    const doctorName = appointment.doctors?.users?.name || appointment.doctors?.doctor_id || 'Doctor';
+    const doctorName = appointmentWithDetails.doctors?.users?.name || appointmentWithDetails.doctors?.doctor_id || 'Doctor';
 
     console.log('Processing appointment notification:', {
       appointmentId,
       status,
       updatedBy,
-      appointmentFound: !!appointment,
-      patientName: appointment?.patients?.name,
-      doctorName
+      appointmentFound: !!appointmentWithDetails,
+      patientName: appointmentWithDetails?.patients?.name,
+      doctorName,
+      familyAccessCount: familyAccess?.length || 0
     });
 
     // Create notifications for family members with access
@@ -90,14 +132,14 @@ serve(async (req) => {
           user_id: access.user_id,
           notification_type: 'appointment_status_update',
           title: getNotificationTitle(status, doctorName),
-          message: getNotificationMessage(status, appointment, doctorName),
+          message: getNotificationMessage(status, appointmentWithDetails, doctorName),
           appointment_id: appointmentId,
           metadata: {
-            appointment_date: appointment.appointment_date,
-            appointment_time: appointment.appointment_time,
-            patient_name: appointment.patients?.name,
+            appointment_date: appointmentWithDetails.appointment_date,
+            appointment_time: appointmentWithDetails.appointment_time,
+            patient_name: appointmentWithDetails.patients?.name,
             doctor_name: doctorName,
-            old_status: appointment.status,
+            old_status: appointmentWithDetails.status,
             new_status: status
           }
         });
@@ -106,6 +148,7 @@ serve(async (req) => {
 
     // Insert all notifications
     if (notifications.length > 0) {
+      console.log('Inserting notifications:', notifications);
       const { error: notificationError } = await supabaseClient
         .from('notifications')
         .insert(notifications);
@@ -120,6 +163,9 @@ serve(async (req) => {
           { status: 500, headers: corsHeaders }
         );
       }
+      console.log('Successfully inserted notifications');
+    } else {
+      console.log('No notifications to insert - no family access found');
     }
 
     return new Response(

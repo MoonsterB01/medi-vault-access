@@ -59,18 +59,52 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
 
   const fetchAppointments = async () => {
     try {
-      const { data, error } = await supabase
+      console.log('Fetching appointments for doctor:', doctorId);
+      
+      const { data: appointmentsData, error: appointmentsError } = await supabase
         .from('appointments')
-        .select(`
-          *,
-          patients!inner(name, dob, gender, primary_contact)
-        `)
+        .select('*')
         .eq('doctor_id', doctorId)
         .order('appointment_date', { ascending: true })
         .order('appointment_time', { ascending: true });
 
-      if (error) throw error;
-      setAppointments(data || []);
+      if (appointmentsError) {
+        console.error('Error fetching appointments:', appointmentsError);
+        throw appointmentsError;
+      }
+
+      console.log('Raw appointments data:', appointmentsData);
+
+      if (!appointmentsData || appointmentsData.length === 0) {
+        console.log('No appointments found for doctor');
+        setAppointments([]);
+        return;
+      }
+
+      // Get patient details separately to avoid join issues
+      const patientIds = [...new Set(appointmentsData.map(apt => apt.patient_id))];
+      const { data: patientsData, error: patientsError } = await supabase
+        .from('patients')
+        .select('id, name, dob, gender, primary_contact')
+        .in('id', patientIds);
+
+      if (patientsError) {
+        console.error('Error fetching patients:', patientsError);
+      }
+
+      // Combine the data
+      const enrichedAppointments = appointmentsData.map(appointment => ({
+        ...appointment,
+        patients: patientsData?.find(patient => patient.id === appointment.patient_id) || {
+          name: 'Unknown Patient',
+          dob: '',
+          gender: 'Unknown',
+          primary_contact: ''
+        }
+      }));
+
+      console.log('Enriched appointments:', enrichedAppointments);
+      setAppointments(enrichedAppointments);
     } catch (error) {
       console.error('Error fetching appointments:', error);
       toast({
