@@ -34,6 +34,7 @@ interface AppointmentManagementProps {
 const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancellingIds, setCancellingIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   useEffect(() => {
@@ -119,6 +120,38 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
 
   const updateAppointmentStatus = async (appointmentId: string, status: string) => {
     try {
+      // Add visual feedback for cancellation
+      if (status === 'cancelled') {
+        setCancellingIds(prev => new Set(prev).add(appointmentId));
+        
+        // Wait for animation to complete before updating data
+        setTimeout(async () => {
+          await performStatusUpdate(appointmentId, status);
+          setCancellingIds(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(appointmentId);
+            return newSet;
+          });
+        }, 500); // Match the animation duration
+      } else {
+        await performStatusUpdate(appointmentId, status);
+      }
+    } catch (error: any) {
+      setCancellingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(appointmentId);
+        return newSet;
+      });
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const performStatusUpdate = async (appointmentId: string, status: string) => {
+    try {
       const { error } = await supabase
         .from('appointments')
         .update({ 
@@ -151,20 +184,9 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
         });
       }
 
-    // Also need to handle cancelled appointments differently - 
-    // Hide them from active appointments but keep them for history
-    if (status === 'cancelled') {
-      // For cancelled appointments, we should refresh the UI to remove them
-      // This will be handled by the real-time subscription in the frontend
-    }
-
-    fetchAppointments();
+      fetchAppointments();
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      throw error;
     }
   };
 
@@ -281,7 +303,14 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
           ) : (
             <div className="space-y-4">
               {appointments.filter(apt => apt.status !== 'cancelled').map((appointment) => (
-                <div key={appointment.id} className="border rounded-lg p-4 space-y-3">
+                <div 
+                  key={appointment.id} 
+                  className={`border rounded-lg p-4 space-y-3 transition-all duration-500 ${
+                    cancellingIds.has(appointment.id) 
+                      ? 'animate-slide-out-left' 
+                      : 'animate-fade-in'
+                  }`}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <Avatar>
@@ -348,9 +377,11 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
                         size="sm"
                         variant="outline"
                         onClick={() => updateAppointmentStatus(appointment.id, 'cancelled')}
+                        disabled={cancellingIds.has(appointment.id)}
+                        className="transition-all duration-200"
                       >
                         <XCircle className="w-4 h-4 mr-1" />
-                        Cancel
+                        {cancellingIds.has(appointment.id) ? 'Cancelling...' : 'Cancel'}
                       </Button>
                     </div>
                   )}
