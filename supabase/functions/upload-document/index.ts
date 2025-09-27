@@ -294,6 +294,27 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Document uploaded successfully:', documentData.id);
 
+    // Send notifications to family members about the new document upload
+    try {
+      const { error: notificationError } = await supabase.functions.invoke('notify-patient-upload', {
+        body: {
+          documentId: documentData.id,
+          patientId: patient.id,
+          uploadedBy: user.id,
+          filename: file.name,
+          documentType: documentType
+        }
+      });
+      
+      if (notificationError) {
+        console.error('Error sending upload notifications:', notificationError);
+      } else {
+        console.log('Upload notifications sent successfully');
+      }
+    } catch (notificationError) {
+      console.error('Failed to send upload notifications:', notificationError);
+    }
+
     // Insert keywords into document_keywords table if we have AI analysis
     if (aiAnalysisResult && aiAnalysisResult.keywords.length > 0) {
       const keywordInserts: any[] = [];

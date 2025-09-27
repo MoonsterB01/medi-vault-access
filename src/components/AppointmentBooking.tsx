@@ -166,18 +166,18 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
 
       if (error) throw error;
 
-      // Create notification for the doctor
+      // Create notification for the doctor using the unified function
+      const patientName = patients.find(p => p.id === selectedPatient)?.name;
       const { error: notificationError } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: selectedDoctor.user_id,
+        .rpc('create_notification', {
+          target_user_id: selectedDoctor.user_id,
+          notification_title: 'New Appointment Request',
+          notification_message: `New appointment request from ${patientName} for ${format(selectedDate, 'MMM dd, yyyy')} at ${selectedTime}`,
           notification_type: 'appointment_booked',
-          title: 'New Appointment Request',
-          message: `New appointment request from ${patients.find(p => p.id === selectedPatient)?.name} for ${format(selectedDate, 'MMM dd, yyyy')} at ${selectedTime}`,
-          metadata: {
+          metadata_param: {
             appointment_date: format(selectedDate, 'yyyy-MM-dd'),
             appointment_time: selectedTime,
-            patient_name: patients.find(p => p.id === selectedPatient)?.name
+            patient_name: patientName
           }
         });
 

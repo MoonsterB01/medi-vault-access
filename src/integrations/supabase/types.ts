@@ -894,6 +894,17 @@ export type Database = {
         Args: { patient_id_param: string }
         Returns: boolean
       }
+      create_notification: {
+        Args: {
+          appointment_id_param?: string
+          metadata_param?: Json
+          notification_message: string
+          notification_title: string
+          notification_type: string
+          target_user_id: string
+        }
+        Returns: string
+      }
       generate_appointment_id: {
         Args: Record<PropertyKey, never>
         Returns: string

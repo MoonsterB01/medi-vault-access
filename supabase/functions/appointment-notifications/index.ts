@@ -145,26 +145,36 @@ serve(async (req) => {
       }
     }
 
-    // Insert all notifications
+    // Use the unified notification creation function
     if (notifications.length > 0) {
-      console.log('Inserting notifications:', notifications);
-      const { error: notificationError } = await supabaseClient
-        .from('notifications')
-        .insert(notifications);
+      console.log('Creating notifications using unified function:', notifications);
+      const results = [];
+      
+      for (const notification of notifications) {
+        const { data: notificationId, error: notificationError } = await supabaseClient
+          .rpc('create_notification', {
+            target_user_id: notification.user_id,
+            notification_title: notification.title,
+            notification_message: notification.message,
+            notification_type: notification.notification_type,
+            appointment_id_param: notification.appointment_id,
+            metadata_param: notification.metadata
+          });
 
-      if (notificationError) {
-        console.error('Error creating notifications:', notificationError);
-        return new Response(
-          JSON.stringify({ 
-            error: 'Failed to create notifications',
-            details: notificationError.message 
-          }),
-          { status: 500, headers: corsHeaders }
-        );
+        if (notificationError) {
+          console.error('Error creating notification:', notificationError);
+          results.push({ error: notificationError });
+        } else {
+          results.push({ success: true, id: notificationId });
+        }
       }
-      console.log('Successfully inserted notifications');
+      
+      const successCount = results.filter(r => r.success).length;
+      const errorCount = results.filter(r => r.error).length;
+      
+      console.log(`Successfully created ${successCount} notifications, ${errorCount} errors`);
     } else {
-      console.log('No notifications to insert - no family access found');
+      console.log('No notifications to create - no family access found');
     }
 
     return new Response(
