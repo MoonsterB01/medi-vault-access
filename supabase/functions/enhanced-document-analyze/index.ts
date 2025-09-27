@@ -159,7 +159,7 @@ async function analyzeWithHybridFiltering(
   }
 
     // Enhanced Gemini analysis with hybrid filtering context
-    let geminiAnalysis = {
+    let geminiAnalysis: any = {
       keywords: detectedKeywords,
       categories: [], // Start with empty categories for better classification
       confidence: medicalKeywordCount >= 2 ? 0.8 : 0.4,
@@ -168,7 +168,11 @@ async function analyzeWithHybridFiltering(
 
     // Rule-based category assignment before Gemini
     const textLower = analysisText.toLowerCase();
-    const categories = [];
+    const categories: string[] = [];
+    
+    // Define matches for lab results detection
+    const labKeywords = ['lab', 'test', 'result', 'laboratory', 'specimen', 'culture'];
+    const labMatches = labKeywords.filter(keyword => textLower.includes(keyword));
     
     // Specific medical document categorization
     if (labMatches.length > 0 || detectedKeywords.some(k => k.includes('lab') || k.includes('test') || k.includes('result'))) {
@@ -194,6 +198,12 @@ async function analyzeWithHybridFiltering(
     if (textLower.includes('discharge') || textLower.includes('admission') || textLower.includes('hospital stay')) {
       categories.push('Discharge Summary');
     }
+    
+    // Define matches for blood work detection
+    const unitKeywords = ['mg/dl', 'mmol/l', 'mg', 'ml', 'mmhg', 'bpm', 'units', '%'];
+    const rangeKeywords = ['normal', 'high', 'low', 'elevated', 'decreased', 'range'];
+    const unitMatches = unitKeywords.filter(keyword => textLower.includes(keyword));
+    const rangeMatches = rangeKeywords.filter(keyword => textLower.includes(keyword));
     
     if (unitMatches.length > 0 && rangeMatches.length > 0) {
       categories.push('Blood Work');
@@ -380,7 +390,7 @@ serve(async (req) => {
 
     // Insert enhanced keywords into document_keywords table (only for real documents)
     if (analysis.keywords.length > 0 && documentId !== 'temp-analysis') {
-      const keywordInserts = [];
+      const keywordInserts: any[] = [];
       
       // Add general keywords
       analysis.keywords.forEach(keyword => {
@@ -436,10 +446,10 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in enhanced-document-analyze function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error?.message || 'Unknown error',
       success: false 
     }), {
       status: 500,

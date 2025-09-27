@@ -224,7 +224,7 @@ serve(async (req) => {
 
     // Insert keywords with entity types into document_keywords table
     if (analysis.keywords.length > 0) {
-      const keywordInserts = [];
+      const keywordInserts: any[] = [];
       
       // Add general keywords
       analysis.keywords.forEach(keyword => {
@@ -278,10 +278,10 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in analyze-document-content function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error?.message || 'Unknown error',
       success: false 
     }), {
       status: 500,

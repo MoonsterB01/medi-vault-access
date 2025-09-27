@@ -296,7 +296,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Insert keywords into document_keywords table if we have AI analysis
     if (aiAnalysisResult && aiAnalysisResult.keywords.length > 0) {
-      const keywordInserts = [];
+      const keywordInserts: any[] = [];
       
       // Add general keywords
       aiAnalysisResult.keywords.forEach(keyword => {
