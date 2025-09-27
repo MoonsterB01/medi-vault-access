@@ -63,11 +63,11 @@ serve(async (req) => {
         if (access.users) {
           notificationPromises.push(
             sendNotification({
-              to: access.users.email,
+              to: (access.users as any)?.email,
               patientName: patient.name,
               recordType,
               severity,
-              recipientName: access.users.name,
+              recipientName: (access.users as any)?.name,
             })
           );
         }

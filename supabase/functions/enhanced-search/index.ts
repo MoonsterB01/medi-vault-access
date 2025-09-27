@@ -220,7 +220,7 @@ serve(async (req) => {
 
       // First, apply category filter if specified (applies regardless of query)
       if (categories && categories.length > 0) {
-        const hasMatchingCategory = doc.auto_categories?.some(cat => 
+        const hasMatchingCategory = doc.auto_categories?.some((cat: any) => 
           categories.some(filterCat => cat.toLowerCase().includes(filterCat.toLowerCase()))
         );
         if (!hasMatchingCategory) {
@@ -251,7 +251,7 @@ serve(async (req) => {
 
         // Check keywords
         if (doc.content_keywords) {
-          matchedKeywords = doc.content_keywords.filter(keyword =>
+          matchedKeywords = doc.content_keywords.filter((keyword: any) =>
             keyword.toLowerCase().includes(queryLower)
           );
           if (matchedKeywords.length > 0) {
@@ -319,7 +319,7 @@ serve(async (req) => {
           description: doc.description,
           uploaded_at: doc.uploaded_at,
           patient_id: doc.patient_id,
-          patient_name: doc.patients?.name || 'Unknown',
+          patient_name: (doc.patients as any)?.name || 'Unknown',
           content_keywords: doc.content_keywords || [],
           auto_categories: doc.auto_categories || [],
           content_confidence: doc.content_confidence || 0,
@@ -353,7 +353,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in enhanced-search function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: (error as any)?.message || 'Unknown error',
       documents: [],
       total: 0 
     }), {

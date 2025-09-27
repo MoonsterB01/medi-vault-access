@@ -91,7 +91,6 @@ serve(async (req) => {
       doctors: doctor
     };
 
-
     // Get all users who have access to this patient (family members)
     const { data: familyAccess, error: accessError } = await supabaseClient
       .from('family_access')
@@ -177,10 +176,10 @@ serve(async (req) => {
       { headers: corsHeaders }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in appointment-notifications function:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error.message }),
+      JSON.stringify({ error: 'Internal server error', details: error?.message || 'Unknown error' }),
       { status: 500, headers: corsHeaders }
     );
   }
