@@ -103,15 +103,22 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
       const { data, error } = await supabase
         .from('family_access')
         .select(`
-          patients(id, name, shareable_id)
+          patient_id,
+          patients!inner(id, name, shareable_id)
         `)
         .eq('user_id', user.id)
         .eq('can_view', true);
 
       if (error) throw error;
-      setPatients(data?.map(fa => fa.patients).filter(Boolean) || []);
+      const patientsData = data?.map(fa => fa.patients).filter(Boolean) || [];
+      setPatients(patientsData);
     } catch (error) {
       console.error('Error fetching patients:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load patients. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
