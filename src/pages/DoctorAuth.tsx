@@ -107,9 +107,21 @@ const DoctorAuth = () => {
       }
     } catch (error: any) {
       console.error('Signup process error:', error);
+      
+      // Handle specific error cases
+      let errorMessage = error.message || "Failed to create doctor account. Please try again.";
+      
+      if (error.message?.includes('User already registered')) {
+        errorMessage = "This email is already registered. Try signing in instead.";
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = "Please check your email and confirm your account first.";
+      } else if (error.message?.includes('Invalid email')) {
+        errorMessage = "Please enter a valid email address.";
+      }
+      
       toast({
         title: "Registration Error",
-        description: error.message || "Failed to create doctor account. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -146,9 +158,20 @@ const DoctorAuth = () => {
         }
       }
     } catch (error: any) {
+      // Handle specific sign-in errors
+      let errorMessage = error.message;
+      
+      if (error.message?.includes('Invalid login credentials')) {
+        errorMessage = "Invalid email or password. Please try again.";
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = "Please confirm your email before signing in. Check your inbox for the verification link.";
+      } else if (error.message?.includes('This login is for doctors only')) {
+        errorMessage = "This login is for doctors only. Please use the correct portal for your role.";
+      }
+      
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Sign In Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -209,6 +232,19 @@ const DoctorAuth = () => {
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Signing In..." : "Sign In"}
                   </Button>
+                  <p className="text-sm text-center text-muted-foreground mt-2">
+                    Don't have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const signupTab = document.querySelector('[value="signup"]') as HTMLElement;
+                        signupTab?.click();
+                      }}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Sign up here
+                    </button>
+                  </p>
                 </form>
               </TabsContent>
 
@@ -316,6 +352,19 @@ const DoctorAuth = () => {
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? "Creating Account..." : "Create Doctor Account"}
                   </Button>
+                  <p className="text-sm text-center text-muted-foreground mt-2">
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const signinTab = document.querySelector('[value="signin"]') as HTMLElement;
+                        signinTab?.click();
+                      }}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Sign in here
+                    </button>
+                  </p>
                 </form>
               </TabsContent>
             </Tabs>

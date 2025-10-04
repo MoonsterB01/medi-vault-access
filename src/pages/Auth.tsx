@@ -85,26 +85,18 @@ export default function Auth() {
       if (error) throw error;
 
       if (data.user) {
-        // Create user profile
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: data.user.id,
-            name: validatedData.name,
-            email: validatedData.email,
-            role: validatedData.role as any,
-            hospital_id: formData.hospitalId || null,
-          });
-
-        if (profileError) {
-          // Log error securely without exposing sensitive data
-          console.error('Profile creation failed');
-          throw new Error('Failed to create user profile. Please try again.');
-        }
-
         toast({
           title: "Account created successfully!",
-          description: "Please check your email for verification.",
+          description: "Please check your email to verify your account. Click the verification link to complete registration.",
+        });
+        
+        // Clear the form after successful signup
+        setFormData({
+          email: "",
+          password: "",
+          name: "",
+          role: "",
+          hospitalId: "",
         });
       }
     } catch (error: any) {
@@ -124,9 +116,22 @@ export default function Auth() {
           variant: "destructive",
         });
       } else {
+        // Handle specific Supabase auth errors
+        let errorMessage = error.message || "An unexpected error occurred. Please try again.";
+        
+        if (error.message?.includes('User already registered')) {
+          errorMessage = "This email is already registered. Try signing in instead.";
+        } else if (error.message?.includes('Email not confirmed')) {
+          errorMessage = "Please check your email and confirm your account first.";
+        } else if (error.message?.includes('Invalid email')) {
+          errorMessage = "Please enter a valid email address.";
+        } else if (error.message?.includes('Password should be at least')) {
+          errorMessage = "Password must be at least 6 characters long.";
+        }
+        
         toast({
-          title: "Error",
-          description: error.message || "An unexpected error occurred. Please try again.",
+          title: "Sign Up Failed",
+          description: errorMessage,
           variant: "destructive",
         });
       }
@@ -191,9 +196,22 @@ export default function Auth() {
           variant: "destructive",
         });
       } else {
+        // Handle specific Supabase auth errors
+        let errorMessage = error.message || "Authentication failed. Please try again.";
+        
+        if (error.message?.includes('Invalid login credentials')) {
+          errorMessage = "Invalid email or password. Please try again.";
+        } else if (error.message?.includes('Email not confirmed')) {
+          errorMessage = "Please confirm your email before signing in. Check your inbox for the verification link.";
+        } else if (error.message?.includes('Email link is invalid')) {
+          errorMessage = "Your verification link has expired. Please request a new one.";
+        } else if (error.message?.includes('User not found')) {
+          errorMessage = "No account found with this email. Please sign up first.";
+        }
+        
         toast({
-          title: "Error",
-          description: error.message || "Authentication failed. Please try again.",
+          title: "Sign In Failed",
+          description: errorMessage,
           variant: "destructive",
         });
       }
@@ -262,6 +280,19 @@ export default function Auth() {
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Signing in..." : "Sign In"}
                   </Button>
+                  <p className="text-sm text-center text-muted-foreground mt-2">
+                    Don't have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const signupTab = document.querySelector('[value="signup"]') as HTMLElement;
+                        signupTab?.click();
+                      }}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Sign up here
+                    </button>
+                  </p>
                 </form>
               </TabsContent>
 
@@ -349,6 +380,19 @@ export default function Auth() {
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Creating account..." : "Create Account"}
                   </Button>
+                  <p className="text-sm text-center text-muted-foreground mt-2">
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const signinTab = document.querySelector('[value="signin"]') as HTMLElement;
+                        signinTab?.click();
+                      }}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Sign in here
+                    </button>
+                  </p>
                 </form>
               </TabsContent>
             </Tabs>
