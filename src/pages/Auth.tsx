@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Shield, Hospital, Users, User } from "lucide-react";
 import { z } from "zod";
+import logo from "@/assets/logo.png";
 
 // Secure validation schemas
 const signInSchema = z.object({
@@ -225,7 +226,7 @@ export default function Auth() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <Shield className="h-12 w-12 text-blue-600" />
+            <img src={logo} alt="MediVault Logo" className="h-20 w-20 object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900">MediVault</h1>
           <p className="text-gray-600 mt-2">Secure Digital Medical Records</p>

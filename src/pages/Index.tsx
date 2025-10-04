@@ -3,6 +3,7 @@ import { Shield, Users, Hospital, FileText, Lock, Clock, Bell } from "lucide-rea
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import logo from "@/assets/logo.png";
 
 export default function Index() {
   const navigate = useNavigate();
@@ -59,7 +60,7 @@ export default function Index() {
       {/* Navigation */}
       <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <Shield className="h-8 w-8 text-blue-600" />
+          <img src={logo} alt="MediVault Logo" className="h-10 w-10 object-contain" />
           <span className="text-xl font-bold">MediVault</span>
         </div>
         <div className="flex gap-4">
@@ -78,7 +79,7 @@ export default function Index() {
       {/* Hero Section */}
       <header className="container mx-auto px-4 py-16 text-center">
         <div className="flex justify-center mb-6">
-          <Shield className="h-16 w-16 text-blue-600" />
+          <img src={logo} alt="MediVault Logo" className="h-24 w-24 object-contain" />
         </div>
         <h1 className="text-5xl font-bold text-gray-900 mb-4">
           MediVault

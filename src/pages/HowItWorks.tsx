@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, Lock, Eye, FileText, Users, Hospital, CheckCircle, Clock, Server, Key, Database, UserCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import logo from "@/assets/logo.png";
 
 export default function HowItWorks() {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ export default function HowItWorks() {
       {/* Navigation */}
       <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <Shield className="h-8 w-8 text-blue-600" />
+          <img src={logo} alt="MediVault Logo" className="h-10 w-10 object-contain" />
           <span className="text-xl font-bold">MediVault</span>
         </div>
         <div className="flex gap-4">
@@ -28,7 +29,7 @@ export default function HowItWorks() {
       <header className="container mx-auto px-4 py-16 text-center">
         <div className="flex justify-center mb-6">
           <div className="bg-blue-100 p-4 rounded-full">
-            <Shield className="h-12 w-12 text-blue-600" />
+            <img src={logo} alt="MediVault Logo" className="h-16 w-16 object-contain" />
           </div>
         </div>
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
