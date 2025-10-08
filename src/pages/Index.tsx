@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Index() {
   const navigate = useNavigate();
@@ -56,14 +57,14 @@ export default function Index() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen">
       {/* Navigation */}
       <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <img src={logo} alt="MediVault Logo" className="h-10 w-10 object-contain" />
           <span className="text-xl font-bold">MediVault</span>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
           {user ? (
             <Button onClick={() => supabase.auth.signOut()} variant="outline">
               Sign Out
@@ -73,6 +74,7 @@ export default function Index() {
               Sign In
             </Button>
           )}
+          <ThemeToggle />
         </div>
       </nav>
 
@@ -81,10 +83,10 @@ export default function Index() {
         <div className="flex justify-center mb-6">
           <img src={logo} alt="MediVault Logo" className="h-24 w-24 object-contain" />
         </div>
-        <h1 className="text-5xl font-bold text-gray-900 mb-4">
+        <h1 className="text-5xl font-bold mb-4">
           MediVault
         </h1>
-        <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+        <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
           Secure Digital Medical Records Management for Hospitals and Patients
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -103,12 +105,12 @@ export default function Index() {
       {/* For Hospitals & Patients Section */}
       <section className="container mx-auto px-4 py-16">
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          <div className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow">
+          <div className="bg-card rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow">
             <div className="flex items-center mb-6">
               <Hospital className="h-12 w-12 text-blue-600 mr-4" />
-              <h2 className="text-2xl font-bold text-gray-900">For Hospitals</h2>
+              <h2 className="text-2xl font-bold">For Hospitals</h2>
             </div>
-            <p className="text-gray-600 mb-6">
+            <p className="text-muted-foreground mb-6">
               Securely upload, manage, and share patient medical records with automated notifications and audit trails.
             </p>
             <ul className="space-y-3 mb-6">
@@ -130,12 +132,12 @@ export default function Index() {
             </Button>
           </div>
 
-          <div className="bg-white rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow">
+          <div className="bg-card rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow">
             <div className="flex items-center mb-6">
               <Users className="h-12 w-12 text-blue-600 mr-4" />
-              <h2 className="text-2xl font-bold text-gray-900">For Patients</h2>
+              <h2 className="text-2xl font-bold">For Patients</h2>
             </div>
-            <p className="text-gray-600 mb-6">
+            <p className="text-muted-foreground mb-6">
               Access your complete medical history in a secure timeline view with family sharing capabilities.
             </p>
             <ul className="space-y-3 mb-6">
@@ -160,9 +162,9 @@ export default function Index() {
       </section>
 
       {/* How It Works Section */}
-      <section className="bg-white py-16">
+      <section className="bg-muted/40 py-16">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+          <h2 className="text-3xl font-bold text-center mb-12">
             How MediVault Works
           </h2>
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
@@ -171,7 +173,7 @@ export default function Index() {
                 <span className="text-2xl font-bold text-blue-600">1</span>
               </div>
               <h3 className="text-xl font-semibold mb-3">Secure Upload</h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Hospitals upload patient reports directly to secure cloud storage with automated categorization.
               </p>
             </div>
@@ -180,7 +182,7 @@ export default function Index() {
                 <span className="text-2xl font-bold text-blue-600">2</span>
               </div>
               <h3 className="text-xl font-semibold mb-3">Instant Notification</h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Patients and authorized family members receive immediate notifications of new records.
               </p>
             </div>
@@ -189,7 +191,7 @@ export default function Index() {
                 <span className="text-2xl font-bold text-blue-600">3</span>
               </div>
               <h3 className="text-xl font-semibold mb-3">Access Anywhere</h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 View complete medical timeline with severity-based organization and secure document access.
               </p>
             </div>
@@ -199,35 +201,35 @@ export default function Index() {
 
       {/* Key Features Section */}
       <section className="container mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+        <h2 className="text-3xl font-bold text-center mb-12">
           Key Features
         </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-card p-6 rounded-lg shadow-md">
             <Lock className="h-8 w-8 text-blue-600 mb-4" />
             <h3 className="font-semibold mb-2">Bank-Level Security</h3>
-            <p className="text-gray-600 text-sm">
+            <p className="text-muted-foreground text-sm">
               End-to-end encryption with role-based access control
             </p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-card p-6 rounded-lg shadow-md">
             <FileText className="h-8 w-8 text-blue-600 mb-4" />
             <h3 className="font-semibold mb-2">Document Management</h3>
-            <p className="text-gray-600 text-sm">
+            <p className="text-muted-foreground text-sm">
               Organize by type, date, and severity for easy access
             </p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-card p-6 rounded-lg shadow-md">
             <Bell className="h-8 w-8 text-blue-600 mb-4" />
             <h3 className="font-semibold mb-2">Smart Notifications</h3>
-            <p className="text-gray-600 text-sm">
+            <p className="text-muted-foreground text-sm">
               Email and SMS alerts for critical updates
             </p>
           </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-card p-6 rounded-lg shadow-md">
             <Users className="h-8 w-8 text-blue-600 mb-4" />
             <h3 className="font-semibold mb-2">Family Sharing</h3>
-            <p className="text-gray-600 text-sm">
+            <p className="text-muted-foreground text-sm">
               Grant secure access to family members
             </p>
           </div>
