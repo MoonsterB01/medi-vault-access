@@ -1,0 +1,91 @@
+import React, { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import { User, LogOut } from "lucide-react";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import NotificationCenter from "@/components/NotificationCenter";
+import { AppSidebar } from "@/components/AppSidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
+
+interface AppLayoutProps {
+  children: React.ReactElement;
+  userRole: 'patient' | 'hospital_staff' | 'admin' | 'doctor' | 'family_member';
+}
+
+export default function AppLayout({ children }: AppLayoutProps) {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/auth');
+        return;
+      }
+      const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      setUser(userData);
+      setLoading(false);
+    };
+    checkUser();
+  }, [navigate]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AppSidebar user={user} patientData={null} />
+
+        <div className="flex-1 flex flex-col">
+          <header className="h-16 flex items-center justify-between px-6 bg-card border-b shadow-sm">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger />
+              <div className="flex items-center gap-3">
+                <User className="h-6 w-6 text-primary" />
+                <div>
+                  <h1 className="text-xl font-semibold">MediVault</h1>
+                  <p className="text-sm text-muted-foreground">Welcome, {user?.name}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <NotificationCenter user={user} />
+              <ThemeToggle />
+              <Button onClick={handleSignOut} variant="outline" size="sm">
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
+          </header>
+
+          <main className="flex-1 overflow-y-auto">
+            {React.cloneElement(children, { user })}
+          </main>
+        </div>
+      </div>
+    </SidebarProvider>
+  );
+}

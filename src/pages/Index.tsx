@@ -4,14 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
-import { ThemeToggle } from "@/components/theme-toggle";
+import PublicLayout from "@/components/PublicLayout";
 
 export default function Index() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    // Check if user is already logged in
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -20,7 +19,6 @@ export default function Index() {
           .select('role')
           .eq('id', user.id)
           .single();
-        
         setUser(userData);
       }
     };
@@ -29,7 +27,6 @@ export default function Index() {
 
   const handleGetStarted = () => {
     if (user) {
-      // Redirect based on user role
       if (user.role === 'hospital_staff' || user.role === 'admin') {
         navigate('/hospital-dashboard');
       } else {
@@ -57,28 +54,7 @@ export default function Index() {
   };
 
   return (
-    <div className="min-h-screen">
-      {/* Navigation */}
-      <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <img src={logo} alt="MediVault Logo" className="h-10 w-10 object-contain" />
-          <span className="text-xl font-bold">MediVault</span>
-        </div>
-        <div className="flex gap-4 items-center">
-          {user ? (
-            <Button onClick={() => supabase.auth.signOut()} variant="outline">
-              Sign Out
-            </Button>
-          ) : (
-            <Button onClick={() => navigate('/auth')}>
-              Sign In
-            </Button>
-          )}
-          <ThemeToggle />
-        </div>
-      </nav>
-
-      {/* Hero Section */}
+    <PublicLayout>
       <header className="container mx-auto px-4 py-16 text-center">
         <div className="flex justify-center mb-6">
           <img src={logo} alt="MediVault Logo" className="h-24 w-24 object-contain" />
@@ -102,7 +78,6 @@ export default function Index() {
         </div>
       </header>
 
-      {/* For Hospitals & Patients Section */}
       <section className="container mx-auto px-4 py-16">
         <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           <div className="bg-card rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow">
@@ -161,7 +136,6 @@ export default function Index() {
         </div>
       </section>
 
-      {/* How It Works Section */}
       <section className="bg-muted/40 py-16">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-12">
@@ -199,7 +173,6 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Key Features Section */}
       <section className="container mx-auto px-4 py-16">
         <h2 className="text-3xl font-bold text-center mb-12">
           Key Features
@@ -235,6 +208,6 @@ export default function Index() {
           </div>
         </div>
       </section>
-    </div>
+    </PublicLayout>
   );
 }
