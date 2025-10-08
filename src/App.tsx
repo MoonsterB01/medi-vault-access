@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import HospitalDashboard from "./pages/HospitalDashboard";
 import PatientDashboard from "./pages/PatientDashboard";
+import AppLayout from "./components/AppLayout";
 import DocumentTimeline from "./pages/DocumentTimeline";
 import PublicUpload from "./pages/PublicUpload";
 import HowItWorks from "./pages/HowItWorks";
@@ -28,16 +29,16 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/hospital-dashboard" element={<HospitalDashboard />} />
-          <Route path="/patient-dashboard" element={<PatientDashboard />} />
-          <Route path="/patient-dashboard/documents" element={<PatientDocuments />} />
-          <Route path="/patient-dashboard/appointments" element={<PatientAppointments />} />
-          <Route path="/patient-dashboard/book" element={<PatientBookAppointment />} />
-          <Route path="/document-timeline" element={<DocumentTimeline />} />
+          <Route path="/hospital-dashboard" element={<AppLayout userRole="hospital_staff"><HospitalDashboard /></AppLayout>} />
+          <Route path="/patient-dashboard" element={<AppLayout userRole="patient"><PatientDashboard /></AppLayout>} />
+          <Route path="/patient-dashboard/documents" element={<AppLayout userRole="patient"><PatientDocuments /></AppLayout>} />
+          <Route path="/patient-dashboard/appointments" element={<AppLayout userRole="patient"><PatientAppointments /></AppLayout>} />
+          <Route path="/patient-dashboard/book" element={<AppLayout userRole="patient"><PatientBookAppointment /></AppLayout>} />
+          <Route path="/document-timeline" element={<AppLayout userRole="patient"><DocumentTimeline /></AppLayout>} />
           <Route path="/upload" element={<PublicUpload />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/doctor-auth" element={<DoctorAuth />} />
-          <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
+          <Route path="/doctor-dashboard" element={<AppLayout userRole="doctor"><DoctorDashboard /></AppLayout>} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

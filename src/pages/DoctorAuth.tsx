@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { Stethoscope, ArrowLeft } from "lucide-react";
+import { Stethoscope } from "lucide-react";
+import PublicLayout from "@/components/PublicLayout";
 
 const DoctorAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -35,93 +36,27 @@ const DoctorAuth = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
     try {
-      const redirectUrl = `${window.location.origin}/doctor-dashboard`;
-      
-      // First create the auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: signUpData.email,
         password: signUpData.password,
         options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            name: signUpData.name,
-            role: 'doctor'
-          }
+          emailRedirectTo: `${window.location.origin}/doctor-dashboard`,
+          data: { name: signUpData.name, role: 'doctor' }
         }
       });
-
-      if (authError) {
-        console.error('Auth signup error:', authError);
-        throw authError;
-      }
-
+      if (authError) throw authError;
       if (authData.user) {
-        // Wait a moment to ensure the session is established
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Try to create doctor profile only if session exists
-        const { data: sessionData } = await supabase.auth.getSession();
-        const sessionUserId = sessionData.session?.user?.id;
-
-        if (sessionUserId) {
-          const { error: profileError } = await supabase
-            .from('doctors')
-            .insert([{
-              user_id: sessionUserId,
-              specialization: signUpData.specialization,
-              qualifications: signUpData.qualifications.split(',').map(q => q.trim()).filter(q => q.length > 0),
-              years_experience: parseInt(signUpData.yearsExperience) || 0,
-              consultation_fee: parseFloat(signUpData.consultationFee) || 0,
-              bio: signUpData.bio || '',
-              doctor_id: `DOC-${Math.random().toString(36).substr(2, 8).toUpperCase()}`
-            }]);
-
-          if (profileError) {
-            console.error('Profile creation error:', profileError);
-            throw new Error(`Profile creation failed: ${profileError.message}. Please try signing in again after verifying your email.`);
-          }
-        } else {
-          // No active session yet (likely email confirmation enabled)
-          console.warn('No active session after sign up; skipping doctor profile creation until first login');
-        }
-
-
         toast({
           title: "Account created successfully!",
-          description: "Please check your email to verify your account before signing in.",
+          description: "Please check your email to verify your account.",
         });
-
-        // Clear the form
-        setSignUpData({
-          email: "",
-          password: "",
-          name: "",
-          specialization: "",
-          qualifications: "",
-          yearsExperience: "",
-          consultationFee: "",
-          bio: ""
-        });
+        setSignUpData({ email: "", password: "", name: "", specialization: "", qualifications: "", yearsExperience: "", consultationFee: "", bio: "" });
       }
     } catch (error: any) {
-      console.error('Signup process error:', error);
-      
-      // Handle specific error cases
-      let errorMessage = error.message || "Failed to create doctor account. Please try again.";
-      
-      if (error.message?.includes('User already registered')) {
-        errorMessage = "This email is already registered. Try signing in instead.";
-      } else if (error.message?.includes('Email not confirmed')) {
-        errorMessage = "Please check your email and confirm your account first.";
-      } else if (error.message?.includes('Invalid email')) {
-        errorMessage = "Please enter a valid email address.";
-      }
-      
       toast({
         title: "Registration Error",
-        description: errorMessage,
+        description: error.message || "Failed to create account.",
         variant: "destructive",
       });
     } finally {
@@ -132,253 +67,98 @@ const DoctorAuth = () => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: signInData.email,
-        password: signInData.password,
-      });
-
+      const { data, error } = await supabase.auth.signInWithPassword(signInData);
       if (error) throw error;
-
       if (data.user) {
-        // Check if user is a doctor
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', data.user.id)
-          .single();
-
-        if (userError) throw userError;
-
-        if (userData.role === 'doctor') {
+        const { data: userData } = await supabase.from('users').select('role').eq('id', data.user.id).single();
+        if (userData?.role === 'doctor') {
           navigate('/doctor-dashboard');
         } else {
-          throw new Error('This login is for doctors only. Please use the correct portal.');
+          throw new Error('This login is for doctors only.');
         }
       }
     } catch (error: any) {
-      // Handle specific sign-in errors
-      let errorMessage = error.message;
-      
-      if (error.message?.includes('Invalid login credentials')) {
-        errorMessage = "Invalid email or password. Please try again.";
-      } else if (error.message?.includes('Email not confirmed')) {
-        errorMessage = "Please confirm your email before signing in. Check your inbox for the verification link.";
-      } else if (error.message?.includes('This login is for doctors only')) {
-        errorMessage = "This login is for doctors only. Please use the correct portal for your role.";
-      }
-      
-      toast({
-        title: "Sign In Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast({ title: "Sign In Failed", description: error.message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center space-y-2">
-          <div className="flex justify-center">
-            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-              <Stethoscope className="w-6 h-6 text-primary-foreground" />
+    <PublicLayout>
+      <div className="flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-6">
+          <div className="text-center space-y-2">
+            <div className="flex justify-center">
+              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
+                <Stethoscope className="w-6 h-6 text-primary-foreground" />
+              </div>
             </div>
+            <h1 className="text-2xl font-bold">MediDoc</h1>
+            <p className="text-muted-foreground">Doctor Portal</p>
           </div>
-          <h1 className="text-2xl font-bold">MediDoc</h1>
-          <p className="text-muted-foreground">Doctor Portal - Secure Medical Practice Management</p>
-        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Doctor Authentication</CardTitle>
-            <CardDescription>
-              Sign in to your doctor account or create a new one
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="signin" className="space-y-4">
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      placeholder="doctor@hospital.com"
-                      value={signInData.email}
-                      onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      value={signInData.password}
-                      onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Signing In..." : "Sign In"}
-                  </Button>
-                  <p className="text-sm text-center text-muted-foreground mt-2">
-                    Don't have an account?{" "}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const signupTab = document.querySelector('[value="signup"]') as HTMLElement;
-                        signupTab?.click();
-                      }}
-                      className="text-primary hover:underline font-medium"
-                    >
-                      Sign up here
-                    </button>
-                  </p>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="signup" className="space-y-4">
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Doctor Authentication</CardTitle>
+              <CardDescription>Sign in or create a new doctor account</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="signin" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="signin">Sign In</TabsTrigger>
+                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                </TabsList>
+                <TabsContent value="signin" className="pt-4">
+                  <form onSubmit={handleSignIn} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="signup-name">Full Name</Label>
-                      <Input
-                        id="signup-name"
-                        placeholder="Dr. John Smith"
-                        value={signUpData.name}
-                        onChange={(e) => setSignUpData({ ...signUpData, name: e.target.value })}
-                        required
-                      />
+                      <Label htmlFor="signin-email">Email</Label>
+                      <Input id="signin-email" type="email" placeholder="doctor@hospital.com" value={signInData.email} onChange={(e) => setSignInData({ ...signInData, email: e.target.value })} required />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="signup-specialization">Specialization</Label>
-                      <Select onValueChange={(value) => setSignUpData({ ...signUpData, specialization: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select specialization" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="cardiology">Cardiology</SelectItem>
-                          <SelectItem value="neurology">Neurology</SelectItem>
-                          <SelectItem value="orthopedics">Orthopedics</SelectItem>
-                          <SelectItem value="pediatrics">Pediatrics</SelectItem>
-                          <SelectItem value="dermatology">Dermatology</SelectItem>
-                          <SelectItem value="general_medicine">General Medicine</SelectItem>
-                          <SelectItem value="surgery">Surgery</SelectItem>
-                          <SelectItem value="psychiatry">Psychiatry</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="signin-password">Password</Label>
+                      <Input id="signin-password" type="password" value={signInData.password} onChange={(e) => setSignInData({ ...signInData, password: e.target.value })} required />
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="doctor@hospital.com"
-                      value={signUpData.email}
-                      onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      value={signUpData.password}
-                      onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-experience">Years Experience</Label>
-                      <Input
-                        id="signup-experience"
-                        type="number"
-                        placeholder="5"
-                        value={signUpData.yearsExperience}
-                        onChange={(e) => setSignUpData({ ...signUpData, yearsExperience: e.target.value })}
-                      />
+                    <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? "Signing In..." : "Sign In"}</Button>
+                  </form>
+                </TabsContent>
+                <TabsContent value="signup" className="pt-4">
+                  <form onSubmit={handleSignUp} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-name">Full Name</Label>
+                        <Input id="signup-name" placeholder="Dr. John Smith" value={signUpData.name} onChange={(e) => setSignUpData({ ...signUpData, name: e.target.value })} required />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="signup-specialization">Specialization</Label>
+                        <Select onValueChange={(value) => setSignUpData({ ...signUpData, specialization: value })}>
+                          <SelectTrigger><SelectValue placeholder="Select specialization" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cardiology">Cardiology</SelectItem>
+                            <SelectItem value="neurology">Neurology</SelectItem>
+                            <SelectItem value="orthopedics">Orthopedics</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="signup-fee">Consultation Fee ($)</Label>
-                      <Input
-                        id="signup-fee"
-                        type="number"
-                        placeholder="150"
-                        value={signUpData.consultationFee}
-                        onChange={(e) => setSignUpData({ ...signUpData, consultationFee: e.target.value })}
-                      />
+                      <Label htmlFor="signup-email">Email</Label>
+                      <Input id="signup-email" type="email" placeholder="doctor@hospital.com" value={signUpData.email} onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })} required />
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-qualifications">Qualifications (comma-separated)</Label>
-                    <Input
-                      id="signup-qualifications"
-                      placeholder="MD, PhD, Board Certified"
-                      value={signUpData.qualifications}
-                      onChange={(e) => setSignUpData({ ...signUpData, qualifications: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-bio">Bio</Label>
-                    <Textarea
-                      id="signup-bio"
-                      placeholder="Tell patients about your experience and approach to medicine..."
-                      value={signUpData.bio}
-                      onChange={(e) => setSignUpData({ ...signUpData, bio: e.target.value })}
-                      rows={3}
-                    />
-                  </div>
-
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Creating Account..." : "Create Doctor Account"}
-                  </Button>
-                  <p className="text-sm text-center text-muted-foreground mt-2">
-                    Already have an account?{" "}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const signinTab = document.querySelector('[value="signin"]') as HTMLElement;
-                        signinTab?.click();
-                      }}
-                      className="text-primary hover:underline font-medium"
-                    >
-                      Sign in here
-                    </button>
-                  </p>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-
-        <div className="text-center">
-          <Button variant="ghost" onClick={() => navigate('/')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Home
-          </Button>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password">Password</Label>
+                      <Input id="signup-password" type="password" value={signUpData.password} onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })} required />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? "Creating Account..." : "Create Doctor Account"}</Button>
+                  </form>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
         </div>
       </div>
-    </div>
+    </PublicLayout>
   );
 };
 
