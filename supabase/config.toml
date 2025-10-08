@@ -23,3 +23,9 @@ verify_jwt = true
 
 [functions.enhanced-search]
 verify_jwt = true
+
+[functions.pdf-text-extractor]
+verify_jwt = true
+
+[functions.pdf-to-images]
+verify_jwt = true

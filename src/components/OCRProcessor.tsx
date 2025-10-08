@@ -257,28 +257,156 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
       };
     }
 
-    // Handle PDF files
+    // Handle PDF files with intelligent text extraction + OCR
     if (file.type === 'application/pdf') {
-      setCurrentStep('Extracting text from PDF...');
-      setProgress(20);
+      setCurrentStep('Analyzing PDF...');
+      setProgress(10);
       
-      // For now, return a placeholder result for PDFs since they need special handling
-      return {
-        text: 'PDF text extraction temporarily disabled',
-        confidence: 0.4,
-        textDensityScore: 1,
-        medicalKeywordCount: 0,
-        detectedKeywords: [],
-        verificationStatus: 'user_verified_medical',
-        formatSupported: true,
-        processingNotes: 'PDF processing is being improved. For now, please convert to image format for OCR.',
-        structuralCues: {
-          hasDates: false,
-          hasUnits: false,
-          hasNumbers: false,
-          hasTableStructure: false
+      try {
+        // Convert file to base64
+        const fileContent = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]);
+          };
+          reader.onerror = reject;
+        });
+        
+        // Stage 1: Try text extraction first
+        setCurrentStep('Extracting embedded text from PDF...');
+        setProgress(20);
+        
+        const { data: pdfResult, error: pdfError } = await supabase.functions.invoke('pdf-text-extractor', {
+          body: { fileContent, filename: file.name }
+        });
+        
+        if (pdfError) {
+          console.error('PDF text extraction error:', pdfError);
+          throw new Error('PDF text extraction failed');
         }
-      };
+        
+        // Check if PDF has embedded text
+        if (pdfResult.hasEmbeddedText && !pdfResult.requiresOCR && pdfResult.extractedText?.length > 50) {
+          // Success! PDF has readable embedded text
+          setProgress(60);
+          setCurrentStep('Analyzing extracted text...');
+          
+          const textDensityScore = analyzeTextDensity(pdfResult.extractedText);
+          const medicalAnalysis = await detectMedicalKeywords(pdfResult.extractedText);
+          const structuralCues = detectStructuralCues(pdfResult.extractedText);
+          
+          const verification = determineVerificationStatus(
+            textDensityScore,
+            medicalAnalysis.count,
+            pdfResult.confidence,
+            formatSupported
+          );
+          
+          setProgress(100);
+          
+          return {
+            text: pdfResult.extractedText,
+            confidence: pdfResult.confidence,
+            textDensityScore,
+            medicalKeywordCount: medicalAnalysis.count,
+            detectedKeywords: medicalAnalysis.keywords,
+            verificationStatus: verification.status,
+            formatSupported,
+            processingNotes: `${verification.notes} (Extracted from digital PDF)`,
+            structuralCues
+          };
+        }
+        
+        // Stage 2: PDF is image-based or has no readable text - convert to images for OCR
+        setCurrentStep('PDF requires OCR - converting to images...');
+        setProgress(30);
+        
+        const { data: imagesResult, error: imagesError } = await supabase.functions.invoke('pdf-to-images', {
+          body: { fileContent, filename: file.name, maxPages: 10 }
+        });
+        
+        if (imagesError) {
+          console.error('PDF to images conversion error:', imagesError);
+          throw new Error('Failed to convert PDF to images for OCR');
+        }
+        
+        if (!imagesResult.images || imagesResult.images.length === 0) {
+          throw new Error('No images extracted from PDF');
+        }
+        
+        // Stage 3: Run OCR on each page
+        setCurrentStep(`Running OCR on ${imagesResult.images.length} pages...`);
+        let fullText = '';
+        let totalConfidence = 0;
+        
+        for (let i = 0; i < imagesResult.images.length; i++) {
+          setCurrentStep(`OCR processing page ${i + 1}/${imagesResult.images.length}...`);
+          setProgress(40 + Math.round((i / imagesResult.images.length) * 40));
+          
+          try {
+            const result = await Tesseract.recognize(
+              imagesResult.images[i],
+              'eng',
+              {
+                logger: (m) => {
+                  if (m.status === 'recognizing text') {
+                    const pageProgress = 40 + Math.round((i / imagesResult.images.length) * 40);
+                    const currentPageProgress = Math.round(m.progress * (40 / imagesResult.images.length));
+                    setProgress(pageProgress + currentPageProgress);
+                  }
+                }
+              }
+            );
+            
+            fullText += `\n\n=== Page ${i + 1} ===\n\n${result.data.text}`;
+            totalConfidence += result.data.confidence;
+          } catch (ocrError) {
+            console.warn(`OCR failed on page ${i + 1}:`, ocrError);
+            fullText += `\n\n=== Page ${i + 1} (OCR Failed) ===\n\n`;
+          }
+        }
+        
+        const avgConfidence = totalConfidence / imagesResult.images.length / 100;
+        
+        if (!validateExtractedText(fullText)) {
+          throw new Error('OCR failed to extract readable text from PDF pages');
+        }
+        
+        // Analyze the OCR results
+        setProgress(85);
+        setCurrentStep('Analyzing OCR results...');
+        
+        const textDensityScore = analyzeTextDensity(fullText);
+        const medicalAnalysis = await detectMedicalKeywords(fullText);
+        const structuralCues = detectStructuralCues(fullText);
+        
+        const verification = determineVerificationStatus(
+          textDensityScore,
+          medicalAnalysis.count,
+          avgConfidence,
+          formatSupported
+        );
+        
+        setProgress(100);
+        
+        return {
+          text: fullText,
+          confidence: avgConfidence,
+          textDensityScore,
+          medicalKeywordCount: medicalAnalysis.count,
+          detectedKeywords: medicalAnalysis.keywords,
+          verificationStatus: verification.status,
+          formatSupported,
+          processingNotes: `${verification.notes} (Extracted via OCR from scanned PDF - ${imagesResult.images.length} pages)`,
+          structuralCues
+        };
+        
+      } catch (error: any) {
+        console.error('PDF processing error:', error);
+        throw new Error(`PDF processing failed: ${error.message}`);
+      }
     }
 
     // Process images with enhanced OCR for JPEG

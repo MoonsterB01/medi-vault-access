@@ -6,6 +6,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Dynamic import for PDF.js
+async function getPDFLib() {
+  const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.mjs');
+  return pdfjsLib;
+}
+
 // Validate if extracted text is readable (not garbage)
 function isTextReadable(text: string): boolean {
   if (!text || text.length < 10) return false;
@@ -28,91 +34,90 @@ function isTextReadable(text: string): boolean {
   return readableRatio > 0.7 && meaningfulRatio > 0.5;
 }
 
-// Enhanced PDF text extraction using multiple approaches
-async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<string> {
+// Enhanced PDF text extraction using PDF.js
+async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<{
+  text: string;
+  hasEmbeddedText: boolean;
+  requiresOCR: boolean;
+  pageCount: number;
+  confidence: number;
+}> {
   try {
-    console.log('Attempting PDF text extraction...');
+    console.log('Attempting PDF text extraction with PDF.js...');
     
-    // Convert to string for text-based PDFs
-    const pdfText = new TextDecoder('utf-8', { fatal: false }).decode(pdfBuffer);
+    const pdfjsLib = await getPDFLib();
     
-    // Method 1: Look for readable text in streams (for text-based PDFs)
-    const streamRegex = /stream\s*([\s\S]*?)\s*endstream/g;
-    let extractedTexts: string[] = [];
-    let match;
+    // Load the PDF document
+    const loadingTask = pdfjsLib.getDocument({ data: pdfBuffer });
+    const pdf = await loadingTask.promise;
     
-    while ((match = streamRegex.exec(pdfText)) !== null) {
-      const streamContent = match[1];
-      
-      // Look for readable text patterns in the stream
-      const readableMatches = streamContent.match(/[a-zA-Z][a-zA-Z0-9\s.,!?;:()\-]{5,}/g);
-      if (readableMatches) {
-        extractedTexts.push(...readableMatches);
-      }
-    }
+    const pageCount = pdf.numPages;
+    console.log(`PDF has ${pageCount} pages`);
     
-    // Method 2: Extract text from PDF text objects (Tj operators)
-    const textObjectRegex = /BT\s+([\s\S]*?)\s+ET/g;
-    let textObjectMatch;
+    let extractedText = '';
+    let hasEmbeddedText = false;
+    let totalTextLength = 0;
     
-    while ((textObjectMatch = textObjectRegex.exec(pdfText)) !== null) {
-      const textObject = textObjectMatch[1];
-      
-      // Extract text from Tj operators with parentheses
-      const tjMatches = textObject.match(/\(([^)]*)\)\s*Tj/g);
-      if (tjMatches) {
-        for (const tjMatch of tjMatches) {
-          const textMatch = tjMatch.match(/\(([^)]*)\)/);
-          if (textMatch && textMatch[1]) {
-            let text = textMatch[1];
-            // Basic PDF text decoding
-            text = text
-              .replace(/\\n/g, '\n')
-              .replace(/\\r/g, '\r')
-              .replace(/\\t/g, '\t')
-              .replace(/\\\(/g, '(')
-              .replace(/\\\)/g, ')')
-              .replace(/\\\\/g, '\\');
-            
-            if (text.length > 2 && /[a-zA-Z]/.test(text)) {
-              extractedTexts.push(text);
-            }
-          }
+    // Process each page (limit to first 20 pages for performance)
+    const pagesToProcess = Math.min(pageCount, 20);
+    
+    for (let i = 1; i <= pagesToProcess; i++) {
+      try {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        
+        // Extract text from the page
+        const pageText = textContent.items
+          .map((item: any) => item.str || '')
+          .join(' ')
+          .trim();
+        
+        if (pageText.length > 50) {
+          hasEmbeddedText = true;
         }
+        
+        totalTextLength += pageText.length;
+        extractedText += pageText + '\n\n';
+        
+        console.log(`Page ${i}: extracted ${pageText.length} characters`);
+      } catch (pageError) {
+        console.error(`Error processing page ${i}:`, pageError);
       }
     }
     
-    // Method 3: Look for any readable text patterns in the entire PDF
-    const generalTextMatches = pdfText.match(/[a-zA-Z][a-zA-Z0-9\s.,!?;:()\-]{10,}/g);
-    if (generalTextMatches) {
-      extractedTexts.push(...generalTextMatches.slice(0, 50)); // Limit to avoid too much noise
-    }
-    
-    // Combine and clean the extracted text
-    let finalText = extractedTexts
-      .filter(text => text && text.trim().length > 2)
-      .join(' ')
-      .trim();
-    
-    // Remove excessive whitespace and normalize
-    finalText = finalText
+    // Clean up the extracted text
+    extractedText = extractedText
       .replace(/\s+/g, ' ')
-      .replace(/[^\w\s.,!?;:()\-]/g, ' ')
       .trim();
     
-    // Validate if the extracted text is readable
-    if (finalText && isTextReadable(finalText)) {
-      console.log(`Successfully extracted ${finalText.length} characters of readable text`);
-      return finalText;
+    // Determine if OCR is required
+    const requiresOCR = !hasEmbeddedText || extractedText.length < 100;
+    
+    // Calculate confidence based on text extraction quality
+    let confidence = 0;
+    if (hasEmbeddedText && extractedText.length > 500) {
+      confidence = 0.95;
+    } else if (hasEmbeddedText && extractedText.length > 100) {
+      confidence = 0.75;
+    } else if (extractedText.length > 50) {
+      confidence = 0.5;
+    } else {
+      confidence = 0.1;
     }
     
-    // If no readable text found, return a message indicating image-based PDF
-    console.log('No readable text found - likely an image-based PDF');
-    return 'This appears to be an image-based PDF. Text extraction requires OCR processing.';
+    console.log(`Extraction complete: ${extractedText.length} chars, hasEmbeddedText: ${hasEmbeddedText}, requiresOCR: ${requiresOCR}`);
+    
+    return {
+      text: extractedText,
+      hasEmbeddedText,
+      requiresOCR,
+      pageCount,
+      confidence
+    };
     
   } catch (error) {
-    console.error('PDF extraction error:', error);
-    return 'PDF text extraction failed. This may be an image-based PDF requiring OCR processing.';
+    console.error('PDF.js extraction error:', error);
+    throw error;
   }
 }
 
@@ -137,15 +142,20 @@ serve(async (req) => {
       bytes[i] = binaryData.charCodeAt(i);
     }
     
-    const extractedText = await extractTextFromPDF(bytes);
+    const result = await extractTextFromPDF(bytes);
     
-    console.log(`Extracted ${extractedText.length} characters from PDF`);
+    console.log(`Extraction complete: ${result.text.length} characters, requiresOCR: ${result.requiresOCR}`);
     
     return new Response(JSON.stringify({
       success: true,
-      extractedText,
-      wordCount: extractedText.split(/\s+/).length,
-      characterCount: extractedText.length
+      extractedText: result.text,
+      hasEmbeddedText: result.hasEmbeddedText,
+      requiresOCR: result.requiresOCR,
+      pageCount: result.pageCount,
+      confidence: result.confidence,
+      wordCount: result.text.split(/\s+/).length,
+      characterCount: result.text.length,
+      processingMethod: result.hasEmbeddedText ? 'PDF.js Text Extraction' : 'No Embedded Text Detected'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -154,7 +164,8 @@ serve(async (req) => {
     console.error('Error in pdf-text-extractor function:', error);
     return new Response(JSON.stringify({ 
       error: error?.message || 'Unknown error',
-      success: false 
+      success: false,
+      requiresOCR: true // Fallback to OCR if text extraction fails
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
