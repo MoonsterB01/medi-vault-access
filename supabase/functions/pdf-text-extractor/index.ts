@@ -9,6 +9,11 @@ const corsHeaders = {
 // Dynamic import for PDF.js
 async function getPDFLib() {
   const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.mjs');
+  
+  // Configure worker for serverless environment
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 
+    'https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.worker.mjs';
+  
   return pdfjsLib;
 }
 
