@@ -111,6 +111,44 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
     });
   };
 
+  // Client-side fallback: convert PDF to images using pdfjs-dist in the browser
+  const convertPdfToImagesClient = async (pdfFile: File, maxPages: number = 10): Promise<string[]> => {
+    try {
+      const pdfjs: any = await import('pdfjs-dist');
+      // Use Vite URL plugin to resolve the worker file at runtime
+      const workerSrc: string = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default as string;
+      pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+
+      const arrayBuffer = await pdfFile.arrayBuffer();
+      const loadingTask = pdfjs.getDocument({ data: arrayBuffer, disableWorker: false, isEvalSupported: true });
+      const pdf = await loadingTask.promise;
+
+      const pageCount: number = pdf.numPages;
+      const pagesToProcess = Math.min(pageCount, maxPages);
+      const images: string[] = [];
+
+      for (let i = 1; i <= pagesToProcess; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 2.0 });
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        if (!ctx) throw new Error('Canvas context not available');
+
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        images.push(canvas.toDataURL('image/png'));
+      }
+
+      return images;
+    } catch (err) {
+      console.error('Client-side PDF to images conversion failed:', err);
+      throw err;
+    }
+  };
+
   const analyzeTextDensity = (text: string): number => {
     const words = text.trim().split(/\s+/).filter(word => word.length > 0);
     const meaningfulWords = words.filter(word => 
@@ -340,37 +378,49 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
         }
         setProgress(30);
         
-        const { data: imagesResult, error: imagesError } = await supabase.functions.invoke('pdf-to-images', {
-          body: { fileContent, filename: file.name, maxPages: 10 }
-        });
-        
-        if (imagesError) {
-          console.error('PDF to images conversion error:', imagesError);
-          throw new Error('Failed to convert PDF to images for OCR');
+        // Try server-side conversion first
+        let images: string[] = [];
+        try {
+          const { data: imagesResult, error: imagesError } = await supabase.functions.invoke('pdf-to-images', {
+            body: { fileContent, filename: file.name, maxPages: 10 }
+          });
+          if (!imagesError && imagesResult?.images?.length) {
+            images = imagesResult.images as string[];
+          } else {
+            console.warn('Server conversion failed or returned no images:', imagesError || imagesResult);
+          }
+        } catch (e) {
+          console.warn('Server conversion exception:', e);
         }
         
-        if (!imagesResult.images || imagesResult.images.length === 0) {
+        // Fallback to client-side conversion when server fails
+        if (!images.length) {
+          setCurrentStep('Converting PDF to images in browser...');
+          images = await convertPdfToImagesClient(file, 10);
+        }
+        
+        if (!images.length) {
           throw new Error('No images extracted from PDF');
         }
         
         // Stage 3: Run OCR on each page
-        setCurrentStep(`Running OCR on ${imagesResult.images.length} pages...`);
+        setCurrentStep(`Running OCR on ${images.length} pages...`);
         let fullText = '';
         let totalConfidence = 0;
         
-        for (let i = 0; i < imagesResult.images.length; i++) {
-          setCurrentStep(`OCR processing page ${i + 1}/${imagesResult.images.length}...`);
-          setProgress(40 + Math.round((i / imagesResult.images.length) * 40));
+        for (let i = 0; i < images.length; i++) {
+          setCurrentStep(`OCR processing page ${i + 1}/${images.length}...`);
+          setProgress(40 + Math.round((i / images.length) * 40));
           
           try {
             const result = await Tesseract.recognize(
-              imagesResult.images[i],
+              images[i],
               'eng',
               {
                 logger: (m) => {
                   if (m.status === 'recognizing text') {
-                    const pageProgress = 40 + Math.round((i / imagesResult.images.length) * 40);
-                    const currentPageProgress = Math.round(m.progress * (40 / imagesResult.images.length));
+                    const pageProgress = 40 + Math.round((i / images.length) * 40);
+                    const currentPageProgress = Math.round(m.progress * (40 / images.length));
                     setProgress(pageProgress + currentPageProgress);
                   }
                 }
@@ -385,7 +435,7 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
           }
         }
         
-        const avgConfidence = totalConfidence / imagesResult.images.length / 100;
+        const avgConfidence = totalConfidence / images.length / 100;
         
         if (!validateExtractedText(fullText)) {
           throw new Error('OCR failed to extract readable text from PDF pages');
@@ -416,7 +466,7 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
           detectedKeywords: medicalAnalysis.keywords,
           verificationStatus: verification.status,
           formatSupported,
-          processingNotes: `${verification.notes} (Extracted via OCR from scanned PDF - ${imagesResult.images.length} pages)`,
+          processingNotes: `${verification.notes} (Extracted via OCR from scanned PDF - ${images.length} pages)`,
           structuralCues
         };
         
