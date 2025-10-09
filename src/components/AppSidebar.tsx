@@ -6,7 +6,6 @@ import {
   CalendarPlus,
   Upload,
   Users,
-  Home,
 } from "lucide-react";
 import {
   Sidebar,
@@ -21,39 +20,40 @@ import {
 
 const menuItems = [
   {
-    title: "Dashboard",
-    url: "/patient-dashboard",
-    icon: Home,
-  },
-  {
     title: "My Documents",
-    url: "/patient-dashboard/documents",
+    url: "/patient-dashboard#documents",
     icon: FileText,
+    tab: "documents",
   },
   {
     title: "Search Documents",
-    url: "/patient-dashboard/search",
+    url: "/patient-dashboard#search",
     icon: Search,
+    tab: "search",
   },
   {
     title: "My Appointments",
-    url: "/patient-dashboard/appointments",
+    url: "/patient-dashboard#appointments",
     icon: Calendar,
+    tab: "appointments",
   },
   {
     title: "Book Appointment",
-    url: "/patient-dashboard/book",
+    url: "/patient-dashboard#book-appointment",
     icon: CalendarPlus,
+    tab: "book-appointment",
   },
   {
     title: "Upload Documents",
-    url: "/patient-dashboard/upload",
+    url: "/patient-dashboard#upload",
     icon: Upload,
+    tab: "upload",
   },
   {
     title: "Family Access",
-    url: "/patient-dashboard/family",
+    url: "/patient-dashboard#family",
     icon: Users,
+    tab: "family",
   },
 ];
 
@@ -64,13 +64,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ user, patientData }: AppSidebarProps) {
   const location = useLocation();
-
-  const isActive = (path: string) => {
-    if (path === "/patient-dashboard") {
-      return location.pathname === path;
-    }
-    return location.pathname.startsWith(path);
-  };
+  const activeTab = location.hash.substring(1) || "documents";
 
   return (
     <Sidebar className="w-64">
@@ -87,7 +81,7 @@ export function AppSidebar({ user, patientData }: AppSidebarProps) {
                     <a
                       href={item.url}
                       className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                        isActive(item.url)
+                        activeTab === item.tab
                           ? "bg-primary text-primary-foreground"
                           : "hover:bg-accent"
                       }`}
