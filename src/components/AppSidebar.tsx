@@ -16,6 +16,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 const menuItems = [
@@ -64,10 +65,17 @@ interface AppSidebarProps {
 
 export function AppSidebar({ user, patientData }: AppSidebarProps) {
   const location = useLocation();
+  const { setOpen, isMobile, setOpenMobile } = useSidebar();
   const activeTab = location.hash.substring(1) || "documents";
 
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
+
   return (
-    <Sidebar className="w-64">
+    <Sidebar className="w-64" collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
@@ -80,6 +88,7 @@ export function AppSidebar({ user, patientData }: AppSidebarProps) {
                   <SidebarMenuButton asChild>
                     <a
                       href={item.url}
+                      onClick={handleLinkClick}
                       className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
                         activeTab === item.tab
                           ? "bg-primary text-primary-foreground"
