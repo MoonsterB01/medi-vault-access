@@ -15,7 +15,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 interface AnalyzeRequest {
   documentId: string;
-  fileContent: string;
   contentType: string;
   filename: string;
   ocrResult?: {
@@ -46,8 +45,7 @@ async function getMedicalKeywords(): Promise<Array<{keyword: string, category: s
 
 async function analyzeWithHybridFiltering(
   text: string, 
-  filename: string, 
-  ocrResult?: any
+  filename: string
 ): Promise<{
   keywords: string[];
   categories: string[];
@@ -59,104 +57,88 @@ async function analyzeWithHybridFiltering(
   structuralCues: any;
   processingNotes: string;
 }> {
-  // Use OCR result if available, otherwise analyze text
-  let analysisText = text;
-  let textDensityScore = 0;
-  let medicalKeywordCount = 0;
+  const analysisText = text;
+
+  // Analyze text from scratch
+  const words = analysisText.trim().split(/\s+/).filter(word => word.length > 0);
+  const meaningfulWords = words.filter(word =>
+    word.length >= 3 &&
+    /[a-zA-Z]/.test(word) &&
+    !(/^\d+$/.test(word))
+  );
+  const textDensityScore = meaningfulWords.length;
+
+  // Get medical keywords from database and apply weighted scoring
+  const medicalKeywords = await getMedicalKeywords();
+  const lowerText = analysisText.toLowerCase();
+
+  let weightedScore = 0;
   let detectedKeywords: string[] = [];
-  let structuralCues: any = {};
-  let verificationStatus = 'unverified';
-  let processingNotes = '';
 
-  if (ocrResult) {
-    // Use pre-processed OCR results
-    analysisText = ocrResult.text;
-    textDensityScore = ocrResult.textDensityScore;
-    medicalKeywordCount = ocrResult.medicalKeywordCount;
-    detectedKeywords = ocrResult.detectedKeywords || [];
-    structuralCues = ocrResult.structuralCues || {};
-    verificationStatus = ocrResult.verificationStatus;
-    processingNotes = ocrResult.processingNotes;
-  } else {
-    // Fallback: analyze text directly
-    const words = analysisText.trim().split(/\s+/).filter(word => word.length > 0);
-    const meaningfulWords = words.filter(word => 
-      word.length >= 3 && 
-      /[a-zA-Z]/.test(word) && 
-      !(/^\d+$/.test(word))
-    );
-    textDensityScore = meaningfulWords.length;
+  medicalKeywords.forEach(mk => {
+    if (lowerText.includes(mk.keyword.toLowerCase())) {
+      detectedKeywords.push(mk.keyword);
+      weightedScore += mk.weight;
+    }
+  });
 
-    // Get medical keywords from database and apply weighted scoring
-    const medicalKeywords = await getMedicalKeywords();
-    const lowerText = analysisText.toLowerCase();
-    
-    let weightedScore = 0;
-    detectedKeywords = [];
-    
-    medicalKeywords.forEach(mk => {
-      if (lowerText.includes(mk.keyword.toLowerCase())) {
-        detectedKeywords.push(mk.keyword);
-        weightedScore += mk.weight;
-      }
-    });
-    
-    // Enhanced pattern detection for medical content
-    const medicalRangePattern = /\b\d+[\.,]?\d*\s*[-–]\s*\d+[\.,]?\d*\s*\([^)]*range[^)]*\)/gi;
-    const medicalUnitsPattern = /\b\d+[\.,]?\d*\s*(mg\/dl|g\/dl|cells\/[μu]l|mmhg|bpm|meq\/l|iu\/l|ng\/ml|pg\/ml|[μu]g\/ml)\b/gi;
-    const labValuesPattern = /\b(hemoglobin|hgb|wbc|rbc|platelet|glucose|hba1c|cholesterol|creatinine|ast|alt|bilirubin)\s*[:\-]?\s*\d+/gi;
-    
-    const rangeMatches = analysisText.match(medicalRangePattern) || [];
-    const unitMatches = analysisText.match(medicalUnitsPattern) || [];
-    const labMatches = analysisText.match(labValuesPattern) || [];
-    
-    // Add pattern-based scoring
-    if (rangeMatches.length > 0) {
-      detectedKeywords.push('medical ranges detected');
-      weightedScore += rangeMatches.length * 2.0;
-    }
-    
-    if (unitMatches.length > 0) {
-      detectedKeywords.push('medical units detected');
-      weightedScore += unitMatches.length * 2.5;
-    }
-    
-    if (labMatches.length > 0) {
-      detectedKeywords.push('lab values detected');
-      weightedScore += labMatches.length * 3.0;
-    }
-    
-    medicalKeywordCount = Math.floor(weightedScore);
-    
-    // Enhanced verification status logic with pattern-based analysis
-    const hasStrongMedicalPatterns = (rangeMatches.length + unitMatches.length + labMatches.length) >= 2;
-    const hasLabIndicators = labMatches.length > 0 || detectedKeywords.some(k => k.includes('lab') || k.includes('test'));
-    
-    if (textDensityScore >= 5 && medicalKeywordCount >= 5) {
-      verificationStatus = 'verified_medical';
-      processingNotes = 'Automatically verified - high medical content and text density detected.';
-    } else if (hasStrongMedicalPatterns || (textDensityScore >= 3 && medicalKeywordCount >= 3)) {
-      verificationStatus = 'verified_medical';
-      processingNotes = 'Automatically verified - medical patterns and keywords detected.';
-    } else if (hasLabIndicators || (textDensityScore >= 2 && medicalKeywordCount >= 2)) {
-      verificationStatus = 'user_verified_medical';
-      processingNotes = 'Likely medical document - user verification recommended.';
-    } else if (textDensityScore >= 1 && medicalKeywordCount >= 1) {
-      verificationStatus = 'user_verified_medical';
-      processingNotes = 'Possible medical document - user verification required.';
-    } else {
-      verificationStatus = 'unverified';
-      processingNotes = 'Low medical content detected. Manual verification required.';
-    }
+  // Enhanced pattern detection for medical content
+  const medicalRangePattern = /\b\d+[\.,]?\d*\s*[-–]\s*\d+[\.,]?\d*\s*\([^)]*range[^)]*\)/gi;
+  const medicalUnitsPattern = /\b\d+[\.,]?\d*\s*(mg\/dl|g\/dl|cells\/[μu]l|mmhg|bpm|meq\/l|iu\/l|ng\/ml|pg\/ml|[μu]g\/ml)\b/gi;
+  const labValuesPattern = /\b(hemoglobin|hgb|wbc|rbc|platelet|glucose|hba1c|cholesterol|creatinine|ast|alt|bilirubin)\s*[:\-]?\s*\d+/gi;
 
-    // Detect structural cues
-    structuralCues = {
-      hasDates: /\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b|\b\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}\b/.test(analysisText),
-      hasUnits: /\b\d+\s*(mg|ml|mmhg|bpm|units|dose|%)\b/i.test(analysisText),
-      hasNumbers: /\b\d+(\.\d+)?\b/.test(analysisText),
-      hasTableStructure: analysisText.includes('\t') || /\s{4,}/.test(analysisText)
-    };
+  const rangeMatches = analysisText.match(medicalRangePattern) || [];
+  const unitMatches = analysisText.match(medicalUnitsPattern) || [];
+  const labMatches = analysisText.match(labValuesPattern) || [];
+
+  // Add pattern-based scoring
+  if (rangeMatches.length > 0) {
+    detectedKeywords.push('medical ranges detected');
+    weightedScore += rangeMatches.length * 2.0;
   }
+
+  if (unitMatches.length > 0) {
+    detectedKeywords.push('medical units detected');
+    weightedScore += unitMatches.length * 2.5;
+  }
+
+  if (labMatches.length > 0) {
+    detectedKeywords.push('lab values detected');
+    weightedScore += labMatches.length * 3.0;
+  }
+
+  const medicalKeywordCount = Math.floor(weightedScore);
+
+  // Enhanced verification status logic with pattern-based analysis
+  const hasStrongMedicalPatterns = (rangeMatches.length + unitMatches.length + labMatches.length) >= 2;
+  const hasLabIndicators = labMatches.length > 0 || detectedKeywords.some(k => k.includes('lab') || k.includes('test'));
+  let verificationStatus: string;
+  let processingNotes: string;
+
+  if (textDensityScore >= 5 && medicalKeywordCount >= 5) {
+    verificationStatus = 'verified_medical';
+    processingNotes = 'Automatically verified - high medical content and text density detected.';
+  } else if (hasStrongMedicalPatterns || (textDensityScore >= 3 && medicalKeywordCount >= 3)) {
+    verificationStatus = 'verified_medical';
+    processingNotes = 'Automatically verified - medical patterns and keywords detected.';
+  } else if (hasLabIndicators || (textDensityScore >= 2 && medicalKeywordCount >= 2)) {
+    verificationStatus = 'user_verified_medical';
+    processingNotes = 'Likely medical document - user verification recommended.';
+  } else if (textDensityScore >= 1 && medicalKeywordCount >= 1) {
+    verificationStatus = 'user_verified_medical';
+    processingNotes = 'Possible medical document - user verification required.';
+  } else {
+    verificationStatus = 'unverified';
+    processingNotes = 'Low medical content detected. Manual verification required.';
+  }
+
+  // Detect structural cues
+  const structuralCues = {
+    hasDates: /\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b|\b\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}\b/.test(analysisText),
+    hasUnits: /\b\d+\s*(mg|ml|mmhg|bpm|units|dose|%)\b/i.test(analysisText),
+    hasNumbers: /\b\d+(\.\d+)?\b/.test(analysisText),
+    hasTableStructure: analysisText.includes('\t') || /\s{4,}/.test(analysisText)
+  };
 
     // Enhanced Gemini analysis with hybrid filtering context
     let geminiAnalysis: any = {
@@ -330,27 +312,19 @@ serve(async (req) => {
   }
 
   try {
-    const { documentId, fileContent, contentType, filename, ocrResult }: AnalyzeRequest = await req.json();
+    const { documentId, contentType, filename, ocrResult }: AnalyzeRequest = await req.json();
 
     console.log(`Enhanced analysis for document ${documentId} with type ${contentType}, filename: ${filename}`);
     
-    // Extract text content or use OCR result
-    let extractedText = '';
-    if (ocrResult?.text) {
-      extractedText = ocrResult.text;
-      console.log(`Using OCR extracted text: ${extractedText.length} characters`);
-    } else {
-      // Fallback text extraction
-      if (contentType.includes('text/')) {
-        extractedText = atob(fileContent);
-      } else {
-        extractedText = `Document: ${filename}`;
-      }
-      console.log(`Fallback text extraction: ${extractedText.length} characters`);
+    // Ensure we have text to analyze from the upstream service
+    if (!ocrResult?.text) {
+      throw new Error('No text provided for analysis. The ocrResult.text field is required.');
     }
+    const extractedText = ocrResult.text;
+    console.log(`Using provided text for analysis: ${extractedText.length} characters`);
     
     // Perform hybrid analysis
-    const analysis = await analyzeWithHybridFiltering(extractedText, filename, ocrResult);
+    const analysis = await analyzeWithHybridFiltering(extractedText, filename);
     console.log(`Analysis completed: ${analysis.keywords.length} keywords, verification: ${analysis.verificationStatus}`);
     
     // Only update document if it's a real document ID (not temp-analysis)
