@@ -6,9 +6,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Dynamic import for PDF.js
+// Dynamic import for PDF.js with reliable CDN
 async function getPDFLib() {
-  const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/legacy/build/pdf.mjs');
+  const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/+esm');
+  
+  // Configure worker for serverless environment using reliable CDN
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
+  
   return pdfjsLib;
 }
 
@@ -26,8 +31,12 @@ async function convertPDFToImages(pdfBuffer: Uint8Array, maxPages: number = 20):
     const pdfjsLib = await getPDFLib();
     const createCanvas = await getCanvas();
     
-    // Load the PDF document
-    const loadingTask = pdfjsLib.getDocument({ data: pdfBuffer });
+    // Load the PDF document with serverless-friendly options
+    const loadingTask = pdfjsLib.getDocument({ 
+      data: pdfBuffer,
+      isEvalSupported: false,
+      useSystemFonts: true
+    });
     const pdf = await loadingTask.promise;
     
     const pageCount = pdf.numPages;

@@ -278,17 +278,30 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
         setCurrentStep('Extracting embedded text from PDF...');
         setProgress(20);
         
-        const { data: pdfResult, error: pdfError } = await supabase.functions.invoke('pdf-text-extractor', {
-          body: { fileContent, filename: file.name }
-        });
+        let pdfResult = null;
+        let textExtractionFailed = false;
         
-        if (pdfError) {
-          console.error('PDF text extraction error:', pdfError);
-          throw new Error('PDF text extraction failed');
+        try {
+          const { data, error } = await supabase.functions.invoke('pdf-text-extractor', {
+            body: { fileContent, filename: file.name }
+          });
+          
+          if (error) {
+            console.warn('PDF text extraction service error:', error);
+            textExtractionFailed = true;
+          } else if (data?.success === false) {
+            console.warn('PDF text extraction returned failure:', data);
+            textExtractionFailed = true;
+          } else {
+            pdfResult = data;
+          }
+        } catch (err) {
+          console.warn('PDF text extraction exception:', err);
+          textExtractionFailed = true;
         }
         
-        // Check if PDF has embedded text
-        if (pdfResult.hasEmbeddedText && !pdfResult.requiresOCR && pdfResult.extractedText?.length > 50) {
+        // Check if PDF has embedded text (only if extraction succeeded)
+        if (!textExtractionFailed && pdfResult?.hasEmbeddedText && !pdfResult.requiresOCR && pdfResult.extractedText?.length > 50) {
           // Success! PDF has readable embedded text
           setProgress(60);
           setCurrentStep('Analyzing extracted text...');
@@ -320,7 +333,11 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
         }
         
         // Stage 2: PDF is image-based or has no readable text - convert to images for OCR
-        setCurrentStep('PDF requires OCR - converting to images...');
+        if (textExtractionFailed) {
+          setCurrentStep('Falling back to OCR method - converting PDF to images...');
+        } else {
+          setCurrentStep('PDF requires OCR - converting to images...');
+        }
         setProgress(30);
         
         const { data: imagesResult, error: imagesError } = await supabase.functions.invoke('pdf-to-images', {
