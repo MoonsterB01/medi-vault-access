@@ -41,10 +41,10 @@ interface Patient {
 }
 
 interface DoctorDashboardProps {
-  user: any;
+  user?: any;
 }
 
-const DoctorDashboard = ({ user }: DoctorDashboardProps) => {
+const DoctorDashboard = ({ user }: DoctorDashboardProps = {}) => {
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);

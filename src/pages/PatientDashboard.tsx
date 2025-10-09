@@ -17,10 +17,10 @@ import AppointmentBooking from "@/components/AppointmentBooking";
 import AppointmentTracker from "@/components/AppointmentTracker";
 
 interface PatientDashboardProps {
-  user: any;
+  user?: any;
 }
 
-export default function PatientDashboard({ user }: PatientDashboardProps) {
+export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   const [patientData, setPatientData] = useState<any>(null);
   const [availablePatients, setAvailablePatients] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
@@ -391,7 +391,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps) {
               />
             </TabsContent>
             <TabsContent value="family" className="mt-6">
-              <FamilyAccessManager patientId={patientData?.id} />
+              <FamilyAccessManager patientId={patientData?.id} patientShareableId={patientData?.shareable_id} />
             </TabsContent>
           </Tabs>
         </div>

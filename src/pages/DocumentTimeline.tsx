@@ -26,10 +26,10 @@ interface GroupedDocuments {
 }
 
 interface DocumentTimelineProps {
-  user: any;
+  user?: any;
 }
 
-export default function DocumentTimeline({ user }: DocumentTimelineProps) {
+export default function DocumentTimeline({ user }: DocumentTimelineProps = {}) {
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [filteredDocuments, setFilteredDocuments] = useState<DocumentData[]>([]);
   const [searchQuery, setSearchQuery] = useState("");

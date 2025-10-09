@@ -11,10 +11,10 @@ import { useNavigate } from "react-router-dom";
 import { Upload, Users } from "lucide-react";
 
 interface HospitalDashboardProps {
-  user: any;
+  user?: any;
 }
 
-export default function HospitalDashboard({ user }: HospitalDashboardProps) {
+export default function HospitalDashboard({ user }: HospitalDashboardProps = {}) {
   const [patients, setPatients] = useState<any[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<string>("");
   const [loading, setLoading] = useState(false);
