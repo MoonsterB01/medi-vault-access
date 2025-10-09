@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
 import { User, FileText, Share2, Copy, Upload, Download, Calendar, Clock, Trash2, Users, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,7 +27,16 @@ export default function PatientDashboard({ user }: PatientDashboardProps) {
   const [familyEmail, setFamilyEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const location = useLocation();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("documents");
+
+  useEffect(() => {
+    const hash = location.hash.replace('#', '');
+    if (hash) {
+      setActiveTab(hash);
+    }
+  }, [location.hash]);
 
   useEffect(() => {
     if (user) {
@@ -99,12 +107,6 @@ export default function PatientDashboard({ user }: PatientDashboardProps) {
       if (docsError) throw docsError;
 
       setDocuments(docs || []);
-      if (!docs || docs.length === 0) {
-        toast({
-          title: "No Documents",
-          description: "No documents found for this patient.",
-        });
-      }
     } catch (error: any) {
       toast({
         title: "Documents Error",
@@ -180,6 +182,11 @@ export default function PatientDashboard({ user }: PatientDashboardProps) {
     } catch (error: any) {
       toast({ title: "Delete Failed", description: error.message, variant: "destructive" });
     }
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    navigate(`#${tab}`);
   };
 
   return (
@@ -307,7 +314,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps) {
             </Button>
           </div>
 
-          <Tabs defaultValue="documents" className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-1" />Documents</TabsTrigger>
               <TabsTrigger value="search"><Search className="h-4 w-4 mr-1" />Search</TabsTrigger>
@@ -319,24 +326,26 @@ export default function PatientDashboard({ user }: PatientDashboardProps) {
 
             <TabsContent value="documents" className="mt-6">
               <Card>
-                <CardHeader><CardTitle>My Documents</CardTitle></CardHeader>
+                <CardHeader>
+                  <CardTitle>My Documents</CardTitle>
+                  <CardDescription>Your uploaded medical documents</CardDescription>
+                </CardHeader>
                 <CardContent>
                   {documents.length > 0 ? (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                       {documents.map((doc) => (
                         <Card key={doc.id} className="p-4 flex flex-col justify-between">
-                          <div className="space-y-2">
+                          <div className="space-y-3">
                             <h3 className="font-semibold text-sm truncate" title={doc.filename}>{doc.filename}</h3>
                             <p className="text-xs text-muted-foreground">{formatDocumentType(doc.document_type)}</p>
-                            <p className="text-xs text-muted-foreground">
-                              <Calendar className="h-3 w-3 inline mr-1" />
-                              {new Date(doc.uploaded_at).toLocaleDateString()}
-                            </p>
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground"><Calendar className="h-3 w-3 inline mr-1" />{new Date(doc.uploaded_at).toLocaleDateString()}</p>
+                              <p className="text-xs text-muted-foreground">Size: {formatFileSize(doc.file_size)}</p>
+                              {doc.content_confidence && <p className="text-xs text-green-600 dark:text-green-400">✓ AI Analyzed ({Math.round(doc.content_confidence * 100)}% confidence)</p>}
+                            </div>
                             {doc.content_keywords?.length > 0 && (
                               <div className="flex flex-wrap gap-1">
-                                {doc.content_keywords.slice(0, 3).map((kw: string, i: number) => (
-                                  <Badge key={i} variant="outline" className="text-xs">{kw}</Badge>
-                                ))}
+                                {doc.content_keywords.slice(0, 3).map((kw: string, i: number) => <Badge key={i} variant="outline" className="text-xs">{kw}</Badge>)}
                               </div>
                             )}
                           </div>
@@ -344,9 +353,9 @@ export default function PatientDashboard({ user }: PatientDashboardProps) {
                             <Button size="sm" variant="outline" onClick={async () => {
                                const { data } = await supabase.storage.from('medical-documents').createSignedUrl(doc.file_path, 3600);
                                if (data?.signedUrl) window.open(data.signedUrl, '_blank');
-                            }}><Download className="h-4 w-4" /></Button>
+                            }}><Download className="h-4 w-4 mr-2" />View</Button>
                             <ExtractTextDialog document={doc}>
-                              <Button size="sm" variant="outline"><FileText className="h-4 w-4" /></Button>
+                              <Button size="sm" variant="outline" title="Extract text"><FileText className="h-4 w-4 mr-2" />Extract</Button>
                             </ExtractTextDialog>
                             <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument(doc.id, doc.filename)}>
                               <Trash2 className="h-4 w-4" />

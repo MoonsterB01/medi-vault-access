@@ -14,10 +14,6 @@ import HowItWorks from "./pages/HowItWorks";
 import NotFound from "./pages/NotFound";
 import DoctorAuth from "./pages/DoctorAuth";
 import DoctorDashboard from "./pages/DoctorDashboard";
-import PatientDocuments from "./pages/PatientDocuments";
-import PatientAppointments from "./pages/PatientAppointments";
-import PatientBookAppointment from "./pages/PatientBookAppointment";
-
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -31,9 +27,6 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/hospital-dashboard" element={<AppLayout userRole="hospital_staff"><HospitalDashboard /></AppLayout>} />
           <Route path="/patient-dashboard" element={<AppLayout userRole="patient"><PatientDashboard /></AppLayout>} />
-          <Route path="/patient-dashboard/documents" element={<AppLayout userRole="patient"><PatientDocuments /></AppLayout>} />
-          <Route path="/patient-dashboard/appointments" element={<AppLayout userRole="patient"><PatientAppointments /></AppLayout>} />
-          <Route path="/patient-dashboard/book" element={<AppLayout userRole="patient"><PatientBookAppointment /></AppLayout>} />
           <Route path="/document-timeline" element={<AppLayout userRole="patient"><DocumentTimeline /></AppLayout>} />
           <Route path="/upload" element={<PublicUpload />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
