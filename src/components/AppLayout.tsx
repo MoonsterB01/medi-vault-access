@@ -14,28 +14,37 @@ interface AppLayoutProps {
   userRole: 'patient' | 'hospital_staff' | 'admin' | 'doctor' | 'family_member';
 }
 
-export default function AppLayout({ children }: AppLayoutProps) {
+export default function AppLayout({ children, userRole }: AppLayoutProps) {
   const [user, setUser] = useState<any>(null);
+  const [patientData, setPatientData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkUser = async () => {
+    const checkUserAndPatientData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         navigate('/auth');
         return;
       }
-      const { data: userData } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      setUser(userData);
+
+      const userPromise = supabase.from('users').select('*').eq('id', user.id).single();
+      const patientPromise = supabase.from('patients').select('*').eq('user_id', user.id).single();
+
+      const [userResult, patientResult] = await Promise.all([userPromise, patientPromise]);
+
+      if (userResult.data) {
+        setUser(userResult.data);
+      }
+
+      if (patientResult.data) {
+        setPatientData(patientResult.data);
+      }
+
       setLoading(false);
     };
-    checkUser();
+    checkUserAndPatientData();
   }, [navigate]);
 
   const handleSignOut = async () => {
@@ -57,7 +66,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
-        <AppSidebar user={user} patientData={null} />
+        <AppSidebar user={user} patientData={patientData} userRole={userRole} />
 
         <div className="flex-1 flex flex-col">
           <header className="h-16 flex items-center justify-between px-6 bg-card border-b shadow-sm">

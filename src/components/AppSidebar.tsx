@@ -6,6 +6,10 @@ import {
   CalendarPlus,
   Upload,
   Users,
+  LayoutDashboard,
+  UserPlus,
+  FilePlus,
+  Stethoscope,
 } from "lucide-react";
 import {
   Sidebar,
@@ -19,60 +23,61 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const menuItems = [
-  {
-    title: "My Documents",
-    url: "/patient-dashboard#documents",
-    icon: FileText,
-    tab: "documents",
-  },
-  {
-    title: "Search Documents",
-    url: "/patient-dashboard#search",
-    icon: Search,
-    tab: "search",
-  },
-  {
-    title: "My Appointments",
-    url: "/patient-dashboard#appointments",
-    icon: Calendar,
-    tab: "appointments",
-  },
-  {
-    title: "Book Appointment",
-    url: "/patient-dashboard#book-appointment",
-    icon: CalendarPlus,
-    tab: "book-appointment",
-  },
-  {
-    title: "Upload Documents",
-    url: "/patient-dashboard#upload",
-    icon: Upload,
-    tab: "upload",
-  },
-  {
-    title: "Family Access",
-    url: "/patient-dashboard#family",
-    icon: Users,
-    tab: "family",
-  },
+const patientMenuItems = [
+  { title: "My Documents", url: "/patient-dashboard#documents", icon: FileText, tab: "documents" },
+  { title: "Search Documents", url: "/patient-dashboard#search", icon: Search, tab: "search" },
+  { title: "My Appointments", url: "/patient-dashboard#appointments", icon: Calendar, tab: "appointments" },
+  { title: "Book Appointment", url: "/patient-dashboard#book-appointment", icon: CalendarPlus, tab: "book-appointment" },
+  { title: "Upload Documents", url: "/patient-dashboard#upload", icon: Upload, tab: "upload" },
+  { title: "Family Access", url: "/patient-dashboard#family", icon: Users, tab: "family" },
+];
+
+const doctorMenuItems = [
+  { title: "Dashboard", url: "/doctor-dashboard#dashboard", icon: LayoutDashboard, tab: "dashboard" },
+  { title: "My Patients", url: "/doctor-dashboard#patients", icon: Users, tab: "patients" },
+  { title: "Appointments", url: "/doctor-dashboard#appointments", icon: Calendar, tab: "appointments" },
+];
+
+const hospitalStaffMenuItems = [
+  { title: "Dashboard", url: "/hospital-dashboard#dashboard", icon: LayoutDashboard, tab: "dashboard" },
+  { title: "Patients", url: "/hospital-dashboard#patients", icon: Users, tab: "patients" },
+  { title: "Add Patient", url: "/hospital-dashboard#add-patient", icon: UserPlus, tab: "add-patient" },
+  { title: "Doctors", url: "/hospital-dashboard#doctors", icon: Stethoscope, tab: "doctors" },
+  { title: "Appointments", url: "/hospital-dashboard#appointments", icon: Calendar, tab: "appointments" },
+  { title: "Add Record", url: "/hospital-dashboard#add-record", icon: FilePlus, tab: "add-record" },
 ];
 
 interface AppSidebarProps {
   user: any;
   patientData: any;
+  userRole: 'patient' | 'hospital_staff' | 'admin' | 'doctor' | 'family_member';
 }
 
-export function AppSidebar({ user, patientData }: AppSidebarProps) {
+const getMenuItems = (role: AppSidebarProps['userRole']) => {
+  switch (role) {
+    case 'patient':
+      return patientMenuItems;
+    case 'doctor':
+      return doctorMenuItems;
+    case 'hospital_staff':
+      return hospitalStaffMenuItems;
+    default:
+      return [];
+  }
+};
+
+export function AppSidebar({ user, patientData, userRole }: AppSidebarProps) {
   const location = useLocation();
-  const { setOpen, isMobile, setOpenMobile } = useSidebar();
-  const activeTab = location.hash.substring(1) || "documents";
+  const { isMobile, setOpenMobile } = useSidebar();
+  const activeTab = location.hash.substring(1) || (getMenuItems(userRole)[0]?.tab || "");
 
   const handleLinkClick = () => {
     if (isMobile) {
       setOpenMobile(false);
     }
   };
+
+  const menuItems = getMenuItems(userRole);
 
   return (
     <Sidebar className="w-64" collapsible="icon">
