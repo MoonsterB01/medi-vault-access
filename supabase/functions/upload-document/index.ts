@@ -209,6 +209,68 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // --- Server-side Processing Orchestration ---
+    let textToAnalyze: string | null = ocrResult?.text || null;
+    let analysisSource = 'client-ocr';
+    let requiresOcr = false;
+    let finalAiAnalysisResult = aiAnalysisResult; // Use client-side AI result if provided
+
+    // 1. PDF Text Extraction
+    // If the file is a PDF and we don't have pre-computed text, extract it
+    if (file.type === 'application/pdf' && !textToAnalyze) {
+      console.log(`PDF detected, invoking pdf-text-extractor for ${file.name}`);
+      analysisSource = 'server-pdf-extraction';
+      try {
+        const { data: extractionData, error: extractionError } = await supabase.functions.invoke('pdf-text-extractor', {
+          body: { fileContent: file.content, filename: file.name }
+        });
+
+        if (extractionError) throw new Error(`PDF text extraction failed: ${extractionError.message}`);
+
+        if (extractionData.success && extractionData.extractedText) {
+          textToAnalyze = extractionData.extractedText;
+          requiresOcr = extractionData.requiresOCR;
+          console.log(`Successfully extracted ${textToAnalyze?.length || 0} chars from PDF. Requires OCR: ${requiresOcr}`);
+        } else {
+          console.warn('pdf-text-extractor failed, falling back to OCR if possible.', extractionData.error);
+          requiresOcr = true;
+        }
+      } catch (error) {
+        console.error('Error invoking pdf-text-extractor:', error.message);
+        requiresOcr = true; // Flag for potential client-side OCR later
+      }
+    }
+
+    // 2. Enhanced Document Analysis
+    // If we have text and no prior AI analysis, run the analysis function
+    if (textToAnalyze && !finalAiAnalysisResult) {
+      console.log(`Invoking enhanced-document-analyze for document: ${file.name}`);
+      analysisSource = 'server-ai-analysis';
+      try {
+        const { data: analysisData, error: analysisError } = await supabase.functions.invoke('enhanced-document-analyze', {
+          body: {
+            documentId: 'temp-analysis',
+            fileContent: file.content,
+            contentType: file.type,
+            filename: file.name,
+            ocrResult: { text: textToAnalyze } // Pass the extracted text
+          }
+        });
+
+        if (analysisError) throw new Error(`Enhanced analysis failed: ${analysisError.message}`);
+        if (analysisData.success) {
+          finalAiAnalysisResult = analysisData;
+          console.log(`Successfully analyzed document: ${file.name}`);
+        } else {
+          console.warn('enhanced-document-analyze indicated failure:', analysisData.error);
+        }
+      } catch (error) {
+        console.error('Error invoking enhanced-document-analyze:', error.message);
+      }
+    }
+
+    // --- End of Server-side Processing ---
+
     // Generate unique file path
     const fileExtension = file.name.split('.').pop();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -252,27 +314,33 @@ const handler = async (req: Request): Promise<Response> => {
         uploaded_by_user_shareable_id: uploaderUser?.user_shareable_id || null,
         searchable_content: `${file.name} ${documentType} ${description || ''} ${tags?.join(' ') || ''}`,
         file_hash: fileHash || null,
-        // OCR Results
-        ocr_extracted_text: ocrResult?.text || null,
-        text_density_score: ocrResult?.textDensityScore || aiAnalysisResult?.textDensityScore || 0,
-        medical_keyword_count: ocrResult?.medicalKeywordCount || aiAnalysisResult?.medicalKeywordCount || 0,
-        structural_cues: ocrResult?.structuralCues || {},
-        format_supported: ocrResult?.formatSupported ?? true,
-        processing_notes: ocrResult?.processingNotes || aiAnalysisResult?.processingNotes || null,
-        // AI Analysis Results  
-        verification_status: aiAnalysisResult?.verificationStatus || ocrResult?.verificationStatus || 'unverified',
-        content_keywords: aiAnalysisResult?.keywords || [],
-        auto_categories: aiAnalysisResult?.categories || [],
-        content_confidence: aiAnalysisResult?.confidence || 0,
-        extracted_entities: aiAnalysisResult?.entities || {},
-        medical_specialties: aiAnalysisResult?.entities?.specialties || [],
-        extracted_dates: aiAnalysisResult?.entities?.dates || [],
+
+        // Use server-side extracted text if available
+        extracted_text: textToAnalyze,
+        ocr_extracted_text: ocrResult?.text || (file.type !== 'application/pdf' ? textToAnalyze : null),
+
+        // Use analysis results from server if available, otherwise fallback to client's
+        text_density_score: finalAiAnalysisResult?.textDensityScore || ocrResult?.textDensityScore || 0,
+        medical_keyword_count: finalAiAnalysisResult?.medicalKeywordCount || ocrResult?.medicalKeywordCount || 0,
+        structural_cues: finalAiAnalysisResult?.structuralCues || ocrResult?.structuralCues || {},
+        format_supported: ocrResult?.formatSupported ?? !requiresOcr,
+        processing_notes: finalAiAnalysisResult?.processingNotes || ocrResult?.processingNotes || null,
+        verification_status: finalAiAnalysisResult?.verificationStatus || ocrResult?.verificationStatus || 'unverified',
+        content_keywords: finalAiAnalysisResult?.keywords || [],
+        auto_categories: finalAiAnalysisResult?.categories || [],
+        content_confidence: finalAiAnalysisResult?.confidence || 0,
+        extracted_entities: finalAiAnalysisResult?.entities || {},
+        medical_specialties: finalAiAnalysisResult?.entities?.specialties || [],
+        extracted_dates: finalAiAnalysisResult?.entities?.dates || [],
+
         extraction_metadata: {
           upload_timestamp: new Date().toISOString(),
           has_ocr_results: !!ocrResult,
-          has_ai_analysis: !!aiAnalysisResult,
+          has_ai_analysis: !!finalAiAnalysisResult,
           content_type: file.type,
           filename: file.name,
+          analysis_source: analysisSource,
+          requires_ocr: requiresOcr
         }
       })
       .select()

@@ -98,23 +98,31 @@ async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<{
     extractedText = extractedText
       .replace(/\s+/g, ' ')
       .trim();
+
+    // Validate extracted text to prevent garbage data
+    const isReadable = isTextReadable(extractedText);
+    if (!isReadable) {
+      console.warn(`Extracted text deemed unreadable (length: ${extractedText.length}). Resetting and flagging for OCR.`);
+      extractedText = '';
+      hasEmbeddedText = false; // If text isn't readable, we can't trust it's embedded
+    }
     
-    // Determine if OCR is required
+    // Determine if OCR is required based on final state of text
     const requiresOCR = !hasEmbeddedText || extractedText.length < 100;
     
     // Calculate confidence based on text extraction quality
     let confidence = 0;
-    if (hasEmbeddedText && extractedText.length > 500) {
+    if (isReadable && hasEmbeddedText && extractedText.length > 500) {
       confidence = 0.95;
-    } else if (hasEmbeddedText && extractedText.length > 100) {
+    } else if (isReadable && hasEmbeddedText && extractedText.length > 100) {
       confidence = 0.75;
-    } else if (extractedText.length > 50) {
+    } else if (isReadable && extractedText.length > 50) {
       confidence = 0.5;
     } else {
       confidence = 0.1;
     }
     
-    console.log(`Extraction complete: ${extractedText.length} chars, hasEmbeddedText: ${hasEmbeddedText}, requiresOCR: ${requiresOCR}`);
+    console.log(`Extraction complete: ${extractedText.length} chars, readable: ${isReadable}, hasEmbeddedText: ${hasEmbeddedText}, requiresOCR: ${requiresOCR}`);
     
     return {
       text: extractedText,
