@@ -11,9 +11,29 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    mode === 'development' &&
-    componentTagger(),
+    mode === "development" && componentTagger(),
   ].filter(Boolean),
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (id.includes("node_modules")) {
+            if (id.includes("pdfjs-dist")) return "pdfjs-dist";
+            if (id.includes("tesseract.js")) return "tesseract.js";
+            if (id.includes("html2canvas")) return "html2canvas";
+            if (id.includes("recharts")) return "recharts";
+            if (id.includes("@supabase")) return "supabase";
+            if (id.includes("lucide-react")) return "lucide-react";
+            if (id.includes("react")) return "react";
+            if (id.includes("@radix-ui")) return "radix-ui";
+            if (id.includes("jspdf")) return "jspdf";
+            if (id.includes("@tanstack/react-query")) return "react-query";
+            return "vendor";
+          }
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
