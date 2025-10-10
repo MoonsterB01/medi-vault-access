@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
   ].filter(Boolean),
   optimizeDeps: {
+    exclude: ['pdfjs-dist'],
     esbuildOptions: {
       target: 'esnext',
     },

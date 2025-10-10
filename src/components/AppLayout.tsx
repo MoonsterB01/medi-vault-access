@@ -30,17 +30,31 @@ export default function AppLayout({ children, userRole }: AppLayoutProps) {
       }
 
       const usersTable = supabase.from('users') as any;
-      const patientsTable = supabase.from('patients') as any;
       
-      const userResult = await usersTable.select('id, email, name, role, created_at, updated_at').eq('id', user.id).single();
-      const patientResult = await patientsTable.select('id, name, dob, gender, primary_contact, hospital_id, created_by, shareable_id').eq('user_id', user.id).single();
+      const userResult = await usersTable
+        .select('id, email, name, role, created_at, updated_at')
+        .eq('id', user.id)
+        .single();
+
+      // Fetch patient via family_access join to match current schema (no patients.user_id)
+      const { data: familyAccess } = await supabase
+        .from('family_access')
+        .select(`
+          patient_id,
+          patients:patient_id (
+            id, name, dob, gender, primary_contact, hospital_id, created_by, shareable_id
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('can_view', true);
 
       if (userResult.data) {
         setUser(userResult.data);
       }
 
-      if (patientResult.data) {
-        setPatientData(patientResult.data);
+      const patients = (familyAccess || []).map((fa: any) => fa.patients).filter(Boolean);
+      if (patients.length > 0) {
+        setPatientData(patients[0]);
       }
 
       setLoading(false);
