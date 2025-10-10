@@ -29,10 +29,11 @@ export default function AppLayout({ children, userRole }: AppLayoutProps) {
         return;
       }
 
-      const userPromise = supabase.from('users').select('*').eq('id', user.id).single();
-      const patientPromise = supabase.from('patients').select('*').eq('user_id', user.id).single();
-
-      const [userResult, patientResult] = await Promise.all([userPromise, patientPromise]);
+      const usersTable = supabase.from('users') as any;
+      const patientsTable = supabase.from('patients') as any;
+      
+      const userResult = await usersTable.select('id, email, name, role, created_at, updated_at').eq('id', user.id).single();
+      const patientResult = await patientsTable.select('id, name, dob, gender, primary_contact, hospital_id, created_by, shareable_id').eq('user_id', user.id).single();
 
       if (userResult.data) {
         setUser(userResult.data);

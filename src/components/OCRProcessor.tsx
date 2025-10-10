@@ -378,26 +378,9 @@ export default function OCRProcessor({ file, onOCRComplete, onError }: OCRProces
         }
         setProgress(30);
         
-        // Try server-side conversion first
-        let images: string[] = [];
-        try {
-          const { data: imagesResult, error: imagesError } = await supabase.functions.invoke('pdf-to-images', {
-            body: { fileContent, filename: file.name, maxPages: 10 }
-          });
-          if (!imagesError && imagesResult?.images?.length) {
-            images = imagesResult.images as string[];
-          } else {
-            console.warn('Server conversion failed or returned no images:', imagesError || imagesResult);
-          }
-        } catch (e) {
-          console.warn('Server conversion exception:', e);
-        }
-        
-        // Fallback to client-side conversion when server fails
-        if (!images.length) {
-          setCurrentStep('Converting PDF to images in browser...');
-          images = await convertPdfToImagesClient(file, 10);
-        }
+        // Use client-side conversion (server-side not available)
+        setCurrentStep('Converting PDF to images in browser...');
+        const images = await convertPdfToImagesClient(file, 10);
         
         if (!images.length) {
           throw new Error('No images extracted from PDF');
