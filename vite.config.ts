@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
   ].filter(Boolean),
   build: {
+    target: 'esnext',
     rollupOptions: {
       output: {
         manualChunks: (id) => {
