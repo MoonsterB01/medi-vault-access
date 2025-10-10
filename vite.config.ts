@@ -30,12 +30,6 @@ export default defineConfig(({ mode }) => ({
             if (id.includes("tesseract.js")) return "tesseract.js";
             if (id.includes("html2canvas")) return "html2canvas";
             if (id.includes("recharts")) return "recharts";
-            if (id.includes("@supabase")) return "supabase";
-            if (id.includes("lucide-react")) return "lucide-react";
-            if (id.includes("react")) return "react";
-            if (id.includes("@radix-ui")) return "radix-ui";
-            if (id.includes("jspdf")) return "jspdf";
-            if (id.includes("@tanstack/react-query")) return "react-query";
             return "vendor";
           }
         },
