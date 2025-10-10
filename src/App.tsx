@@ -11,6 +11,7 @@ import AppLayout from "./components/AppLayout";
 import DocumentTimeline from "./pages/DocumentTimeline";
 import PublicUpload from "./pages/PublicUpload";
 import HowItWorks from "./pages/HowItWorks";
+import ContactUs from "./pages/ContactUs";
 import NotFound from "./pages/NotFound";
 import DoctorAuth from "./pages/DoctorAuth";
 import DoctorDashboard from "./pages/DoctorDashboard";
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/document-timeline" element={<AppLayout userRole="patient"><DocumentTimeline /></AppLayout>} />
           <Route path="/upload" element={<PublicUpload />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/contact-us" element={<ContactUs />} />
           <Route path="/doctor-auth" element={<DoctorAuth />} />
           <Route path="/doctor-dashboard" element={<AppLayout userRole="doctor"><DoctorDashboard /></AppLayout>} />
           
