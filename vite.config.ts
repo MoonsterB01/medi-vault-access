@@ -13,10 +13,16 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
   ].filter(Boolean),
+  optimizeDeps: {
+    esbuildOptions: {
+      target: 'esnext',
+    },
+  },
   build: {
-    target: 'esnext',
+    target: 'es2020',
     rollupOptions: {
       output: {
+        format: 'es',
         manualChunks: (id) => {
           if (id.includes("node_modules")) {
             if (id.includes("pdfjs-dist")) return "pdfjs-dist";
