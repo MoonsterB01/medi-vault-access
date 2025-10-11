@@ -6,6 +6,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+/**
+ * @function serve
+ * @description A Supabase Edge Function that sends notifications to family members when a new document is uploaded for a patient.
+ * @param {Request} req - The incoming HTTP request.
+ * @returns {Response} - A JSON response indicating the success or failure of the notification process.
+ */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })

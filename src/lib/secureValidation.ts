@@ -10,7 +10,10 @@ const SAFE_TEXT_REGEX = /^[a-zA-Z0-9\s\-_.,!?()'"]*$/;
 const PHONE_REGEX = /^\+?[\d\s\-()]{10,15}$/;
 const NAME_REGEX = /^[a-zA-Z\s'-]+$/;
 
-// Patient information validation
+/**
+ * @constant {z.ZodObject} patientSchema
+ * @description A Zod schema for validating patient information.
+ */
 export const patientSchema = z.object({
   name: z.string()
     .trim()
@@ -45,7 +48,10 @@ export const patientSchema = z.object({
     }, { message: "Please enter a valid email or phone number" }),
 });
 
-// Document upload validation
+/**
+ * @constant {z.ZodObject} documentSchema
+ * @description A Zod schema for validating document upload information.
+ */
 export const documentSchema = z.object({
   filename: z.string()
     .trim()
@@ -71,7 +77,10 @@ export const documentSchema = z.object({
     .optional(),
 });
 
-// Appointment booking validation
+/**
+ * @constant {z.ZodObject} appointmentSchema
+ * @description A Zod schema for validating appointment booking information.
+ */
 export const appointmentSchema = z.object({
   appointment_date: z.string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" })
@@ -98,7 +107,10 @@ export const appointmentSchema = z.object({
     .optional(),
 });
 
-// Search query validation  
+/**
+ * @constant {z.ZodObject} searchSchema
+ * @description A Zod schema for validating search query information.
+ */
 export const searchSchema = z.object({
   query: z.string()
     .trim()
@@ -116,8 +128,10 @@ export const searchSchema = z.object({
 });
 
 /**
- * Sanitizes user input by removing potentially dangerous characters
- * Use this as a last resort - prefer validation schemas
+ * @function sanitizeInput
+ * @description Sanitizes user input by removing potentially dangerous characters. Use this as a last resort - prefer validation schemas.
+ * @param {string} input - The input string to sanitize.
+ * @returns {string} - The sanitized string.
  */
 export function sanitizeInput(input: string): string {
   return input
@@ -129,7 +143,8 @@ export function sanitizeInput(input: string): string {
 }
 
 /**
- * Validates file upload security
+ * @constant {z.ZodObject} fileUploadSchema
+ * @description A Zod schema for validating file uploads.
  */
 export const fileUploadSchema = z.object({
   file: z.object({

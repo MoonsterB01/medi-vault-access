@@ -9,6 +9,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bell, Check, Clock, Calendar, X } from "lucide-react";
 import { format } from "date-fns";
 
+/**
+ * @interface Notification
+ * @description Defines the structure of a notification object.
+ */
 interface Notification {
   id: string;
   notification_type: string;
@@ -19,10 +23,21 @@ interface Notification {
   metadata: any;
 }
 
+/**
+ * @interface NotificationCenterProps
+ * @description Defines the props for the NotificationCenter component.
+ * @property {any} user - The current user object.
+ */
 interface NotificationCenterProps {
   user: any;
 }
 
+/**
+ * @function NotificationCenter
+ * @description A component that displays a list of notifications for the current user. It includes real-time updates for new notifications.
+ * @param {NotificationCenterProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered NotificationCenter component.
+ */
 const NotificationCenter = ({ user }: NotificationCenterProps) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);

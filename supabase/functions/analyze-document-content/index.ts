@@ -13,6 +13,14 @@ const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+/**
+ * @interface AnalyzeRequest
+ * @description Defines the structure of the request body for the document analysis function.
+ * @property {string} documentId - The ID of the document to be analyzed.
+ * @property {string} fileContent - The base64-encoded content of the file.
+ * @property {string} contentType - The MIME type of the file.
+ * @property {string} filename - The name of the file.
+ */
 interface AnalyzeRequest {
   documentId: string;
   fileContent: string;
@@ -180,6 +188,12 @@ If content is limited (filename only), infer likely categories and keywords base
   }
 }
 
+/**
+ * @function serve
+ * @description A Supabase Edge Function that analyzes the content of a document using the Gemini API.
+ * @param {Request} req - The incoming HTTP request.
+ * @returns {Response} - A JSON response with the analysis results or an error message.
+ */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });

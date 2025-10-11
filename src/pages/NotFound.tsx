@@ -2,6 +2,11 @@ import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
 import PublicLayout from "@/components/PublicLayout";
 
+/**
+ * @function NotFound
+ * @description A page component to be displayed when a user tries to access a non-existent route.
+ * @returns {JSX.Element} - The rendered NotFound page component.
+ */
 const NotFound = () => {
   const location = useLocation();
 

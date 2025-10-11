@@ -8,6 +8,14 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * @constant {SupabaseClient} supabase
+ * @description The Supabase client instance.
+ * @example
+ * import { supabase } from "@/integrations/supabase/client";
+ *
+ * const { data, error } = await supabase.from('users').select('*');
+ */
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,

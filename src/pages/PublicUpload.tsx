@@ -3,6 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import DocumentUpload from "@/components/DocumentUpload";
 import PublicLayout from "@/components/PublicLayout";
 
+/**
+ * @function PublicUpload
+ * @description A page component that allows public users to upload documents using a shareable ID.
+ * @returns {JSX.Element} - The rendered PublicUpload page component.
+ */
 export default function PublicUpload() {
   const [searchParams] = useSearchParams();
   const shareableId = searchParams.get("id") || "";

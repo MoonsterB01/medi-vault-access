@@ -9,11 +9,25 @@ import NotificationCenter from "@/components/NotificationCenter";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 
+/**
+ * @interface AppLayoutProps
+ * @description Defines the props for the AppLayout component.
+ * @property {React.ReactElement} children - The main content to be rendered within the layout.
+ * @property {'patient' | 'hospital_staff' | 'admin' | 'doctor' | 'family_member'} userRole - The role of the current user, which determines the sidebar content.
+ */
 interface AppLayoutProps {
   children: React.ReactElement;
   userRole: 'patient' | 'hospital_staff' | 'admin' | 'doctor' | 'family_member';
 }
 
+/**
+ * @function AppLayout
+ * @description The main layout component for authenticated pages. It provides a consistent
+ * structure with a sidebar and header. It fetches user and patient data, handles loading
+ * and authentication states, and provides a sign-out functionality.
+ * @param {AppLayoutProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered AppLayout component.
+ */
 export default function AppLayout({ children, userRole }: AppLayoutProps) {
   const [user, setUser] = useState<any>(null);
   const [patientData, setPatientData] = useState<any>(null);

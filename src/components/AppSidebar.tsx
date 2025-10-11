@@ -51,12 +51,25 @@ const hospitalStaffMenuItems = [
   { title: "Contact Us", url: "/contact-us", icon: Phone, tab: "contact-us" },
 ];
 
+/**
+ * @interface AppSidebarProps
+ * @description Defines the props for the AppSidebar component.
+ * @property {any} user - The user object.
+ * @property {any} patientData - The patient data object.
+ * @property {'patient' | 'hospital_staff' | 'admin' | 'doctor' | 'family_member'} userRole - The role of the current user.
+ */
 interface AppSidebarProps {
   user: any;
   patientData: any;
   userRole: 'patient' | 'hospital_staff' | 'admin' | 'doctor' | 'family_member';
 }
 
+/**
+ * @function getMenuItems
+ * @description Returns the menu items based on the user's role.
+ * @param {AppSidebarProps['userRole']} role - The role of the user.
+ * @returns {Array<object>} - An array of menu item objects.
+ */
 const getMenuItems = (role: AppSidebarProps['userRole']) => {
   switch (role) {
     case 'patient':
@@ -70,6 +83,12 @@ const getMenuItems = (role: AppSidebarProps['userRole']) => {
   }
 };
 
+/**
+ * @function AppSidebar
+ * @description The sidebar component for the application. It displays navigation links based on the user's role.
+ * @param {AppSidebarProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered AppSidebar component.
+ */
 export function AppSidebar({ user, patientData, userRole }: AppSidebarProps) {
   const location = useLocation();
   const { isMobile, setOpenMobile } = useSidebar();

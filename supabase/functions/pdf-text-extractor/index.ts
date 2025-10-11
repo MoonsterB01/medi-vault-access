@@ -139,6 +139,12 @@ async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<{
   }
 }
 
+/**
+ * @function serve
+ * @description A Supabase Edge Function that extracts text from a PDF file.
+ * @param {Request} req - The incoming HTTP request.
+ * @returns {Response} - A JSON response with the extracted text and other information, or an error message.
+ */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });

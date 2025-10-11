@@ -12,6 +12,19 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+/**
+ * @interface SearchRequest
+ * @description Defines the structure of the request body for the enhanced search function.
+ * @property {string} query - The search query.
+ * @property {string} userId - The ID of the user performing the search.
+ * @property {string} [patientId] - The ID of the patient to filter documents for.
+ * @property {string} [documentType] - The type of document to filter by.
+ * @property {string[]} [categories] - An array of categories to filter by.
+ * @property {string} [dateFrom] - The start date of the date range to filter by.
+ * @property {string} [dateTo] - The end date of the date range to filter by.
+ * @property {number} [limit] - The maximum number of results to return.
+ * @property {number} [offset] - The number of results to skip.
+ */
 interface SearchRequest {
   query: string;
   userId: string;
@@ -24,6 +37,10 @@ interface SearchRequest {
   offset?: number;
 }
 
+/**
+ * @interface SearchResult
+ * @description Defines the structure of a search result object.
+ */
 interface SearchResult {
   id: string;
   filename: string;
@@ -126,6 +143,12 @@ function calculateRelevanceScore(
   return score;
 }
 
+/**
+ * @function serve
+ * @description A Supabase Edge Function that performs an enhanced search of documents based on a query and various filters.
+ * @param {Request} req - The incoming HTTP request.
+ * @returns {Response} - A JSON response with the search results or an error message.
+ */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });

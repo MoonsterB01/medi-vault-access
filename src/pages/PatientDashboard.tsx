@@ -16,10 +16,21 @@ import { ExtractTextDialog } from "@/components/ExtractTextDialog";
 import AppointmentBooking from "@/components/AppointmentBooking";
 import AppointmentTracker from "@/components/AppointmentTracker";
 
+/**
+ * @interface PatientDashboardProps
+ * @description Defines the props for the PatientDashboard component.
+ * @property {any} [user] - The current user object.
+ */
 interface PatientDashboardProps {
   user?: any;
 }
 
+/**
+ * @function PatientDashboard
+ * @description A dashboard page for patients, providing access to their documents, appointments, and family access management.
+ * @param {PatientDashboardProps} [props] - The props for the component.
+ * @returns {JSX.Element} - The rendered PatientDashboard page component.
+ */
 export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   const [patientData, setPatientData] = useState<any>(null);
   const [availablePatients, setAvailablePatients] = useState<any[]>([]);

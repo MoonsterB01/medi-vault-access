@@ -5,10 +5,21 @@ import logo from "@/assets/logo.png";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
 
+/**
+ * @interface PublicLayoutProps
+ * @description Defines the props for the PublicLayout component.
+ * @property {React.ReactNode} children - The content to be rendered within the layout.
+ */
 interface PublicLayoutProps {
   children: React.ReactNode;
 }
 
+/**
+ * @function PublicLayout
+ * @description A layout component for public-facing pages. It includes a navigation bar with a logo, a sign-in/sign-out button, and a theme toggle.
+ * @param {PublicLayoutProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered PublicLayout component.
+ */
 export default function PublicLayout({ children }: PublicLayoutProps) {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);

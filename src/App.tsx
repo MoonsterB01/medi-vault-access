@@ -17,6 +17,11 @@ import DoctorAuth from "./pages/DoctorAuth";
 import DoctorDashboard from "./pages/DoctorDashboard";
 const queryClient = new QueryClient();
 
+/**
+ * @function App
+ * @description The root component of the application. It sets up the query client, tooltip provider, toaster, and router.
+ * @returns {JSX.Element} - The rendered App component.
+ */
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>

@@ -7,6 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Eye, FileText, AlertTriangle, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * @interface OCRResult
+ * @description Defines the structure of the OCR result object.
+ */
 interface OCRResult {
   text: string;
   confidence: number;
@@ -27,12 +31,25 @@ interface OCRResult {
   };
 }
 
+/**
+ * @interface OCRProcessorProps
+ * @description Defines the props for the OCRProcessor component.
+ * @property {File} file - The file to be processed.
+ * @property {(result: OCRResult) => void} onOCRComplete - Callback function to be called when OCR processing is complete.
+ * @property {(error: string) => void} onError - Callback function to be called when an error occurs during OCR processing.
+ */
 interface OCRProcessorProps {
   file: File;
   onOCRComplete: (result: OCRResult) => void;
   onError: (error: string) => void;
 }
 
+/**
+ * @function OCRProcessor
+ * @description A component that processes a given file using OCR to extract text and analyze its content for medical information.
+ * @param {OCRProcessorProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered OCRProcessor component.
+ */
 // Enhanced medical detection patterns
 const MEDICAL_RANGE_PATTERN = /\b\d+[\.,]?\d*\s*[-–]\s*\d+[\.,]?\d*\s*\([^)]*range[^)]*\)/gi;
 const MEDICAL_UNITS_PATTERN = /\b\d+[\.,]?\d*\s*(mg\/dl|g\/dl|cells\/[μu]l|mmhg|bpm|meq\/l|iu\/l|ng\/ml|pg\/ml|[μu]g\/ml|mg|ml|units|dose|%)\b/gi;

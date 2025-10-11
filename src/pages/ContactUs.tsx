@@ -5,6 +5,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Mail, Phone, User } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 
+/**
+ * @function ContactUs
+ * @description A page component that displays contact information and a contact form.
+ * @returns {JSX.Element} - The rendered ContactUs page component.
+ */
 export default function ContactUs() {
   return (
     <PublicLayout>

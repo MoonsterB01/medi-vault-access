@@ -15,6 +15,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Search, Calendar as CalendarIcon, Clock, Star, MapPin, Stethoscope } from "lucide-react";
 import { format, addDays, startOfDay } from "date-fns";
 
+/**
+ * @interface Doctor
+ * @description Defines the structure of a doctor object.
+ */
 interface Doctor {
   id: string;
   doctor_id: string;
@@ -31,16 +35,31 @@ interface Doctor {
   };
 }
 
+/**
+ * @interface Patient
+ * @description Defines the structure of a patient object.
+ */
 interface Patient {
   id: string;
   name: string;
   shareable_id: string;
 }
 
+/**
+ * @interface AppointmentBookingProps
+ * @description Defines the props for the AppointmentBooking component.
+ * @property {any} user - The user object.
+ */
 interface AppointmentBookingProps {
   user: any;
 }
 
+/**
+ * @function AppointmentBooking
+ * @description A component for booking appointments with doctors. It allows users to search for doctors, filter by specialty, and book an appointment for a selected patient.
+ * @param {AppointmentBookingProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered AppointmentBooking component.
+ */
 const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);

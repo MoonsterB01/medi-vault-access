@@ -10,6 +10,10 @@ import { useNavigate } from "react-router-dom";
 import { FileText, Calendar, Clock, Search, Download, Trash2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+/**
+ * @interface DocumentData
+ * @description Defines the structure of a document data object for the timeline.
+ */
 interface DocumentData {
   id: string;
   filename: string;
@@ -21,14 +25,29 @@ interface DocumentData {
   file_path: string;
 }
 
+/**
+ * @interface GroupedDocuments
+ * @description Defines the structure of documents grouped by date.
+ */
 interface GroupedDocuments {
   [key: string]: DocumentData[];
 }
 
+/**
+ * @interface DocumentTimelineProps
+ * @description Defines the props for the DocumentTimeline component.
+ * @property {any} [user] - The current user object.
+ */
 interface DocumentTimelineProps {
   user?: any;
 }
 
+/**
+ * @function DocumentTimeline
+ * @description A page component that displays a chronological timeline of a patient's medical documents.
+ * @param {DocumentTimelineProps} [props] - The props for the component.
+ * @returns {JSX.Element} - The rendered DocumentTimeline page component.
+ */
 export default function DocumentTimeline({ user }: DocumentTimelineProps = {}) {
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [filteredDocuments, setFilteredDocuments] = useState<DocumentData[]>([]);

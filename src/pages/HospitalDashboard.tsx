@@ -10,10 +10,21 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Upload, Users } from "lucide-react";
 
+/**
+ * @interface HospitalDashboardProps
+ * @description Defines the props for the HospitalDashboard component.
+ * @property {any} [user] - The current user object.
+ */
 interface HospitalDashboardProps {
   user?: any;
 }
 
+/**
+ * @function HospitalDashboard
+ * @description A dashboard page for hospital staff, allowing them to upload and manage patient medical records.
+ * @param {HospitalDashboardProps} [props] - The props for the component.
+ * @returns {JSX.Element} - The rendered HospitalDashboard page component.
+ */
 export default function HospitalDashboard({ user }: HospitalDashboardProps = {}) {
   const [patients, setPatients] = useState<any[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<string>("");

@@ -12,6 +12,11 @@ import { useNavigate } from "react-router-dom";
 import { Stethoscope } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
 
+/**
+ * @function DoctorAuth
+ * @description A page component for doctor authentication. It provides tabs for signing in and signing up as a doctor.
+ * @returns {JSX.Element} - The rendered DoctorAuth page component.
+ */
 const DoctorAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();

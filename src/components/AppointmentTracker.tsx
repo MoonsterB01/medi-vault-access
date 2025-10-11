@@ -12,6 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Calendar, Clock, User, Stethoscope, CheckCircle, XCircle, RotateCcw, AlertCircle, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 
+/**
+ * @interface Appointment
+ * @description Defines the structure of an appointment object.
+ */
 interface Appointment {
   id: string;
   appointment_id: string;
@@ -38,10 +42,21 @@ interface Appointment {
   };
 }
 
+/**
+ * @interface AppointmentTrackerProps
+ * @description Defines the props for the AppointmentTracker component.
+ * @property {any} user - The user object.
+ */
 interface AppointmentTrackerProps {
   user: any;
 }
 
+/**
+ * @function AppointmentTracker
+ * @description A component for patients to track their appointments. It displays a summary of appointments and a list of all appointments, with options to view details and add notes.
+ * @param {AppointmentTrackerProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered AppointmentTracker component.
+ */
 const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -539,7 +554,16 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
   );
 };
 
-// Appointment Card Component
+/**
+ * @function AppointmentCard
+ * @description A component that displays a single appointment in a card format.
+ * @param {object} props - The props for the component.
+ * @param {Appointment} props.appointment - The appointment object to display.
+ * @param {(appointment: Appointment) => void} props.onViewDetails - A function to handle viewing the appointment details.
+ * @param {(status: string) => string} props.getStatusColor - A function to get the color for a given status.
+ * @param {(status: string) => JSX.Element} props.getStatusIcon - A function to get the icon for a given status.
+ * @returns {JSX.Element} - The rendered AppointmentCard component.
+ */
 const AppointmentCard = ({ 
   appointment, 
   onViewDetails, 

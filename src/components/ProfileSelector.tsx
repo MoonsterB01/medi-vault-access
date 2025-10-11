@@ -6,17 +6,33 @@ import { Label } from "@/components/ui/label";
 import { User, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * @interface Patient
+ * @description Defines the structure of a patient object for the profile selector.
+ */
 interface Patient {
   id: string;
   name: string;
   shareable_id: string | null;
 }
 
+/**
+ * @interface ProfileSelectorProps
+ * @description Defines the props for the ProfileSelector component.
+ * @property {(shareableId: string, patientName: string) => void} onProfileChange - Callback function to be called when a profile is selected.
+ * @property {string} [selectedShareableId] - The currently selected patient's shareable ID.
+ */
 interface ProfileSelectorProps {
   onProfileChange: (shareableId: string, patientName: string) => void;
   selectedShareableId?: string;
 }
 
+/**
+ * @function ProfileSelector
+ * @description A component that allows a user to select a patient profile from a list of available profiles they have access to.
+ * @param {ProfileSelectorProps} props - The props for the component.
+ * @returns {JSX.Element | null} - The rendered ProfileSelector component, or null if there is only one or zero available profiles.
+ */
 export default function ProfileSelector({ onProfileChange, selectedShareableId }: ProfileSelectorProps) {
   const [availablePatients, setAvailablePatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);

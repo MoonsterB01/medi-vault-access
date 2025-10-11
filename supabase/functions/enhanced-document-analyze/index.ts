@@ -13,6 +13,14 @@ const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+/**
+ * @interface AnalyzeRequest
+ * @description Defines the structure of the request body for the enhanced document analysis function.
+ * @property {string} documentId - The ID of the document to be analyzed.
+ * @property {string} contentType - The MIME type of the file.
+ * @property {string} filename - The name of the file.
+ * @property {object} [ocrResult] - The result of the OCR processing.
+ */
 interface AnalyzeRequest {
   documentId: string;
   contentType: string;
@@ -306,6 +314,12 @@ RESPOND ONLY in this exact JSON format:
   };
 }
 
+/**
+ * @function serve
+ * @description A Supabase Edge Function that performs an enhanced analysis of a document's content using a hybrid approach of keyword matching and the Gemini API.
+ * @param {Request} req - The incoming HTTP request.
+ * @returns {Response} - A JSON response with the enhanced analysis results or an error message.
+ */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });

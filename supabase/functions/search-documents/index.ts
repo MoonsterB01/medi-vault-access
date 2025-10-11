@@ -6,6 +6,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * @interface SearchRequest
+ * @description Defines the structure of the request body for the search documents function.
+ * @property {string} [patientId] - The ID of the patient to filter documents for.
+ * @property {string} [query] - The search query.
+ * @property {string} [documentType] - The type of document to filter by.
+ * @property {string[]} [tags] - An array of tags to filter by.
+ * @property {string} [dateFrom] - The start date of the date range to filter by.
+ * @property {string} [dateTo] - The end date of the date range to filter by.
+ * @property {number} [limit] - The maximum number of results to return.
+ * @property {number} [offset] - The number of results to skip.
+ */
 interface SearchRequest {
   patientId?: string;
   query?: string;
@@ -17,6 +29,12 @@ interface SearchRequest {
   offset?: number;
 }
 
+/**
+ * @function handler
+ * @description A Supabase Edge Function that searches for documents based on various filters.
+ * @param {Request} req - The incoming HTTP request.
+ * @returns {Promise<Response>} - A promise that resolves with a JSON response containing the search results or an error message.
+ */
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {

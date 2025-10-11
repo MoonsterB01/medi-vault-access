@@ -10,6 +10,10 @@ import { Calendar, Users, FileText, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import AppointmentManagement from "@/components/AppointmentManagement";
 
+/**
+ * @interface Doctor
+ * @description Defines the structure of a doctor object for the dashboard.
+ */
 interface Doctor {
   id: string;
   doctor_id: string;
@@ -25,11 +29,19 @@ interface Doctor {
   };
 }
 
+/**
+ * @interface Appointment
+ * @description Defines the structure of an appointment object for the dashboard.
+ */
 interface Appointment {
   id: string;
   status: string;
 }
 
+/**
+ * @interface Patient
+ * @description Defines the structure of a patient object for the dashboard.
+ */
 interface Patient {
   id: string;
   name: string;
@@ -40,10 +52,21 @@ interface Patient {
   appointment_count: number;
 }
 
+/**
+ * @interface DoctorDashboardProps
+ * @description Defines the props for the DoctorDashboard component.
+ * @property {any} [user] - The current user object.
+ */
 interface DoctorDashboardProps {
   user?: any;
 }
 
+/**
+ * @function DoctorDashboard
+ * @description A dashboard page for doctors, displaying appointments, patients, and profile information.
+ * @param {DoctorDashboardProps} [props] - The props for the component.
+ * @returns {JSX.Element} - The rendered DoctorDashboard page component.
+ */
 const DoctorDashboard = ({ user }: DoctorDashboardProps = {}) => {
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);

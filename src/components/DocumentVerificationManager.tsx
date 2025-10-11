@@ -8,6 +8,10 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertTriangle, CheckCircle, Eye, FileText, ThumbsUp, ThumbsDown } from "lucide-react";
 
+/**
+ * @interface Document
+ * @description Defines the structure of a document object for verification.
+ */
 interface Document {
   id: string;
   filename: string;
@@ -21,11 +25,23 @@ interface Document {
   uploaded_at: string;
 }
 
+/**
+ * @interface DocumentVerificationManagerProps
+ * @description Defines the props for the DocumentVerificationManager component.
+ * @property {string} [patientId] - The ID of the patient to filter documents for.
+ * @property {() => void} [onVerificationUpdate] - An optional callback function to be called when a document's verification status is updated.
+ */
 interface DocumentVerificationManagerProps {
   patientId?: string;
   onVerificationUpdate?: () => void;
 }
 
+/**
+ * @function DocumentVerificationManager
+ * @description A component for managing the verification of unverified medical documents. It fetches unverified documents and allows a user to verify them as medical or not.
+ * @param {DocumentVerificationManagerProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered DocumentVerificationManager component.
+ */
 export default function DocumentVerificationManager({ 
   patientId, 
   onVerificationUpdate 
@@ -187,6 +203,15 @@ export default function DocumentVerificationManager({
   );
 }
 
+/**
+ * @interface DocumentVerificationCardProps
+ * @description Defines the props for the DocumentVerificationCard component.
+ * @property {Document} document - The document object to display.
+ * @property {(documentId: string, status: 'verified_medical' | 'unverified' | 'miscellaneous', category?: string, notes?: string) => void} onVerify - A function to handle the verification of the document.
+ * @property {boolean} isUpdating - A boolean to indicate if the document is currently being updated.
+ * @property {(status: string) => string} getStatusColor - A function to get the color for a given status.
+ * @property {(status: string) => React.ReactNode} getStatusIcon - A function to get the icon for a given status.
+ */
 interface DocumentVerificationCardProps {
   document: Document;
   onVerify: (documentId: string, status: 'verified_medical' | 'unverified' | 'miscellaneous', category?: string, notes?: string) => void;
@@ -195,6 +220,12 @@ interface DocumentVerificationCardProps {
   getStatusIcon: (status: string) => React.ReactNode;
 }
 
+/**
+ * @function DocumentVerificationCard
+ * @description A component that displays a single document for verification and provides actions to verify or reject it.
+ * @param {DocumentVerificationCardProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered DocumentVerificationCard component.
+ */
 function DocumentVerificationCard({ 
   document, 
   onVerify, 

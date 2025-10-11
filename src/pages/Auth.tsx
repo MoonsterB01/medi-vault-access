@@ -13,11 +13,19 @@ import { z } from "zod";
 import logo from "@/assets/logo.png";
 import PublicLayout from "@/components/PublicLayout";
 
+/**
+ * @constant {z.ZodObject} signInSchema
+ * @description A Zod schema for validating sign-in form data.
+ */
 const signInSchema = z.object({
   email: z.string().trim().email({ message: "Please enter a valid email address" }).max(255),
   password: z.string().min(1, { message: "Password is required" }),
 });
 
+/**
+ * @constant {z.ZodObject} signUpSchema
+ * @description A Zod schema for validating sign-up form data.
+ */
 const signUpSchema = z.object({
   name: z.string().trim().min(2, { message: "Name must be at least 2 characters" }).max(100).regex(/^[a-zA-Z\s'-]+$/),
   email: z.string().trim().email({ message: "Please enter a valid email address" }).max(255),
@@ -27,6 +35,11 @@ const signUpSchema = z.object({
   }),
 });
 
+/**
+ * @function Auth
+ * @description A page component for user authentication. It provides tabs for signing in and signing up.
+ * @returns {JSX.Element} - The rendered Auth page component.
+ */
 export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
