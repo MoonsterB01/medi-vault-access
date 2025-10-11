@@ -154,10 +154,10 @@ async function analyzeWithHybridFiltering(
     
     // Define matches for lab results detection
     const labKeywords = ['lab', 'test', 'result', 'laboratory', 'specimen', 'culture'];
-    const labMatches = labKeywords.filter(keyword => textLower.includes(keyword));
+    const labKeywordMatches = labKeywords.filter(keyword => textLower.includes(keyword));
     
     // Specific medical document categorization
-    if (labMatches.length > 0 || detectedKeywords.some(k => k.includes('lab') || k.includes('test') || k.includes('result'))) {
+    if (labKeywordMatches.length > 0 || detectedKeywords.some(k => k.includes('lab') || k.includes('test') || k.includes('result'))) {
       categories.push('Lab Results');
     }
     
@@ -184,10 +184,10 @@ async function analyzeWithHybridFiltering(
     // Define matches for blood work detection
     const unitKeywords = ['mg/dl', 'mmol/l', 'mg', 'ml', 'mmhg', 'bpm', 'units', '%'];
     const rangeKeywords = ['normal', 'high', 'low', 'elevated', 'decreased', 'range'];
-    const unitMatches = unitKeywords.filter(keyword => textLower.includes(keyword));
-    const rangeMatches = rangeKeywords.filter(keyword => textLower.includes(keyword));
+    const unitKeywordMatches = unitKeywords.filter(keyword => textLower.includes(keyword));
+    const rangeKeywordMatches = rangeKeywords.filter(keyword => textLower.includes(keyword));
     
-    if (unitMatches.length > 0 && rangeMatches.length > 0) {
+    if (unitKeywordMatches.length > 0 && rangeKeywordMatches.length > 0) {
       categories.push('Blood Work');
     }
     
