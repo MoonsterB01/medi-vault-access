@@ -7,11 +7,23 @@ import { Separator } from "@/components/ui/separator";
 import { Copy, FileText, AlertCircle, CheckCircle, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+/**
+ * @interface ExtractTextDialogProps
+ * @description Defines the props for the ExtractTextDialog component.
+ * @property {any} document - The document object containing the extracted text and analysis.
+ * @property {React.ReactNode} children - The trigger element for the dialog.
+ */
 interface ExtractTextDialogProps {
   document: any;
   children: React.ReactNode;
 }
 
+/**
+ * @function ExtractTextDialog
+ * @description A dialog component that displays the extracted text and AI analysis of a document.
+ * @param {ExtractTextDialogProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered ExtractTextDialog component.
+ */
 export function ExtractTextDialog({ document, children }: ExtractTextDialogProps) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();

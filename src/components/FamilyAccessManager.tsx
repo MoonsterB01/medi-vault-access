@@ -19,6 +19,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 
+/**
+ * @interface FamilyAccess
+ * @description Defines the structure of a family access object.
+ */
 interface FamilyAccess {
   id: string;
   user_id: string;
@@ -37,6 +41,10 @@ interface FamilyAccess {
   };
 }
 
+/**
+ * @interface PatientAccess
+ * @description Defines the structure of a patient access object.
+ */
 interface PatientAccess {
   id: string;
   patient_id: string;
@@ -53,11 +61,23 @@ interface PatientAccess {
   };
 }
 
+/**
+ * @interface FamilyAccessManagerProps
+ * @description Defines the props for the FamilyAccessManager component.
+ * @property {string} patientId - The ID of the patient.
+ * @property {string} patientShareableId - The shareable ID of the patient.
+ */
 interface FamilyAccessManagerProps {
   patientId: string;
   patientShareableId: string;
 }
 
+/**
+ * @function FamilyAccessManager
+ * @description A component for managing family access to a patient's records. It allows granting and revoking access to family members.
+ * @param {FamilyAccessManagerProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered FamilyAccessManager component.
+ */
 export default function FamilyAccessManager({ patientId, patientShareableId }: FamilyAccessManagerProps) {
   const [familyAccess, setFamilyAccess] = useState<FamilyAccess[]>([]);
   const [patientAccess, setPatientAccess] = useState<PatientAccess[]>([]);

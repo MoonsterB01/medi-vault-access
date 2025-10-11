@@ -9,6 +9,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Search, FileText, Download, Calendar, Tag, CalendarDays } from "lucide-react";
 
+/**
+ * @interface Document
+ * @description Defines the structure of a document object.
+ */
 interface Document {
   id: string;
   filename: string;
@@ -24,10 +28,21 @@ interface Document {
   };
 }
 
+/**
+ * @interface DocumentSearchProps
+ * @description Defines the props for the DocumentSearch component.
+ * @property {string} [patientId] - The ID of the patient to search for documents.
+ */
 interface DocumentSearchProps {
   patientId?: string;
 }
 
+/**
+ * @function DocumentSearch
+ * @description A component for searching medical documents. It provides a form with various filters and displays the search results.
+ * @param {DocumentSearchProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered DocumentSearch component.
+ */
 export default function DocumentSearch({ patientId }: DocumentSearchProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);

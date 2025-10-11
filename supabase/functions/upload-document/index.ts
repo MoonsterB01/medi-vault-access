@@ -6,6 +6,22 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * @interface UploadRequest
+ * @description Defines the structure of the request body for the document upload function.
+ * @property {string} shareableId - The shareable ID of the patient.
+ * @property {object} file - The file to be uploaded.
+ * @property {string} file.name - The name of the file.
+ * @property {string} file.content - The base64-encoded content of the file.
+ * @property {string} file.type - The MIME type of the file.
+ * @property {number} file.size - The size of the file in bytes.
+ * @property {string} documentType - The type of the document.
+ * @property {string} [description] - An optional description of the document.
+ * @property {string[]} [tags] - An optional array of tags for the document.
+ * @property {object} [ocrResult] - An optional object containing the results of OCR processing.
+ * @property {object} [aiAnalysisResult] - An optional object containing the results of AI analysis.
+ * @property {string} [fileHash] - An optional hash of the file.
+ */
 interface UploadRequest {
   shareableId: string;
   file: {
@@ -41,6 +57,12 @@ interface UploadRequest {
   fileHash?: string;
 }
 
+/**
+ * @function handler
+ * @description A Supabase Edge Function that handles the uploading of a document.
+ * @param {Request} req - The incoming HTTP request.
+ * @returns {Promise<Response>} - A promise that resolves with a JSON response indicating the success or failure of the upload.
+ */
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {

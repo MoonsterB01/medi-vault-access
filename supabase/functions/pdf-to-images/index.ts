@@ -5,6 +5,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * @function serve
+ * @description A Supabase Edge Function that is deprecated and returns a "not implemented" error. PDF to images conversion is now handled client-side.
+ * @param {Request} req - The incoming HTTP request.
+ * @returns {Response} - A JSON response with a "not implemented" error message.
+ */
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });

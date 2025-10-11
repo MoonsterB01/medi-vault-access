@@ -6,6 +6,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * @function serve
+ * @description A Supabase Edge Function that grants a family member access to a patient's records.
+ * @param {Request} req - The incoming HTTP request.
+ * @returns {Response} - A JSON response indicating the success or failure of the access grant.
+ */
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {

@@ -10,6 +10,10 @@ import { Search, Filter, Download, FileText, Calendar, Tag, Brain, Star } from '
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
+/**
+ * @interface SearchResult
+ * @description Defines the structure of a search result object.
+ */
 interface SearchResult {
   id: string;
   filename: string;
@@ -26,16 +30,34 @@ interface SearchResult {
   file_url?: string;
 }
 
+/**
+ * @interface SearchMetadata
+ * @description Defines the structure of the search metadata object.
+ * @property {boolean} hasContentAnalysis - Indicates if the search results have content analysis data.
+ * @property {number} avgConfidence - The average confidence score of the search results.
+ */
 interface SearchMetadata {
   hasContentAnalysis: boolean;
   avgConfidence: number;
 }
 
+/**
+ * @interface EnhancedDocumentSearchProps
+ * @description Defines the props for the EnhancedDocumentSearch component.
+ * @property {string} [patientId] - The ID of the patient to filter documents for.
+ * @property {(document: SearchResult) => void} [onDocumentSelect] - An optional callback function to be called when a document is selected.
+ */
 interface EnhancedDocumentSearchProps {
   patientId?: string;
   onDocumentSelect?: (document: SearchResult) => void;
 }
 
+/**
+ * @function EnhancedDocumentSearch
+ * @description A component for performing an enhanced search of medical documents. It allows searching by content, keywords, categories, and other metadata.
+ * @param {EnhancedDocumentSearchProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered EnhancedDocumentSearch component.
+ */
 export function EnhancedDocumentSearch({ patientId, onDocumentSelect }: EnhancedDocumentSearchProps) {
   const [query, setQuery] = useState('');
   const [documentType, setDocumentType] = useState<string>('');

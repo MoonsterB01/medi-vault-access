@@ -5,6 +5,11 @@ import { useNavigate } from "react-router-dom";
 import logo from "@/assets/logo.png";
 import PublicLayout from "@/components/PublicLayout";
 
+/**
+ * @function HowItWorks
+ * @description A page component that explains how the MediVault platform works, including its data processing workflow, security features, and platform features.
+ * @returns {JSX.Element} - The rendered HowItWorks page component.
+ */
 export default function HowItWorks() {
   const navigate = useNavigate();
 

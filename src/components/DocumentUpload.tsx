@@ -15,11 +15,21 @@ import { ContentAnalyzer } from "@/components/ContentAnalyzer";
 import OCRProcessor from "@/components/OCRProcessor";
 import { generateFileHash, getFileHashInfo } from "@/lib/fileHash";
 
+/**
+ * @interface DocumentUploadProps
+ * @description Defines the props for the DocumentUpload component.
+ * @property {string} [shareableId] - The shareable ID of the patient to upload the document for.
+ * @property {() => void} [onUploadSuccess] - An optional callback function to be called when the upload is successful.
+ */
 interface DocumentUploadProps {
   shareableId?: string;
   onUploadSuccess?: () => void;
 }
 
+/**
+ * @interface OCRResult
+ * @description Defines the structure of the OCR result object.
+ */
 interface OCRResult {
   text: string;
   confidence: number;
@@ -37,6 +47,10 @@ interface OCRResult {
   };
 }
 
+/**
+ * @interface AIAnalysisResult
+ * @description Defines the structure of the AI analysis result object.
+ */
 interface AIAnalysisResult {
   keywords: string[];
   categories: string[];
@@ -49,6 +63,12 @@ interface AIAnalysisResult {
   requiresUserVerification: boolean;
 }
 
+/**
+ * @function DocumentUpload
+ * @description A component for uploading medical documents. It includes features for file selection, document scanning, OCR processing, AI analysis, and user verification.
+ * @param {DocumentUploadProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered DocumentUpload component.
+ */
 export default function DocumentUpload({ shareableId: propShareableId, onUploadSuccess }: DocumentUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);

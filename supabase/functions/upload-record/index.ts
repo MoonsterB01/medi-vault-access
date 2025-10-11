@@ -6,6 +6,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * @function serve
+ * @description A Supabase Edge Function that handles the uploading of a medical record.
+ * @param {Request} req - The incoming HTTP request.
+ * @returns {Promise<Response>} - A promise that resolves with a JSON response indicating the success or failure of the upload.
+ */
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {

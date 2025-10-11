@@ -8,6 +8,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, Clock, User, CheckCircle, XCircle, RotateCcw, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 
+/**
+ * @interface Appointment
+ * @description Defines the structure of an appointment object.
+ */
 interface Appointment {
   id: string;
   appointment_id: string;
@@ -26,11 +30,23 @@ interface Appointment {
   };
 }
 
+/**
+ * @interface AppointmentManagementProps
+ * @description Defines the props for the AppointmentManagement component.
+ * @property {string} doctorId - The ID of the doctor.
+ * @property {string} userId - The ID of the current user.
+ */
 interface AppointmentManagementProps {
   doctorId: string;
   userId: string;
 }
 
+/**
+ * @function AppointmentManagement
+ * @description A component for doctors to manage their appointments. It displays a summary of appointments and a list of all appointments, with options to confirm, cancel, or mark them as complete.
+ * @param {AppointmentManagementProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered AppointmentManagement component.
+ */
 const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);

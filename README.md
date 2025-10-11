@@ -1,73 +1,96 @@
-# Welcome to your Lovable project
+# MediVault
 
-## Project info
+![MediVault Logo](./src/assets/logo.png)
 
-**URL**: https://lovable.dev/projects/c925c247-2569-4894-a454-e2ca45ec73d4
+MediVault is a secure digital medical records management system for hospitals and patients. It provides a platform for hospitals to securely upload, manage, and share patient medical records with automated notifications and audit trails. Patients can access their complete medical history in a secure timeline view with family sharing capabilities.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+-   **Secure Document Upload**: Upload medical documents with end-to-end encryption.
+-   **AI-Powered Analysis**: Automatically categorize and extract keywords from medical documents using AI.
+-   **Patient Dashboard**: A comprehensive dashboard for patients to view their medical records, appointments, and manage family access.
+-   **Doctor Dashboard**: A dedicated dashboard for doctors to manage their appointments and patients.
+-   **Hospital Dashboard**: A dashboard for hospital staff to upload and manage patient records.
+-   **Family Access**: Grant and revoke access to family members to view and upload medical records.
+-   **Secure Search**: Search for medical documents using various filters and keywords.
+-   **Real-time Notifications**: Receive real-time notifications for new document uploads and appointment updates.
+-   **Theme Toggling**: Switch between light, dark, and system themes.
 
-**Use Lovable**
+## Tech Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/c925c247-2569-4894-a454-e2ca45ec73d4) and start prompting.
+-   **Frontend**:
+    -   [Vite](https://vitejs.dev/)
+    -   [TypeScript](https://www.typescriptlang.org/)
+    -   [React](https://reactjs.org/)
+    -   [shadcn-ui](https://ui.shadcn.com/)
+    -   [Tailwind CSS](https://tailwindcss.com/)
+-   **Backend**:
+    -   [Supabase](https://supabase.io/)
+    -   [Deno](https://deno.land/) for serverless functions
 
-Changes made via Lovable will be committed automatically to this repo.
+## Getting Started
 
-**Use your preferred IDE**
+To get a local copy up and running, follow these simple steps.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Prerequisites
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+-   [Node.js](https://nodejs.org/en/) (v14 or later)
+-   [npm](https://www.npmjs.com/)
 
-Follow these steps:
+### Installation
+
+1.  Clone the repo
+    ```sh
+    git clone https://github.com/your_username_/Project-Name.git
+    ```
+2.  Install NPM packages
+    ```sh
+    npm install
+    ```
+3.  Set up your environment variables. Create a `.env` file in the root of the project and add the following:
+    ```
+    VITE_SUPABASE_URL=YOUR_SUPABASE_URL
+    VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+    ```
+    You can get these from your Supabase project settings.
+
+### Running the Development Server
+
+To start the development server, run the following command:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+This will start the development server at `http://localhost:5173`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Supabase Backend
 
-**Use GitHub Codespaces**
+The backend of this project is powered by [Supabase](https://supabase.io/). It uses Supabase for authentication, database storage, and serverless functions.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Serverless Functions
 
-## What technologies are used for this project?
+The serverless functions are located in the `supabase/functions` directory. Each function has its own subdirectory with an `index.ts` file. These functions are written in TypeScript and run on [Deno](https://deno.land/).
 
-This project is built with:
+Here is a list of the serverless functions:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+-   `analyze-document-content`: Analyzes the content of a document using the Gemini API.
+-   `appointment-notifications`: Sends notifications to family members when an appointment status is updated.
+-   `enhanced-document-analyze`: Performs an enhanced analysis of a document's content using a hybrid approach.
+-   `enhanced-search`: Performs an enhanced search of documents based on a query and various filters.
+-   `grant-access-to-family`: Grants a family member access to a patient's records.
+-   `notify-patient-new-record`: Sends notifications to a patient and their family members when a new medical record is uploaded.
+-   `notify-patient-upload`: Sends notifications to family members when a new document is uploaded for a patient.
+-   `pdf-text-extractor`: Extracts text from a PDF file.
+-   `pdf-to-images`: A deprecated function that is no longer used.
+-   `search-documents`: Searches for documents based on various filters.
+-   `upload-document`: Handles the uploading of a document.
+-   `upload-record`: Handles the uploading of a medical record.
 
-## How can I deploy this project?
+## Deployment
 
-Simply open [Lovable](https://lovable.dev/projects/c925c247-2569-4894-a454-e2ca45ec73d4) and click on Share -> Publish.
+To deploy this project, you can use any hosting provider that supports Node.js. You will need to set up the environment variables for your Supabase project in your hosting provider's settings.
 
-## Can I connect a custom domain to my Lovable project?
+## License
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Distributed under the MIT License. See `LICENSE` for more information.

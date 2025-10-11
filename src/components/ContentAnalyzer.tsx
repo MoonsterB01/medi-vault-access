@@ -7,6 +7,15 @@ import { Progress } from '@/components/ui/progress';
 import { AlertCircle, Brain, CheckCircle, Loader2, Tag, Users, Stethoscope, Pill, Calendar, MapPin } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+/**
+ * @interface ContentAnalyzerProps
+ * @description Defines the props for the ContentAnalyzer component.
+ * @property {string} documentId - The ID of the document to be analyzed.
+ * @property {string} filename - The name of the file.
+ * @property {string} contentType - The MIME type of the file.
+ * @property {string} fileContent - The content of the file.
+ * @property {(analysis: AnalysisResult) => void} [onAnalysisComplete] - An optional callback function to be called when the analysis is complete.
+ */
 interface ContentAnalyzerProps {
   documentId: string;
   filename: string;
@@ -15,6 +24,16 @@ interface ContentAnalyzerProps {
   onAnalysisComplete?: (analysis: AnalysisResult) => void;
 }
 
+/**
+ * @interface AnalysisResult
+ * @description Defines the structure of the analysis result object.
+ * @property {string[]} keywords - An array of keywords extracted from the document.
+ * @property {string[]} categories - An array of categories the document belongs to.
+ * @property {number} confidence - The confidence score of the analysis.
+ * @property {string} extractedText - The text extracted from the document.
+ * @property {any} [entities] - An object containing extracted medical entities.
+ * @property {number} [entitiesCount] - The total number of extracted medical entities.
+ */
 interface AnalysisResult {
   keywords: string[];
   categories: string[];
@@ -24,6 +43,12 @@ interface AnalysisResult {
   entitiesCount?: number;
 }
 
+/**
+ * @function ContentAnalyzer
+ * @description A component that analyzes the content of a medical document using an AI-powered service. It extracts keywords, categories, and medical entities from the document.
+ * @param {ContentAnalyzerProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered ContentAnalyzer component.
+ */
 export function ContentAnalyzer({ 
   documentId, 
   filename, 

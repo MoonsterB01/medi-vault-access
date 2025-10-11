@@ -10,6 +10,14 @@ import { Camera as CameraIcon, FileText, Plus, Trash2, RotateCw } from 'lucide-r
 import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 
+/**
+ * @interface DocumentScannerProps
+ * @description Defines the props for the DocumentScanner component.
+ * @property {boolean} open - Whether the scanner dialog is open.
+ * @property {() => void} onClose - A function to close the scanner dialog.
+ * @property {(file: File) => void} onScanComplete - A function to be called when the PDF scan is complete.
+ * @property {(images: File[]) => void} [onImagesComplete] - An optional function to be called when the image scan is complete.
+ */
 interface DocumentScannerProps {
   open: boolean;
   onClose: () => void;
@@ -17,12 +25,25 @@ interface DocumentScannerProps {
   onImagesComplete?: (images: File[]) => void;
 }
 
+/**
+ * @interface ScannedImage
+ * @description Defines the structure of a scanned image object.
+ * @property {string} id - The unique ID of the image.
+ * @property {string} dataUrl - The data URL of the image.
+ * @property {Date} timestamp - The timestamp when the image was scanned.
+ */
 interface ScannedImage {
   id: string;
   dataUrl: string;
   timestamp: Date;
 }
 
+/**
+ * @function DocumentScanner
+ * @description A component that allows users to scan documents using their device's camera. It can capture multiple images and generate a single PDF file.
+ * @param {DocumentScannerProps} props - The props for the component.
+ * @returns {JSX.Element} - The rendered DocumentScanner component.
+ */
 export const DocumentScanner: React.FC<DocumentScannerProps> = ({
   open,
   onClose,

@@ -8,6 +8,15 @@ import type {
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 1000000
 
+/**
+ * @typedef {ToastProps & {
+ *   id: string;
+ *   title?: React.ReactNode;
+ *   description?: React.ReactNode;
+ *   action?: ToastActionElement;
+ * }} ToasterToast
+ * @description Defines the structure of a toast object.
+ */
 type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
@@ -49,6 +58,11 @@ type Action =
       toastId?: ToasterToast["id"]
     }
 
+/**
+ * @interface State
+ * @description Defines the state of the toast reducer.
+ * @property {ToasterToast[]} toasts - An array of toast objects.
+ */
 interface State {
   toasts: ToasterToast[]
 }
@@ -71,6 +85,13 @@ const addToRemoveQueue = (toastId: string) => {
   toastTimeouts.set(toastId, timeout)
 }
 
+/**
+ * @function reducer
+ * @description The reducer function for managing toast state.
+ * @param {State} state - The current state.
+ * @param {Action} action - The action to be performed.
+ * @returns {State} - The new state.
+ */
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST":
@@ -139,6 +160,12 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
+/**
+ * @function toast
+ * @description Creates a new toast and returns an object with methods to update or dismiss it.
+ * @param {Toast} props - The props for the toast.
+ * @returns {{id: string; dismiss: () => void; update: (props: ToasterToast) => void;}} - An object with the toast's ID and methods to dismiss or update it.
+ */
 function toast({ ...props }: Toast) {
   const id = genId()
 
@@ -168,6 +195,11 @@ function toast({ ...props }: Toast) {
   }
 }
 
+/**
+ * @function useToast
+ * @description A custom hook that provides access to the toast state and methods to interact with it.
+ * @returns {{toasts: ToasterToast[]; toast: (props: Toast) => {id: string; dismiss: () => void; update: (props: ToasterToast) => void;}; dismiss: (toastId?: string) => void;}} - An object with the current toasts, a function to create a new toast, and a function to dismiss a toast.
+ */
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 

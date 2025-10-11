@@ -1,5 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * @interface PublicDoctorInfo
+ * @description Defines the structure of a public-facing doctor information object.
+ */
 export interface PublicDoctorInfo {
   id: string;
   doctor_id: string;
@@ -11,6 +15,11 @@ export interface PublicDoctorInfo {
   profile_image_url?: string;
 }
 
+/**
+ * @interface FullDoctorInfo
+ * @description Defines the structure of a full doctor information object, including sensitive data.
+ * @extends PublicDoctorInfo
+ */
 export interface FullDoctorInfo extends PublicDoctorInfo {
   bio?: string;
   years_experience: number;
@@ -23,9 +32,10 @@ export interface FullDoctorInfo extends PublicDoctorInfo {
 }
 
 /**
- * Fetches doctor information with appropriate filtering based on authentication status
- * Anonymous users only see basic professional information
- * Authenticated users see full profiles including sensitive data
+ * @function getSecureDoctorInfo
+ * @description Fetches doctor information with appropriate filtering based on authentication status. Anonymous users only see basic professional information, while authenticated users see full profiles including sensitive data.
+ * @param {string} [doctorId] - The ID of the doctor to fetch. If not provided, fetches all doctors.
+ * @returns {Promise<{data: PublicDoctorInfo[] | FullDoctorInfo[] | null; error: any;}>} - A promise that resolves with an object containing the doctor data and any error that occurred.
  */
 export async function getSecureDoctorInfo(doctorId?: string): Promise<{
   data: PublicDoctorInfo[] | FullDoctorInfo[] | null;
@@ -90,7 +100,10 @@ export async function getSecureDoctorInfo(doctorId?: string): Promise<{
 }
 
 /**
- * Type guard to check if doctor info includes sensitive data
+ * @function isFullDoctorInfo
+ * @description A type guard to check if a doctor information object includes sensitive data.
+ * @param {PublicDoctorInfo | FullDoctorInfo} doctor - The doctor information object to check.
+ * @returns {doctor is FullDoctorInfo} - `true` if the object is of type `FullDoctorInfo`, `false` otherwise.
  */
 export function isFullDoctorInfo(doctor: PublicDoctorInfo | FullDoctorInfo): doctor is FullDoctorInfo {
   return 'consultation_fee' in doctor;

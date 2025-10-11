@@ -6,6 +6,11 @@ import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
 import PublicLayout from "@/components/PublicLayout";
 
+/**
+ * @function Index
+ * @description The main landing page of the application.
+ * @returns {JSX.Element} - The rendered Index page component.
+ */
 export default function Index() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);

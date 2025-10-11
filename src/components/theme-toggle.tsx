@@ -9,6 +9,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useTheme } from "@/components/theme-provider"
 
+/**
+ * @function ThemeToggle
+ * @description A component that allows the user to toggle between light, dark, and system themes.
+ * @returns {JSX.Element} - The rendered ThemeToggle component.
+ */
 export function ThemeToggle() {
   const { setTheme } = useTheme()
 
