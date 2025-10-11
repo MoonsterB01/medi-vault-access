@@ -136,12 +136,11 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     setIsFileBlocked(false);
     setBlockReason(null);
     setOcrResult(null);
+    setAiAnalysisResult(null);
     setRequiresUserVerification(false);
+    setIsAnalyzingWithAI(false);
     
-    // Auto-start OCR for supported formats
-    if (selectedFile.type.startsWith('image/') || selectedFile.type === 'application/pdf') {
-      setShowOCR(true);
-    }
+    // Do NOT auto-start OCR - wait for user to click "Analyze and Upload"
   };
 
   const handleScanComplete = (scannedFile: File) => {
@@ -202,6 +201,17 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     // Run AI analysis immediately after OCR
     if (file) {
       await runAIAnalysis(result);
+    }
+    
+    // After OCR and AI analysis complete, proceed with upload if we're in the middle of upload flow
+    if (uploading) {
+      // Re-trigger the upload to continue from where it left off
+      setTimeout(() => {
+        const submitBtn = document.querySelector('button[type="submit"]') as HTMLButtonElement;
+        if (submitBtn) {
+          submitBtn.click();
+        }
+      }, 500);
     }
   };
 
@@ -400,23 +410,13 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     }
   };
 
-  const handleUpload = async (e: React.FormEvent) => {
+  const handleAnalyzeAndUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!file || !documentType || !shareableId) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields and select a file",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check if user verification is required but not completed
-    if (requiresUserVerification) {
-      toast({
-        title: "Verification Required",
-        description: "Please verify if this document is medical or not",
         variant: "destructive",
       });
       return;
@@ -432,17 +432,7 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
       return;
     }
 
-    // Ensure we have AI analysis results for medical documents
-    if (!aiAnalysisResult && ocrResult) {
-      toast({
-        title: "Analysis Required",
-        description: "Document analysis is still in progress. Please wait.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Normalize and validate shareable ID (accept MED-XXXXXXXX or USER-XXXXXXXX)
+    // Normalize and validate shareable ID
     const normalizedId = shareableId.trim().toUpperCase();
     const isValidMedId = /^MED-[A-Z0-9]{8}$/.test(normalizedId);
     const isValidUserId = /^USER-[A-Z0-9]{8}$/.test(normalizedId);
@@ -456,8 +446,37 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     }
 
     setUploading(true);
+    setIsAnalyzingWithAI(true);
+
     try {
-      // Get current user session for authenticated request
+      // Step 1: Run OCR if not already done
+      if (!ocrResult) {
+        toast({
+          title: "Analyzing Document",
+          description: "Extracting text and analyzing content...",
+        });
+        
+        // Trigger OCR processing
+        setShowOCR(true);
+        
+        // Wait for OCR to complete (it will call handleOCRComplete)
+        // The upload will continue after OCR completes through the effect
+        return;
+      }
+
+      // Step 2: Check if user verification is required
+      if (requiresUserVerification) {
+        setUploading(false);
+        setIsAnalyzingWithAI(false);
+        toast({
+          title: "Verification Required",
+          description: "Please verify if this document is medical or not",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Step 3: Proceed with upload
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast({
@@ -465,13 +484,14 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
           description: "Please log in to upload documents",
           variant: "destructive",
         });
+        setUploading(false);
+        setIsAnalyzingWithAI(false);
         return;
       }
 
       const fileContent = await convertFileToBase64(file);
       const tagsArray = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
 
-      // Enhanced upload payload with OCR and AI analysis results
       const uploadPayload = {
         shareableId: normalizedId,
         file: {
@@ -498,23 +518,19 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
 
       toast({
         title: "Upload Successful!",
-        description: data?.message || "Document uploaded successfully",
+        description: data?.message || "Document uploaded and analyzed successfully",
       });
       
-      // Check if analysis is needed based on upload response
       if (data?.documentId) {
         setUploadedDocumentId(data.documentId);
         setFileContent(fileContent);
         
-        // Only show ContentAnalyzer if additional analysis is needed
         if (!data.skipAnalysis) {
           setShowAnalyzer(true);
         } else {
-          // Analysis is complete, reset form
           resetForm();
         }
       } else {
-        // Reset form if no analysis needed
         resetForm();
       }
       
@@ -527,6 +543,7 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
       });
     } finally {
       setUploading(false);
+      setIsAnalyzingWithAI(false);
     }
   };
 
@@ -603,7 +620,7 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleUpload} className="space-y-4">
+          <form onSubmit={handleAnalyzeAndUpload} className="space-y-4">
             {!propShareableId && !shareableId && (
               <div className="space-y-2">
                 <Label htmlFor="shareable-id">Patient Shareable ID *</Label>
@@ -864,13 +881,13 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={uploading || requiresUserVerification || isFileBlocked || isAnalyzingWithAI}
+            disabled={uploading || requiresUserVerification || isFileBlocked || !file}
           >
-            {uploading 
-              ? "Uploading..." 
-              : isAnalyzingWithAI 
-                ? "Analyzing Document..." 
-                : "Upload Document"
+            {uploading && isAnalyzingWithAI
+              ? "Analyzing and Uploading..." 
+              : uploading
+                ? "Uploading..."
+                : "Analyze and Upload"
             }
           </Button>
           </form>
