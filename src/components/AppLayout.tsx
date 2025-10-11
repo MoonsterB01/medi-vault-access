@@ -32,7 +32,7 @@ export default function AppLayout({ children, userRole }: AppLayoutProps) {
       const usersTable = supabase.from('users') as any;
       
       const userResult = await usersTable
-        .select('id, email, name, role, created_at, updated_at')
+        .select('id, email, name, role, created_at, updated_at, user_shareable_id')
         .eq('id', user.id)
         .single();
 

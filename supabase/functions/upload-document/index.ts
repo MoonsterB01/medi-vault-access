@@ -213,7 +213,11 @@ const handler = async (req: Request): Promise<Response> => {
     let textToAnalyze: string | null = ocrResult?.text || null;
     let analysisSource = 'client-ocr';
     let requiresOcr = false;
-    let finalAiAnalysisResult = aiAnalysisResult; // Use client-side AI result if provided
+    // Only accept client AI result if it's high quality
+    let finalAiAnalysisResult = 
+      (aiAnalysisResult && aiAnalysisResult.confidence > 0.5 && aiAnalysisResult.keywords?.length > 0) 
+      ? aiAnalysisResult 
+      : null;
 
     // 1. PDF Text Extraction
     // If the file is a PDF and we don't have pre-computed text, extract it
@@ -242,8 +246,8 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // 2. Enhanced Document Analysis
-    // If we have text and no prior AI analysis, run the analysis function
-    if (textToAnalyze && !finalAiAnalysisResult) {
+    // For PDFs with extracted text, always run analysis unless we have high-quality client results
+    if (textToAnalyze && (!finalAiAnalysisResult || file.type === 'application/pdf')) {
       console.log(`Invoking enhanced-document-analyze for document: ${file.name}`);
       analysisSource = 'server-ai-analysis';
       try {
@@ -384,22 +388,22 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Insert keywords into document_keywords table if we have AI analysis
-    if (aiAnalysisResult && aiAnalysisResult.keywords.length > 0) {
+    if (finalAiAnalysisResult && finalAiAnalysisResult.keywords.length > 0) {
       const keywordInserts: any[] = [];
       
       // Add general keywords
-      aiAnalysisResult.keywords.forEach(keyword => {
+      finalAiAnalysisResult.keywords.forEach(keyword => {
         keywordInserts.push({
           document_id: documentData.id,
           keyword,
           keyword_type: 'general',
-          confidence: aiAnalysisResult.confidence,
+          confidence: finalAiAnalysisResult.confidence,
         });
       });
 
       // Add entity-specific keywords
-      if (aiAnalysisResult.entities) {
-        Object.entries(aiAnalysisResult.entities).forEach(([entityType, entities]: [string, any]) => {
+      if (finalAiAnalysisResult.entities) {
+        Object.entries(finalAiAnalysisResult.entities).forEach(([entityType, entities]: [string, any]) => {
           if (Array.isArray(entities)) {
             entities.forEach(entity => {
               keywordInserts.push({
@@ -407,7 +411,7 @@ const handler = async (req: Request): Promise<Response> => {
                 keyword: entity,
                 keyword_type: entityType,
                 entity_category: entityType,
-                confidence: aiAnalysisResult.confidence,
+                confidence: finalAiAnalysisResult.confidence,
               });
             });
           }
