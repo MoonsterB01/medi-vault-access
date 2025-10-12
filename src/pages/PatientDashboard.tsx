@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { User, FileText, Share2, Copy, Upload, Download, Calendar, Clock, Trash2, Users, Search } from "lucide-react";
+import { usePatientSummary } from "@/hooks/use-patient-summary";
+import { User, FileText, Share2, Copy, Upload, Download, Calendar, Clock, Trash2, Users, Search, Bot } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentUpload from "@/components/DocumentUpload";
@@ -15,6 +16,7 @@ import { EnhancedDocumentSearch } from "@/components/EnhancedDocumentSearch";
 import { ExtractTextDialog } from "@/components/ExtractTextDialog";
 import AppointmentBooking from "@/components/AppointmentBooking";
 import AppointmentTracker from "@/components/AppointmentTracker";
+import PatientSummary from "@/components/PatientSummary";
 
 /**
  * @interface PatientDashboardProps
@@ -41,6 +43,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("documents");
+  const { summary, isLoading: isSummaryLoading, error: summaryError } = usePatientSummary(patientData?.id);
 
   useEffect(() => {
     const hash = location.hash.replace('#', '');
@@ -326,7 +329,8 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
           </div>
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
+              <TabsTrigger value="summary"><Bot className="h-4 w-4 mr-1" />Summary</TabsTrigger>
               <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-1" />Documents</TabsTrigger>
               <TabsTrigger value="search"><Search className="h-4 w-4 mr-1" />Search</TabsTrigger>
               <TabsTrigger value="appointments"><Calendar className="h-4 w-4 mr-1" />Appointments</TabsTrigger>
@@ -334,6 +338,10 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
               <TabsTrigger value="upload"><Upload className="h-4 w-4 mr-1" />Upload</TabsTrigger>
               <TabsTrigger value="family"><Share2 className="h-4 w-4 mr-1" />Family</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="summary" className="mt-6">
+              <PatientSummary summary={summary} isLoading={isSummaryLoading} error={summaryError} />
+            </TabsContent>
 
             <TabsContent value="documents" className="mt-6">
               <Card>
