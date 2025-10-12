@@ -1,87 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.53.0";
-import { v5 } from "https://deno.land/std@0.190.0/uuid/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-// Full PatientSummary interface based on the provided schema
-interface PatientSummary {
-  patientId: string;
-  generatedAt: string;
-  version: number;
-  sources: {
-    documentCount: number;
-    lastDocumentId?: string;
-    documents: { id: string; type?: string; uploadedAt: string }[];
-  };
-  diagnoses: Diagnosis[];
-  medications: Medication[];
-  labs: Labs;
-  visits: Visit[];
-  alerts: Alert[];
-  aiSummary?: AISummary;
-  manualCorrections?: Correction[];
-  meta?: any;
-}
-
-interface Diagnosis {
-  id: string;
-  name: string;
-  severity: string;
-  status: 'active' | 'inactive' | 'resolved';
-  firstSeen: string;
-  lastSeen: string;
-  sourceDocs: { docId: string; confidence: number }[];
-}
-
-interface Medication {
-  id: string;
-  name: string;
-  dose: string;
-  frequency: string;
-  status: 'active' | 'inactive' | 'stopped';
-  startDate: string;
-  sourceDocs: { docId: string; confidence: number }[];
-}
-
-interface Labs {
-    latest: { test: string; value: string; date: string, sourceDoc: string }[];
-    trends: Record<string, { date: string; value: number }[]>;
-}
-
-interface Visit {
-    visitId: string;
-    date: string;
-    doctor: string;
-    reason: string;
-    documents: string[];
-}
-
-interface Alert {
-    id: string;
-    level: 'critical' | 'warning' | 'info';
-    message: string;
-}
-
-interface AISummary {
-    oneLine: string;
-    paragraph: string;
-    confidence: number;
-}
-
-interface Correction {
-    field: string;
-    userId: string;
-    action: 'edited' | 'hidden';
-    valueBefore: any;
-    valueAfter: any;
-    timestamp: string;
-}
-
-const NAMESPACE_UUID = "6ba7b810-9dad-11d1-80b4-00c04fd430c8"; // Example namespace
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
@@ -96,136 +19,180 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { documentId, patientId } = await req.json();
 
-    if (!documentId || !patientId) {
-      return new Response(JSON.stringify({ error: 'documentId and patientId are required' }), {
+    if (!patientId) {
+      return new Response(JSON.stringify({ error: 'patientId is required' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
-    const { data: document, error: docError } = await supabase
-      .from('documents')
-      .select('extracted_entities, uploaded_at, document_type, id')
-      .eq('id', documentId)
-      .single();
+    // If a documentId is provided, process the new document
+    if (documentId) {
+        const { data: document, error: docError } = await supabase
+          .from('documents')
+          .select('extracted_entities, uploaded_at, document_type, id')
+          .eq('id', documentId)
+          .single();
 
-    if (docError || !document) {
-      throw new Error(`Failed to fetch document ${documentId}: ${docError?.message}`);
-    }
-
-    const newEntities = document.extracted_entities || {};
-    const today = new Date().toISOString().split('T')[0];
-
-    const { data: existingSummary, error: summaryError } = await supabase
-      .from('patient_summaries')
-      .select('summary, version')
-      .eq('patient_id', patientId)
-      .single();
-
-    if (summaryError && summaryError.code !== 'PGRST116') {
-      throw new Error(`Failed to fetch patient summary: ${summaryError.message}`);
-    }
-
-    const currentSummary: PatientSummary = existingSummary?.summary || {
-      patientId: patientId,
-      version: 0,
-      diagnoses: [],
-      medications: [],
-      labs: { latest: [], trends: {} },
-      visits: [],
-      alerts: [],
-      sources: { documentCount: 0, documents: [] },
-      generatedAt: new Date().toISOString()
-    };
-
-    const newVersion = (existingSummary?.version || 0) + 1;
-
-    // --- Core Merging Logic ---
-
-    // Merge Diagnoses
-    if (newEntities.diagnoses && Array.isArray(newEntities.diagnoses)) {
-      for (const newDiag of newEntities.diagnoses) {
-        const name = (newDiag.name || newDiag).toLowerCase();
-        const existingDiag = currentSummary.diagnoses.find(d => d.name.toLowerCase() === name);
-        if (existingDiag) {
-          existingDiag.lastSeen = today;
-          existingDiag.sourceDocs.push({ docId: documentId, confidence: newDiag.confidence || 0.8 });
-        } else {
-          currentSummary.diagnoses.push({
-            id: await v5.generate(NAMESPACE_UUID, new TextEncoder().encode(name)),
-            name: newDiag.name || newDiag,
-            status: 'active',
-            firstSeen: today,
-            lastSeen: today,
-            severity: newDiag.severity || 'undetermined',
-            sourceDocs: [{ docId: documentId, confidence: newDiag.confidence || 0.8 }],
-          });
+        if (docError || !document) {
+          throw new Error(`Failed to fetch document ${documentId}: ${docError?.message}`);
         }
-      }
+
+        const newEntities = document.extracted_entities || {};
+        const today = new Date().toISOString().split('T')[0];
+
+        // --- Core Logic: Write to Structured Tables ---
+
+        // Process Diagnoses
+        if (newEntities.diagnoses && Array.isArray(newEntities.diagnoses)) {
+            for (const newDiag of newEntities.diagnoses) {
+                const name = (newDiag.name || newDiag).toLowerCase();
+                const { data: existing } = await supabase.from('diagnoses').select('id, source_docs').eq('patient_id', patientId).ilike('name', name).single();
+                if (existing) {
+                    const updatedSourceDocs = [...(existing.source_docs || []), { docId: documentId, confidence: newDiag.confidence || 0.8 }];
+                    await supabase.from('diagnoses').update({ lastSeen: today, source_docs: updatedSourceDocs }).eq('id', existing.id);
+                } else {
+                    await supabase.from('diagnoses').insert({ patient_id: patientId, name: newDiag.name || newDiag, status: 'active', firstSeen: today, lastSeen: today, severity: newDiag.severity || 'undetermined', source_docs: [{ docId: documentId, confidence: newDiag.confidence || 0.8 }] });
+                }
+            }
+        }
+
+        // Process Medications
+        if (newEntities.medications && Array.isArray(newEntities.medications)) {
+            for (const newMed of newEntities.medications) {
+                const name = (newMed.name || newMed).toLowerCase();
+                const { data: existing } = await supabase.from('medications').select('id, source_docs').eq('patient_id', patientId).ilike('name', name).single();
+                if (existing) {
+                    const updatedSourceDocs = [...(existing.source_docs || []), { docId: documentId, confidence: newMed.confidence || 0.8 }];
+                    await supabase.from('medications').update({ status: 'active', source_docs: updatedSourceDocs }).eq('id', existing.id);
+                } else {
+                    await supabase.from('medications').insert({ patient_id: patientId, name: newMed.name || newMed, status: 'active', startDate: today, dose: newMed.dose || 'not specified', frequency: newMed.frequency || 'not specified', source_docs: [{ docId: documentId, confidence: newMed.confidence || 0.8 }] });
+                }
+            }
+        }
+
+        // Process Labs
+        if (newEntities.labs && Array.isArray(newEntities.labs)) {
+            const labInserts = newEntities.labs.map((newLab: any) => ({
+                patient_id: patientId,
+                test_name: newLab.test,
+                value: newLab.value,
+                date: newLab.date || today,
+                source_doc: documentId,
+            }));
+            await supabase.from('labs').insert(labInserts);
+        }
+
+        // Process Visits
+        if (newEntities.visits && Array.isArray(newEntities.visits)) {
+            const visitInserts = newEntities.visits.map((newVisit: any) => ({
+                patient_id: patientId,
+                date: newVisit.date || today,
+                doctor: newVisit.doctor || 'Unknown',
+                reason: newVisit.reason || 'Unknown',
+                documents: [documentId],
+            }));
+            await supabase.from('visits').insert(visitInserts);
+        }
+
+        // Process Alerts
+        if (newEntities.alerts && Array.isArray(newEntities.alerts)) {
+            const alertInserts = newEntities.alerts.map((newAlert: any) => ({
+                patient_id: patientId,
+                level: newAlert.level || 'info',
+                message: newAlert.message,
+                evidence_docs: [documentId],
+            }));
+            await supabase.from('alerts').insert(alertInserts);
+        }
     }
 
-    // Merge Medications
-    if (newEntities.medications && Array.isArray(newEntities.medications)) {
-        for (const newMed of newEntities.medications) {
-            const name = (newMed.name || newMed).toLowerCase();
-            const existingMed = currentSummary.medications.find(m => m.name.toLowerCase() === name);
-            if (existingMed) {
-                existingMed.status = 'active';
-                existingMed.startDate = existingMed.startDate || today; // Keep original start date
-                existingMed.sourceDocs.push({ docId: documentId, confidence: newMed.confidence || 0.8 });
-            } else {
-                currentSummary.medications.push({
-                    id: await v5.generate(NAMESPACE_UUID, new TextEncoder().encode(name)),
-                    name: newMed.name || newMed,
-                    status: 'active',
-                    startDate: today,
-                    dose: newMed.dose || 'not specified',
-                    frequency: newMed.frequency || 'not specified',
-                    sourceDocs: [{ docId: documentId, confidence: newMed.confidence || 0.8 }],
-                });
+
+    // --- Generate Summary JSON from Structured Tables ---
+
+    const { data: allDiagnoses, error: diagnosesError } = await supabase.from('diagnoses').select('*').eq('patient_id', patientId).is('hidden_by_user', false);
+    const { data: allMedications, error: medicationsError } = await supabase.from('medications').select('*').eq('patient_id', patientId).is('hidden_by_user', false);
+    const { data: allLabs, error: labsError } = await supabase.from('labs').select('*').eq('patient_id', patientId);
+    const { data: allVisits, error: visitsError } = await supabase.from('visits').select('*').eq('patient_id', patientId);
+    const { data: allAlerts, error: alertsError } = await supabase.from('alerts').select('*').eq('patient_id', patientId);
+    const { data: allCorrections, error: correctionsError } = await supabase.from('manual_corrections').select('*').eq('patient_id', patientId);
+    const { data: allDocuments, error: documentsError } = await supabase.from('documents').select('id, document_type, uploaded_at').eq('patient_id', patientId);
+
+
+    // --- Apply Manual Corrections ---
+    if (allCorrections) {
+        for (const correction of allCorrections) {
+            const { fieldPath, newValue } = correction;
+            const fieldParts = fieldPath.split('.');
+            if (fieldParts.length === 3) {
+                const arrayName = fieldParts[0];
+                const itemId = fieldParts[1];
+                const propertyName = fieldParts[2];
+
+                let targetArray;
+                if(arrayName === 'diagnoses') targetArray = allDiagnoses;
+                else if(arrayName === 'medications') targetArray = allMedications;
+
+                if (targetArray) {
+                    const itemIndex = targetArray.findIndex((item: any) => item.id === itemId);
+                    if (itemIndex !== -1) {
+                        targetArray[itemIndex][propertyName] = newValue;
+                    }
+                }
             }
         }
     }
 
-    // Update Sources
-    currentSummary.sources.documentCount = (currentSummary.sources.documentCount || 0) + 1;
-    currentSummary.sources.documents.push({
-        id: document.id,
-        type: document.document_type,
-        uploadedAt: document.uploaded_at,
-    });
 
-    // Generate AI Summary
-    const activeDiagnoses = currentSummary.diagnoses.filter(d => d.status === 'active').map(d => d.name).join(', ');
-    const activeMeds = currentSummary.medications.filter(m => m.status === 'active').map(m => m.name).join(', ');
+    const { data: existingSummary, error: summaryError } = await supabase
+        .from('patient_summaries')
+        .select('version')
+        .eq('patient_id', patientId)
+        .single();
+
+    const newVersion = (existingSummary?.version || 0) + 1;
+
+    // --- Build AI Summary ---
+    const activeDiagnoses = (allDiagnoses || []).filter(d => d.status === 'active').map(d => d.name).join(', ');
+    const activeMeds = (allMedications || []).filter(m => m.status === 'active').map(m => m.name).join(', ');
 
     let oneLine = 'No significant findings.';
     if(activeDiagnoses) oneLine = `Patient has records related to: ${activeDiagnoses}.`;
     if(activeMeds) oneLine += ` Current medications include: ${activeMeds}.`
 
-    currentSummary.aiSummary = {
+    const aiSummary = {
       oneLine: oneLine,
       paragraph: "Detailed AI summary is pending further analysis.",
       confidence: 0.8,
     };
 
-    currentSummary.generatedAt = new Date().toISOString();
-    currentSummary.version = newVersion;
 
-    const { error: upsertError } = await supabase
-      .from('patient_summaries')
-      .upsert({
+    const patientSummary = {
+      patientId: patientId,
+      version: newVersion,
+      generatedAt: new Date().toISOString(),
+      diagnoses: allDiagnoses || [],
+      medications: allMedications || [],
+      labs: { latest: allLabs || [], trends: {} },
+      visits: allVisits || [],
+      alerts: allAlerts || [],
+      sources: {
+          documentCount: allDocuments?.length || 0,
+          documents: (allDocuments || []).map(d => ({id: d.id, type: d.document_type, uploadedAt: d.uploaded_at}))
+      },
+      aiSummary: aiSummary,
+      manualCorrections: allCorrections || [],
+    };
+
+    // --- Update the patient_summaries table ---
+
+    await supabase.from('patient_summaries').upsert({
         patient_id: patientId,
-        summary: currentSummary,
+        summary: patientSummary,
         version: newVersion,
         updated_at: new Date().toISOString(),
-      });
+    });
 
-    if (upsertError) {
-      throw new Error(`Failed to upsert patient summary: ${upsertError.message}`);
-    }
-
-    console.log(`Successfully updated patient summary for patient ${patientId} to version ${newVersion}.`);
 
     return new Response(JSON.stringify({ success: true, newVersion }), {
       status: 200,
