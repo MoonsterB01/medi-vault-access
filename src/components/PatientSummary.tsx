@@ -6,81 +6,7 @@ import { AlertCircle, Heart, Stethoscope, TestTube, Calendar, Bot, Pencil, EyeOf
 import { CorrectionDialog } from "@/components/CorrectionDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
-// Full PatientSummary interface
-interface PatientSummary {
-  patientId: string;
-  generatedAt: string;
-  version: number;
-  sources: {
-    documentCount: number;
-    lastDocumentId?: string;
-    documents: { id: string; type?: string; uploadedAt: string }[];
-  };
-  diagnoses: Diagnosis[];
-  medications: Medication[];
-  labs: Labs;
-  visits: Visit[];
-  alerts: Alert[];
-  aiSummary?: AISummary;
-  manualCorrections?: Correction[];
-  meta?: any;
-}
-
-interface Diagnosis {
-  id: string;
-  name: string;
-  severity: string;
-  status: 'active' | 'inactive' | 'resolved';
-  firstSeen: string;
-  lastSeen: string;
-  sourceDocs: { docId: string; confidence: number }[];
-}
-
-interface Medication {
-  id: string;
-  name: string;
-  dose: string;
-  frequency: string;
-  status: 'active' | 'inactive' | 'stopped';
-  startDate: string;
-  sourceDocs: { docId: string; confidence: number }[];
-}
-
-interface Labs {
-    latest: { test: string; value: string; date: string, sourceDoc: string }[];
-    trends: Record<string, { date: string; value: number }[]>;
-}
-
-interface Visit {
-    visitId: string;
-    date: string;
-    doctor: string;
-    reason: string;
-    documents: string[];
-}
-
-interface Alert {
-    id: string;
-    level: 'critical' | 'warning' | 'info';
-    message: string;
-}
-
-interface AISummary {
-    oneLine: string;
-    paragraph: string;
-    confidence: number;
-}
-
-interface Correction {
-    field: string;
-    userId: string;
-    action: 'edited' | 'hidden';
-    valueBefore: any;
-    valueAfter: any;
-    timestamp: string;
-}
-
+import { PatientSummary } from "@/types/patient-summary";
 
 interface PatientSummaryProps {
   summary: PatientSummary | null;
@@ -90,6 +16,23 @@ interface PatientSummaryProps {
 
 const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
   const { toast } = useToast();
+
+  const handleHide = async (itemType: string, itemId: string) => {
+    if (!summary) return;
+    try {
+      const { data, error } = await supabase.functions.invoke('hide-summary-item', {
+        body: {
+          patientId: summary.patientId,
+          itemType,
+          itemId,
+        },
+      });
+      if (error) throw error;
+      toast({ title: "Item Hidden", description: "The item has been hidden from your summary." });
+    } catch (error: any) {
+      toast({ title: "Failed to Hide Item", description: error.message, variant: "destructive" });
+    }
+  };
 
   const handleCorrectionSubmit = async (correction: any) => {
     if (!summary) return;
@@ -146,7 +89,7 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
           <AccordionContent>
             {summary.diagnoses?.length ? (
               <ul className="space-y-2">
-                {summary.diagnoses.map((diag) => (
+                {summary.diagnoses.filter(item => !item.hiddenByUser).map((diag) => (
                   <li key={diag.id} className="p-2 border rounded-md">
                     <div className="flex justify-between items-start">
                       <div>
@@ -162,7 +105,7 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
                         >
                           <Button variant="ghost" size="icon" className="h-6 w-6"><Pencil className="h-4 w-4" /></Button>
                         </CorrectionDialog>
-                        <Button variant="ghost" size="icon" className="h-6 w-6"><EyeOff className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleHide('diagnoses', diag.id)}><EyeOff className="h-4 w-4" /></Button>
                       </div>
                     </div>
                   </li>
@@ -177,7 +120,7 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
           <AccordionContent>
             {summary.medications?.length ? (
                 <ul className="space-y-2">
-                    {summary.medications.map((med) => (
+                    {summary.medications.filter(item => !item.hiddenByUser).map((med) => (
                     <li key={med.id} className="p-2 border rounded-md">
                         <div className="flex justify-between items-start">
                             <div>
@@ -193,7 +136,7 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
                                 >
                                   <Button variant="ghost" size="icon" className="h-6 w-6"><Pencil className="h-4 w-4" /></Button>
                                 </CorrectionDialog>
-                                <Button variant="ghost" size="icon" className="h-6 w-6"><EyeOff className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleHide('medications', med.id)}><EyeOff className="h-4 w-4" /></Button>
                             </div>
                         </div>
                     </li>

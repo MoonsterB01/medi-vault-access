@@ -36,11 +36,52 @@ create table diagnoses (
   status text,
   firstSeen date,
   lastSeen date,
-  source_docs jsonb
+  source_docs jsonb,
+  hidden_by_user boolean default false
 );
 
 -- =====================================================
--- Step 4: Create manual_corrections table
+-- Step 4: Create medications table
+-- =====================================================
+create table medications (
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid references patients(id) on delete cascade,
+  name text,
+  dose text,
+  frequency text,
+  status text,
+  startDate date,
+  source_docs jsonb,
+  hidden_by_user boolean default false
+);
+
+-- =====================================================
+-- Step 5: Create labs table
+-- =====================================================
+create table labs (
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid references patients(id) on delete cascade,
+  test_name text,
+  value text,
+  date date,
+  source_doc uuid references documents(id) on delete cascade
+);
+
+-- =====================================================
+-- Step 6: Create visits table
+-- =====================================================
+create table visits (
+  id uuid primary key default gen_random_uuid(),
+  patient_id uuid references patients(id) on delete cascade,
+  date date,
+  doctor text,
+  reason text,
+  documents jsonb
+);
+
+
+-- =====================================================
+-- Step 7: Create manual_corrections table
 -- =====================================================
 create table manual_corrections (
   id uuid primary key default gen_random_uuid(),
@@ -54,7 +95,7 @@ create table manual_corrections (
 );
 
 -- =====================================================
--- Step 5: Create alerts table
+-- Step 8: Create alerts table
 -- =====================================================
 create table alerts (
   id uuid primary key default gen_random_uuid(),

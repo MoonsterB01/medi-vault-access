@@ -14,38 +14,32 @@ const handler = async (req: Request): Promise<Response> => {
     try {
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         );
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-            return new Response(JSON.stringify({ error: 'Authentication required' }), { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } });
-        }
+        const { patientId, itemType, itemId } = await req.json();
 
-
-        const { patientId, correction } = await req.json();
-
-        if (!patientId || !correction) {
-            return new Response(JSON.stringify({ error: 'patientId and correction are required' }), {
+        if (!patientId || !itemType || !itemId) {
+            return new Response(JSON.stringify({ error: 'patientId, itemType, and itemId are required' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json', ...corsHeaders },
             });
         }
 
-        // 1. Insert the correction into the manual_corrections table
-        await supabase.from('manual_corrections').insert({
-            patient_id: patientId,
-            user_id: user.id,
-            fieldPath: correction.field,
-            oldValue: correction.valueBefore,
-            newValue: correction.valueAfter,
-            docRefs: correction.sourceDocs,
-        });
+        // 1. Update the item in the structured table
+        const { error: updateError } = await supabase
+            .from(itemType)
+            .update({ hidden_by_user: true })
+            .eq('id', itemId)
+            .eq('patient_id', patientId);
+
+        if (updateError) {
+            throw new Error(`Failed to hide item: ${updateError.message}`);
+        }
 
         // 2. Trigger a regeneration of the patient summary
         const { error: invokeError } = await supabase.functions.invoke('generate-patient-summary', {
-            body: { patientId, documentId: null } // documentId is not needed for regeneration
+            body: { patientId, documentId: null }
         });
 
         if (invokeError) {
@@ -58,7 +52,7 @@ const handler = async (req: Request): Promise<Response> => {
         });
 
     } catch (error: any) {
-        console.error('Error in submit-correction function:', error);
+        console.error('Error in hide-summary-item function:', error);
         return new Response(JSON.stringify({ error: error.message }), {
             status: 500,
             headers: { 'Content-Type': 'application/json', ...corsHeaders },
