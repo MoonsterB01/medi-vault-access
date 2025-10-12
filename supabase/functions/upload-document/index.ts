@@ -388,6 +388,23 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Document uploaded successfully:', documentData.id);
 
+    // Generate patient summary
+    try {
+      const { error: summaryError } = await supabase.functions.invoke('generate-patient-summary', {
+        body: {
+          documentId: documentData.id,
+          patientId: patient.id,
+        }
+      });
+      if (summaryError) {
+        console.error('Error generating patient summary:', summaryError);
+      } else {
+        console.log('Patient summary generation triggered successfully');
+      }
+    } catch (summaryError) {
+        console.error('Failed to trigger patient summary generation:', summaryError);
+    }
+
     // Send notifications to family members about the new document upload
     try {
       const { error: notificationError } = await supabase.functions.invoke('notify-patient-upload', {
