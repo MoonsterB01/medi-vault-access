@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
-import { Upload, Users } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Upload, Users, Bot } from "lucide-react";
 
 /**
  * @interface HospitalDashboardProps
@@ -38,6 +38,12 @@ export default function HospitalDashboard({ user }: HospitalDashboardProps = {})
   });
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [showSummary, setShowSummary] = useState(false);
+
+  useEffect(() => {
+    setShowSummary(location.hash === "#summary");
+  }, [location]);
 
   useEffect(() => {
     if (user) {
@@ -115,9 +121,23 @@ export default function HospitalDashboard({ user }: HospitalDashboardProps = {})
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card>
+      {showSummary ? (
+        <Card className="mb-8">
           <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              Summary View
+            </CardTitle>
+            <CardDescription>AI-generated summaries of patient data will be displayed here.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p>Summary content is not yet available for hospital staff.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Card>
+            <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5" />
               Upload Medical Record
@@ -243,6 +263,7 @@ export default function HospitalDashboard({ user }: HospitalDashboardProps = {})
           </CardContent>
         </Card>
       </div>
+      )}
     </div>
   );
 }
