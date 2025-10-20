@@ -17,6 +17,7 @@ import { ExtractTextDialog } from "@/components/ExtractTextDialog";
 import AppointmentBooking from "@/components/AppointmentBooking";
 import AppointmentTracker from "@/components/AppointmentTracker";
 import PatientSummary from "@/components/PatientSummary";
+import MissingInfoDialog from "@/components/MissingInfoDialog";
 
 /**
  * @interface PatientDashboardProps
@@ -44,6 +45,13 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("documents");
   const { summary, isLoading: isSummaryLoading, error: summaryError } = usePatientSummary(patientData?.id);
+  const [isMissingInfoDialogOpen, setMissingInfoDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (patientData && (!patientData.name || !patientData.dob || !patientData.gender)) {
+      setMissingInfoDialogOpen(true);
+    }
+  }, [patientData]);
 
   useEffect(() => {
     const hash = location.hash.replace('#', '');
@@ -205,6 +213,13 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {patientData && (
+        <MissingInfoDialog
+          patient={patientData}
+          open={isMissingInfoDialogOpen}
+          onOpenChange={setMissingInfoDialogOpen}
+        />
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="space-y-6">
           <Card>

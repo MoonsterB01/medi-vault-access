@@ -1,5 +1,10 @@
 export interface PatientSummary {
   patientId: string;
+  patientInfo?: {
+    name?: string;
+    dob?: string;
+    gender?: string;
+  };
   generatedAt: string;
   version: number;
   sources: {
@@ -50,6 +55,7 @@ export interface Visit {
     doctor: string;
     reason: string;
     documents: string[];
+    lastCheckup?: string;
 }
 
 export interface Alert {
