@@ -91,6 +91,7 @@ const handler = async (req: Request): Promise<Response> => {
                 doctor: newVisit.doctor || 'Unknown',
                 reason: newVisit.reason || 'Unknown',
                 documents: [documentId],
+                lastCheckup: newEntities.entities?.lastCheckup
             }));
             await supabase.from('visits').insert(visitInserts);
         }
@@ -104,6 +105,43 @@ const handler = async (req: Request): Promise<Response> => {
                 evidence_docs: [documentId],
             }));
             await supabase.from('alerts').insert(alertInserts);
+        }
+
+        // Process Critical Alerts from Gemini
+        if (newEntities.criticalAlerts && Array.isArray(newEntities.criticalAlerts)) {
+            const alertInserts = newEntities.criticalAlerts.map((newAlert: any) => ({
+                patient_id: patientId,
+                level: newAlert.severity === 'high' ? 'critical' : 'warning',
+                message: newAlert.message,
+                evidence_docs: [documentId],
+            }));
+            await supabase.from('alerts').insert(alertInserts);
+        }
+
+        // Process Patient Info
+        if (newEntities.patientInfo) {
+            const { data: patient, error } = await supabase
+                .from('patients')
+                .select('name, dob, gender')
+                .eq('id', patientId)
+                .single();
+
+            if (patient) {
+                const updates: any = {};
+                if (!patient.name && newEntities.patientInfo.name) {
+                    updates.name = newEntities.patientInfo.name;
+                }
+                if (!patient.dob && newEntities.patientInfo.dob) {
+                    updates.dob = newEntities.patientInfo.dob;
+                }
+                if (!patient.gender && newEntities.patientInfo.gender) {
+                    updates.gender = newEntities.patientInfo.gender;
+                }
+
+                if (Object.keys(updates).length > 0) {
+                    await supabase.from('patients').update(updates).eq('id', patientId);
+                }
+            }
         }
     }
 
@@ -167,8 +205,19 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
 
+    const { data: patient, error: patientError } = await supabase
+        .from('patients')
+        .select('name, dob, gender')
+        .eq('id', patientId)
+        .single();
+
     const patientSummary = {
       patientId: patientId,
+      patientInfo: {
+        name: patient?.name,
+        dob: patient?.dob,
+        gender: patient?.gender,
+      },
       version: newVersion,
       generatedAt: new Date().toISOString(),
       diagnoses: allDiagnoses || [],

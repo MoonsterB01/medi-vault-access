@@ -234,26 +234,40 @@ PRE-ANALYSIS:
 - Verification Status: ${verificationStatus}
 
 ENHANCED ANALYSIS REQUIRED:
-1. MEDICAL ENTITIES (extract if found):
+1. PATIENT INFORMATION (extract if found):
+   - Full Name
+   - Date of Birth
+   - Gender
+
+2. MEDICAL ENTITIES (extract if found):
    - Doctor/Physician names
-   - Medical conditions/diagnoses  
+   - Medical conditions/diagnoses
    - Medications/prescriptions
    - Test names and results
    - Medical procedures
    - Dates and measurements
+   - Last checkup date
 
-2. DOCUMENT CATEGORIES (max 3 most relevant):
+3. CRITICAL ALERTS:
+   - Identify any critical medical conditions, severe allergies, or urgent findings that require immediate attention.
+
+4. DOCUMENT CATEGORIES (max 3 most relevant):
    Choose from: "Lab Results", "Pathology Report", "Radiology Report", "Prescription", "Consultation Notes", "Discharge Summary", "Blood Work", "Imaging Report", "Referral Letter", "Surgical Report", "Vaccination Record", "Insurance Document", "General Medical"
 
-3. ADDITIONAL KEYWORDS (medical terms not already detected)
+5. ADDITIONAL KEYWORDS (medical terms not already detected)
 
-4. CONFIDENCE ASSESSMENT (0.0-1.0) considering:
+6. CONFIDENCE ASSESSMENT (0.0-1.0) considering:
    - OCR quality and text clarity
    - Medical content relevance
    - Document completeness
 
 RESPOND ONLY in this exact JSON format:
 {
+  "patientInfo": {
+    "name": "Patient Name",
+    "dob": "YYYY-MM-DD",
+    "gender": "Male/Female/Other"
+  },
   "entities": {
     "doctors": ["Dr. Name"],
     "conditions": ["condition"],
@@ -261,8 +275,15 @@ RESPOND ONLY in this exact JSON format:
     "tests": ["test name"],
     "procedures": ["procedure"],
     "dates": ["2024-01-15"],
-    "measurements": ["120/80 mmHg"]
+    "measurements": ["120/80 mmHg"],
+    "lastCheckup": "YYYY-MM-DD"
   },
+  "criticalAlerts": [
+    {
+      "message": "Critical finding description",
+      "severity": "high/medium/low"
+    }
+  ],
   "keywords": ["additional", "medical", "keywords"],
   "categories": ["Lab Results", "Prescription"],
   "confidence": 0.85

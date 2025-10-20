@@ -73,6 +73,18 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
 
   return (
     <div className="space-y-6">
+      {summary.patientInfo && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Patient Information</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm space-y-1">
+            <p><strong>Name:</strong> {summary.patientInfo.name || 'N/A'}</p>
+            <p><strong>DOB:</strong> {summary.patientInfo.dob || 'N/A'}</p>
+            <p><strong>Gender:</strong> {summary.patientInfo.gender || 'N/A'}</p>
+          </CardContent>
+        </Card>
+      )}
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5" /> AI Summary (Beta)</CardTitle>
@@ -177,6 +189,7 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
                             <span>{visit.date}</span>
                             </div>
                             <p className="text-xs text-muted-foreground">{visit.reason}</p>
+                            {visit.lastCheckup && <p className="text-xs text-muted-foreground">Last Checkup: {visit.lastCheckup}</p>}
                         </li>
                         ))}
                     </ul>
@@ -190,7 +203,7 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
                  {summary.alerts?.length ? (
                     <ul className="space-y-2">
                         {summary.alerts.map((alert) => (
-                        <li key={alert.id} className={`p-2 border rounded-md ${alert.level === 'warning' ? 'border-yellow-500' : ''}`}>
+                        <li key={alert.id} className={`p-2 border rounded-md ${alert.level === 'critical' ? 'border-red-500' : alert.level === 'warning' ? 'border-yellow-500' : ''}`}>
                             <p className="font-semibold">{alert.message}</p>
                         </li>
                         ))}
