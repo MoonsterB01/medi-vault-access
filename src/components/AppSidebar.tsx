@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const patientMenuItems = [
+  { title: "Summary", url: "/patient-dashboard#summary", icon: FileText, tab: "summary" },
   { title: "My Documents", url: "/patient-dashboard#documents", icon: FileText, tab: "documents" },
   { title: "Search Documents", url: "/patient-dashboard#search", icon: Search, tab: "search" },
   { title: "My Appointments", url: "/patient-dashboard#appointments", icon: Calendar, tab: "appointments" },
@@ -35,6 +36,7 @@ const patientMenuItems = [
 ];
 
 const doctorMenuItems = [
+  { title: "Summary", url: "/doctor-dashboard#summary", icon: FileText, tab: "summary" },
   { title: "Dashboard", url: "/doctor-dashboard#dashboard", icon: LayoutDashboard, tab: "dashboard" },
   { title: "My Patients", url: "/doctor-dashboard#patients", icon: Users, tab: "patients" },
   { title: "Appointments", url: "/doctor-dashboard#appointments", icon: Calendar, tab: "appointments" },
@@ -42,6 +44,7 @@ const doctorMenuItems = [
 ];
 
 const hospitalStaffMenuItems = [
+  { title: "Summary", url: "/hospital-dashboard#summary", icon: FileText, tab: "summary" },
   { title: "Dashboard", url: "/hospital-dashboard#dashboard", icon: LayoutDashboard, tab: "dashboard" },
   { title: "Patients", url: "/hospital-dashboard#patients", icon: Users, tab: "patients" },
   { title: "Add Patient", url: "/hospital-dashboard#add-patient", icon: UserPlus, tab: "add-patient" },
