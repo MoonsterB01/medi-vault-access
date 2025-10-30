@@ -1,12 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Camera as CameraIcon, FileText, Plus, Trash2, RotateCw } from 'lucide-react';
+import {
+  Camera as CameraIcon,
+  FileText,
+  Plus,
+  Trash2,
+  RotateCw,
+  AlertTriangle,
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 
@@ -55,109 +73,124 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [sessionToRecover, setSessionToRecover] = useState<any | null>(null);
   const { toast } = useToast();
 
-  // Prevent navigation when modal is open
-  React.useEffect(() => {
+  const clearSession = useCallback(() => {
+    localStorage.removeItem('scannerSession');
+    console.log('Scanner session cleared');
+  }, []);
+
+  const saveSession = useCallback(
+    (images: ScannedImage[], name: string) => {
+      if (images.length > 0 || name) {
+        const session = {
+          scannedImages: images,
+          documentName: name,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem('scannerSession', JSON.stringify(session));
+        console.log('Scanner session saved:', session);
+      } else {
+        clearSession();
+      }
+    },
+    [clearSession]
+  );
+
+  useEffect(() => {
     if (open) {
-      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-        e.preventDefault();
-        e.returnValue = '';
-      };
-      
-      const handlePopState = (e: PopStateEvent) => {
-        e.preventDefault();
-        history.pushState(null, '', location.href);
-      };
-      
-      window.addEventListener('beforeunload', handleBeforeUnload);
-      window.addEventListener('popstate', handlePopState);
-      
-      // Push a state to handle back button
-      history.pushState(null, '', location.href);
-      
-      return () => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-        window.removeEventListener('popstate', handlePopState);
-      };
+      try {
+        const savedSession = localStorage.getItem('scannerSession');
+        if (savedSession) {
+          const session = JSON.parse(savedSession);
+          // Auto-clear stale sessions (e.g., older than 2 hours)
+          if (Date.now() - session.timestamp > 2 * 60 * 60 * 1000) {
+            clearSession();
+            setSessionToRecover(null);
+          } else {
+            setSessionToRecover(session);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to parse scanner session:', error);
+        clearSession();
+      }
+    } else {
+      // Reset recovery prompt when dialog is closed
+      setSessionToRecover(null);
     }
-  }, [open]);
+  }, [open, clearSession]);
+
+  const restoreSession = () => {
+    if (sessionToRecover) {
+      setScannedImages(sessionToRecover.scannedImages || []);
+      setDocumentName(sessionToRecover.documentName || '');
+      toast({
+        title: 'Session Restored',
+        description: 'Your previous scanning session has been restored.',
+      });
+      setSessionToRecover(null); // Hide recovery prompt
+    }
+  };
+
+  const discardSession = () => {
+    clearSession();
+    setSessionToRecover(null);
+    toast({
+      title: 'Session Discarded',
+      description: 'Previous session has been cleared.',
+      variant: 'default',
+    });
+  };
 
   const captureImage = async () => {
-    if (isCapturing) return; // Prevent multiple captures
-    
+    if (isCapturing) return;
+
     try {
       setIsCapturing(true);
-      console.log('Starting camera capture...');
-      
-      // Store current state in localStorage as backup
-      localStorage.setItem('scannerState', JSON.stringify({
-        scannedImages,
-        documentName,
-        timestamp: Date.now()
-      }));
-      
+
       const image = await Camera.getPhoto({
-        quality: 80,
+        quality: 90,
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Camera,
         width: 1024,
         height: 1024,
         correctOrientation: true,
         saveToGallery: false,
-        presentationStyle: 'fullscreen', // Force fullscreen on mobile
       });
-
-      console.log('Camera capture successful, processing image...');
 
       if (image.dataUrl) {
         const newImage: ScannedImage = {
-          id: Date.now().toString(),
+          id: `${Date.now()}-${Math.random()}`,
           dataUrl: image.dataUrl,
           timestamp: new Date(),
         };
-        
-        console.log('Adding image to state...');
-        setScannedImages(prev => {
-          const updated = [...prev, newImage];
-          console.log('Updated scanned images count:', updated.length);
-          
-          // Save to localStorage immediately
-          localStorage.setItem('scannerImages', JSON.stringify(updated));
-          
-          return updated;
-        });
-        
+
+        const updatedImages = [...scannedImages, newImage];
+        setScannedImages(updatedImages);
+        saveSession(updatedImages, documentName); // Save session after update
+
         toast({
-          title: "Image captured",
-          description: "Document page captured successfully",
+          title: 'Image Captured',
+          description: `Page ${updatedImages.length} captured successfully.`,
         });
-        
-        console.log('Image capture process completed successfully');
-        
-        // Clear backup state
-        localStorage.removeItem('scannerState');
-      } else {
-        console.error('No dataUrl received from camera');
-        throw new Error('No image data received');
       }
     } catch (error) {
-      console.error('Error capturing image:', error);
-      
-      // More specific error handling
-      let errorMessage = "Failed to capture image. Please try again.";
-      if (error instanceof Error) {
-        if (error.message.includes('User cancelled')) {
-          errorMessage = "Camera capture was cancelled.";
-        } else if (error.message.includes('permission')) {
-          errorMessage = "Camera permission is required. Please enable camera access.";
-        }
+      let errorMessage = 'Failed to capture image. Please try again.';
+      if (error instanceof Error && error.message.includes('cancelled')) {
+        errorMessage = 'Camera capture was cancelled.';
+      } else if (
+        error instanceof Error &&
+        error.message.includes('permission')
+      ) {
+        errorMessage =
+          'Camera permission is required. Please enable it in your device settings.';
       }
-      
       toast({
-        title: "Camera Error",
+        title: 'Camera Error',
         description: errorMessage,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } finally {
       setIsCapturing(false);
@@ -165,7 +198,17 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
   };
 
   const removeImage = (id: string) => {
-    setScannedImages(prev => prev.filter(img => img.id !== id));
+    const updatedImages = scannedImages.filter(img => img.id !== id);
+    setScannedImages(updatedImages);
+    saveSession(updatedImages, documentName);
+  };
+
+  const handleDocumentNameChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const newName = e.target.value;
+    setDocumentName(newName);
+    saveSession(scannedImages, newName);
   };
 
   const generatePDF = async () => {
@@ -230,22 +273,23 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
       });
 
       onScanComplete(pdfFile);
-      
-      // Reset state
+
+      // Reset state and clear session
       setScannedImages([]);
       setDocumentName('');
+      clearSession();
       onClose();
 
       toast({
-        title: "PDF Generated",
-        description: `Document "${documentName}" is ready for upload`,
+        title: 'PDF Generated',
+        description: `Document "${documentName}" is ready for upload.`,
       });
     } catch (error) {
       console.error('Error generating PDF:', error);
       toast({
-        title: "PDF Generation Failed",
-        description: "Failed to generate PDF. Please try again.",
-        variant: "destructive",
+        title: 'PDF Generation Failed',
+        description: 'An unexpected error occurred while generating the PDF.',
+        variant: 'destructive',
       });
     } finally {
       setIsGeneratingPDF(false);
@@ -300,22 +344,23 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
         // Fallback: upload first image using onScanComplete
         onScanComplete(imageFiles[0]);
       }
-      
-      // Reset state
+
+      // Reset state and clear session
       setScannedImages([]);
       setDocumentName('');
+      clearSession();
       onClose();
 
       toast({
-        title: "Images Ready",
-        description: `${imageFiles.length} image(s) ready for upload`,
+        title: 'Images Ready',
+        description: `${imageFiles.length} image(s) ready for upload.`,
       });
     } catch (error) {
       console.error('Error preparing images:', error);
       toast({
-        title: "Image Upload Failed",
-        description: "Failed to prepare images. Please try again.",
-        variant: "destructive",
+        title: 'Image Preparation Failed',
+        description: 'Could not prepare images for upload. Please try again.',
+        variant: 'destructive',
       });
     } finally {
       setIsUploadingImages(false);
@@ -323,33 +368,21 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
   };
 
   const handleClose = () => {
-    // Clear localStorage when closing
-    localStorage.removeItem('scannerImages');
-    localStorage.removeItem('scannerState');
+    // Don't clear session on close, as user might reopen it
     setScannedImages([]);
     setDocumentName('');
     setIsCapturing(false);
     onClose();
   };
 
-  // Restore state on mount if available
-  React.useEffect(() => {
-    if (open) {
-      const savedImages = localStorage.getItem('scannerImages');
-      if (savedImages) {
-        try {
-          const images = JSON.parse(savedImages);
-          setScannedImages(images);
-          console.log('Restored scanner images from localStorage:', images.length);
-        } catch (error) {
-          console.error('Failed to restore scanner images:', error);
-        }
-      }
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      handleClose();
     }
-  }, [open]);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -359,23 +392,52 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
         </DialogHeader>
 
         <div className="space-y-6">
+          {sessionToRecover && (
+            <Card className="border-yellow-400 bg-yellow-50">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center">
+                  <AlertTriangle className="mr-2 h-5 w-5 text-yellow-600" />
+                  <span>Restore Previous Session?</span>
+                </CardTitle>
+                <CardDescription className="text-yellow-700">
+                  We found a saved scanning session. Do you want to continue?
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex gap-4">
+                <Button onClick={restoreSession} className="w-full">
+                  Yes, Continue
+                </Button>
+                <Button
+                  onClick={discardSession}
+                  variant="outline"
+                  className="w-full"
+                >
+                  No, Start New
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Camera Controls */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Capture Document</CardTitle>
               <CardDescription>
-                Use your device camera to capture document pages. You can scan multiple pages into a single PDF.
+                Use your device's camera to capture pages. You can scan
+                multiple pages into a single document.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button 
-                onClick={captureImage} 
+              <Button
+                onClick={captureImage}
                 className="w-full"
                 size="lg"
                 disabled={isCapturing}
               >
                 <CameraIcon className="mr-2 h-5 w-5" />
-                {isCapturing ? 'Opening Camera...' : `Capture Page ${scannedImages.length + 1}`}
+                {isCapturing
+                  ? 'Opening Camera...'
+                  : `Capture Page ${scannedImages.length + 1}`}
               </Button>
             </CardContent>
           </Card>
@@ -432,7 +494,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                   <Input
                     id="documentName"
                     value={documentName}
-                    onChange={(e) => setDocumentName(e.target.value)}
+                    onChange={handleDocumentNameChange}
                     placeholder="Enter document name (e.g., Medical Report 2024)"
                     className="mt-1"
                   />
