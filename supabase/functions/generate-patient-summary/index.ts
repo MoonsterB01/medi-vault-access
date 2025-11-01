@@ -190,19 +190,79 @@ const handler = async (req: Request): Promise<Response> => {
 
     const newVersion = (existingSummary?.version || 0) + 1;
 
-    // --- Build AI Summary ---
-    const activeDiagnoses = (allDiagnoses || []).filter(d => d.status === 'active').map(d => d.name).join(', ');
-    const activeMeds = (allMedications || []).filter(m => m.status === 'active').map(m => m.name).join(', ');
+    // --- Build AI Summary using Lovable AI ---
+    const activeDiagnoses = (allDiagnoses || []).filter(d => d.status === 'active');
+    const activeMeds = (allMedications || []).filter(m => m.status === 'active');
+    const recentLabs = (allLabs || []).slice(-5); // Last 5 lab results
+    const recentVisits = (allVisits || []).slice(-3); // Last 3 visits
 
-    let oneLine = 'No significant findings.';
-    if(activeDiagnoses) oneLine = `Patient has records related to: ${activeDiagnoses}.`;
-    if(activeMeds) oneLine += ` Current medications include: ${activeMeds}.`
+    // Create context for AI
+    const medicalContext = `
+Patient Medical Summary Data:
+- Active Diagnoses: ${activeDiagnoses.map(d => `${d.name} (${d.severity})`).join(', ') || 'None'}
+- Active Medications: ${activeMeds.map(m => `${m.name} ${m.dose} ${m.frequency}`).join(', ') || 'None'}
+- Recent Lab Results: ${recentLabs.map(l => `${l.test_name}: ${l.value} (${l.date})`).join(', ') || 'None'}
+- Recent Visits: ${recentVisits.map(v => `${v.date} with ${v.doctor} for ${v.reason}`).join(', ') || 'None'}
+- Alerts: ${(allAlerts || []).filter(a => !a.resolved).map(a => a.message).join(', ') || 'None'}
+`;
 
-    const aiSummary = {
-      oneLine: oneLine,
-      paragraph: "Detailed AI summary is pending further analysis.",
-      confidence: 0.8,
+    let aiSummary = {
+      oneLine: 'No significant findings.',
+      paragraph: 'No detailed medical history available.',
+      confidence: 0.5,
     };
+
+    // Generate AI summary if there's meaningful data
+    if (activeDiagnoses.length > 0 || activeMeds.length > 0 || recentLabs.length > 0) {
+      try {
+        const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+        if (LOVABLE_API_KEY) {
+          const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'You are a medical AI assistant. Create concise, professional patient summaries. First line: one sentence overview. Second paragraph: 2-3 sentence detailed summary covering key diagnoses, treatments, and recent findings.'
+                },
+                {
+                  role: 'user',
+                  content: `Generate a patient summary from this medical data:\n${medicalContext}`
+                }
+              ],
+            }),
+          });
+
+          if (aiResponse.ok) {
+            const aiData = await aiResponse.json();
+            const fullSummary = aiData.choices?.[0]?.message?.content || '';
+            const lines = fullSummary.split('\n').filter(l => l.trim());
+            
+            aiSummary = {
+              oneLine: lines[0] || aiSummary.oneLine,
+              paragraph: lines.slice(1).join(' ').trim() || fullSummary,
+              confidence: 0.85,
+            };
+          } else {
+            console.error('AI API error:', aiResponse.status);
+          }
+        }
+      } catch (aiError) {
+        console.error('Error generating AI summary:', aiError);
+        // Fallback to basic summary
+        let oneLine = 'No significant findings.';
+        if (activeDiagnoses.length > 0) oneLine = `Patient has ${activeDiagnoses.length} active diagnosis(es): ${activeDiagnoses.slice(0, 2).map(d => d.name).join(', ')}.`;
+        if (activeMeds.length > 0) oneLine += ` Currently on ${activeMeds.length} medication(s).`;
+        
+        aiSummary.oneLine = oneLine;
+        aiSummary.paragraph = `Patient record includes ${activeDiagnoses.length} diagnoses and ${activeMeds.length} medications. ${recentVisits.length > 0 ? `Last visit was on ${recentVisits[0]?.date}.` : ''}`;
+      }
+    }
 
 
     const { data: patient, error: patientError } = await supabase

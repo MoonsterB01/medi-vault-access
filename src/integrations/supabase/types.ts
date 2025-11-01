@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      alerts: {
+        Row: {
+          created_at: string | null
+          evidence_docs: Json | null
+          id: string
+          level: string | null
+          message: string | null
+          patient_id: string | null
+          resolved: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          evidence_docs?: Json | null
+          id?: string
+          level?: string | null
+          message?: string | null
+          patient_id?: string | null
+          resolved?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          evidence_docs?: Json | null
+          id?: string
+          level?: string | null
+          message?: string | null
+          patient_id?: string | null
+          resolved?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alerts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointment_slots: {
         Row: {
           created_at: string
@@ -261,6 +299,50 @@ export type Database = {
           },
         ]
       }
+      diagnoses: {
+        Row: {
+          firstseen: string | null
+          hidden_by_user: boolean | null
+          id: string
+          lastseen: string | null
+          name: string | null
+          patient_id: string | null
+          severity: string | null
+          source_docs: Json | null
+          status: string | null
+        }
+        Insert: {
+          firstseen?: string | null
+          hidden_by_user?: boolean | null
+          id?: string
+          lastseen?: string | null
+          name?: string | null
+          patient_id?: string | null
+          severity?: string | null
+          source_docs?: Json | null
+          status?: string | null
+        }
+        Update: {
+          firstseen?: string | null
+          hidden_by_user?: boolean | null
+          id?: string
+          lastseen?: string | null
+          name?: string | null
+          patient_id?: string | null
+          severity?: string | null
+          source_docs?: Json | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnoses_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       doctor_patient_relationships: {
         Row: {
           created_at: string
@@ -374,6 +456,48 @@ export type Database = {
           },
         ]
       }
+      document_extractions: {
+        Row: {
+          confidence: number | null
+          document_id: string | null
+          extraction_json: Json | null
+          id: string
+          patient_id: string | null
+          processed_at: string | null
+        }
+        Insert: {
+          confidence?: number | null
+          document_id?: string | null
+          extraction_json?: Json | null
+          id?: string
+          patient_id?: string | null
+          processed_at?: string | null
+        }
+        Update: {
+          confidence?: number | null
+          document_id?: string | null
+          extraction_json?: Json | null
+          id?: string
+          patient_id?: string | null
+          processed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_extractions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_extractions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       document_feedback: {
         Row: {
           corrected_verification_status: string
@@ -458,6 +582,7 @@ export type Database = {
       }
       documents: {
         Row: {
+          ai_summary: string | null
           auto_categories: string[] | null
           content_confidence: number | null
           content_keywords: string[] | null
@@ -481,6 +606,8 @@ export type Database = {
           processing_notes: string | null
           searchable_content: string | null
           structural_cues: Json | null
+          summary_confidence: number | null
+          summary_generated_at: string | null
           tags: string[] | null
           text_density_score: number | null
           uploaded_at: string | null
@@ -490,6 +617,7 @@ export type Database = {
           verification_status: string | null
         }
         Insert: {
+          ai_summary?: string | null
           auto_categories?: string[] | null
           content_confidence?: number | null
           content_keywords?: string[] | null
@@ -513,6 +641,8 @@ export type Database = {
           processing_notes?: string | null
           searchable_content?: string | null
           structural_cues?: Json | null
+          summary_confidence?: number | null
+          summary_generated_at?: string | null
           tags?: string[] | null
           text_density_score?: number | null
           uploaded_at?: string | null
@@ -522,6 +652,7 @@ export type Database = {
           verification_status?: string | null
         }
         Update: {
+          ai_summary?: string | null
           auto_categories?: string[] | null
           content_confidence?: number | null
           content_keywords?: string[] | null
@@ -545,6 +676,8 @@ export type Database = {
           processing_notes?: string | null
           searchable_content?: string | null
           structural_cues?: Json | null
+          summary_confidence?: number | null
+          summary_generated_at?: string | null
           tags?: string[] | null
           text_density_score?: number | null
           uploaded_at?: string | null
@@ -685,6 +818,89 @@ export type Database = {
         }
         Relationships: []
       }
+      labs: {
+        Row: {
+          date: string | null
+          id: string
+          patient_id: string | null
+          source_doc: string | null
+          test_name: string | null
+          value: string | null
+        }
+        Insert: {
+          date?: string | null
+          id?: string
+          patient_id?: string | null
+          source_doc?: string | null
+          test_name?: string | null
+          value?: string | null
+        }
+        Update: {
+          date?: string | null
+          id?: string
+          patient_id?: string | null
+          source_doc?: string | null
+          test_name?: string | null
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labs_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "labs_source_doc_fkey"
+            columns: ["source_doc"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manual_corrections: {
+        Row: {
+          createdat: string | null
+          docrefs: Json | null
+          fieldpath: string | null
+          id: string
+          newvalue: string | null
+          oldvalue: string | null
+          patient_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          createdat?: string | null
+          docrefs?: Json | null
+          fieldpath?: string | null
+          id?: string
+          newvalue?: string | null
+          oldvalue?: string | null
+          patient_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          createdat?: string | null
+          docrefs?: Json | null
+          fieldpath?: string | null
+          id?: string
+          newvalue?: string | null
+          oldvalue?: string | null
+          patient_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_corrections_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medical_keywords: {
         Row: {
           category: string
@@ -711,6 +927,50 @@ export type Database = {
           weight?: number | null
         }
         Relationships: []
+      }
+      medications: {
+        Row: {
+          dose: string | null
+          frequency: string | null
+          hidden_by_user: boolean | null
+          id: string
+          name: string | null
+          patient_id: string | null
+          source_docs: Json | null
+          startdate: string | null
+          status: string | null
+        }
+        Insert: {
+          dose?: string | null
+          frequency?: string | null
+          hidden_by_user?: boolean | null
+          id?: string
+          name?: string | null
+          patient_id?: string | null
+          source_docs?: Json | null
+          startdate?: string | null
+          status?: string | null
+        }
+        Update: {
+          dose?: string | null
+          frequency?: string | null
+          hidden_by_user?: boolean | null
+          id?: string
+          name?: string | null
+          patient_id?: string | null
+          source_docs?: Json | null
+          startdate?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -763,38 +1023,79 @@ export type Database = {
           },
         ]
       }
+      patient_summaries: {
+        Row: {
+          patient_id: string
+          summary: Json | null
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          patient_id: string
+          summary?: Json | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          patient_id?: string
+          summary?: Json | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_summaries_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: true
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
+          allergies: Json | null
+          blood_group: string | null
           created_at: string
           created_by: string
           dob: string
+          emergency_contact: Json | null
           gender: string
           hospital_id: string | null
           id: string
+          medical_notes: string | null
           name: string
           primary_contact: string
           shareable_id: string | null
           updated_at: string
         }
         Insert: {
+          allergies?: Json | null
+          blood_group?: string | null
           created_at?: string
           created_by: string
           dob: string
+          emergency_contact?: Json | null
           gender: string
           hospital_id?: string | null
           id?: string
+          medical_notes?: string | null
           name: string
           primary_contact: string
           shareable_id?: string | null
           updated_at?: string
         }
         Update: {
+          allergies?: Json | null
+          blood_group?: string | null
           created_at?: string
           created_by?: string
           dob?: string
+          emergency_contact?: Json | null
           gender?: string
           hospital_id?: string | null
           id?: string
+          medical_notes?: string | null
           name?: string
           primary_contact?: string
           shareable_id?: string | null
@@ -885,6 +1186,41 @@ export type Database = {
           },
         ]
       }
+      visits: {
+        Row: {
+          date: string | null
+          doctor: string | null
+          documents: Json | null
+          id: string
+          patient_id: string | null
+          reason: string | null
+        }
+        Insert: {
+          date?: string | null
+          doctor?: string | null
+          documents?: Json | null
+          id?: string
+          patient_id?: string | null
+          reason?: string | null
+        }
+        Update: {
+          date?: string | null
+          doctor?: string | null
+          documents?: Json | null
+          id?: string
+          patient_id?: string | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -909,22 +1245,10 @@ export type Database = {
         Args: { file_path: string }
         Returns: string
       }
-      generate_appointment_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_doctor_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_shareable_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_user_shareable_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_appointment_id: { Args: never; Returns: string }
+      generate_doctor_id: { Args: never; Returns: string }
+      generate_shareable_id: { Args: never; Returns: string }
+      generate_user_shareable_id: { Args: never; Returns: string }
       get_user_primary_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
@@ -936,10 +1260,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_file_blocked: {
-        Args: { hash_input: string }
-        Returns: boolean
-      }
+      is_file_blocked: { Args: { hash_input: string }; Returns: boolean }
       register_file_hash: {
         Args: {
           content_type_input: string

@@ -47,3 +47,6 @@ verify_jwt = true
 
 [functions.appointment-notifications]
 verify_jwt = true
+
+[functions.generate-document-summary]
+verify_jwt = true

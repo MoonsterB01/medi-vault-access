@@ -17,7 +17,8 @@ import { ExtractTextDialog } from "@/components/ExtractTextDialog";
 import AppointmentBooking from "@/components/AppointmentBooking";
 import AppointmentTracker from "@/components/AppointmentTracker";
 import PatientSummary from "@/components/PatientSummary";
-import MissingInfoDialog from "@/components/MissingInfoDialog";
+import { MissingInfoDialog } from "@/components/MissingInfoDialog";
+import { DocumentSummaryDialog } from "@/components/DocumentSummaryDialog";
 
 /**
  * @interface PatientDashboardProps
@@ -46,10 +47,46 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   const [activeTab, setActiveTab] = useState("documents");
   const { summary, isLoading: isSummaryLoading, error: summaryError } = usePatientSummary(patientData?.id);
   const [isMissingInfoDialogOpen, setMissingInfoDialogOpen] = useState(false);
+  const [missingFields, setMissingFields] = useState<any[]>([]);
 
   useEffect(() => {
-    if (patientData && (!patientData.name || !patientData.dob || !patientData.gender)) {
-      setMissingInfoDialogOpen(true);
+    if (patientData) {
+      const fields = [];
+      
+      if (!patientData.blood_group) {
+        fields.push({
+          field: 'blood_group',
+          label: 'Blood Group',
+          description: 'Your blood type (e.g., O+, A-, AB+)',
+          priority: 'high' as const,
+          type: 'text' as const
+        });
+      }
+      
+      if (!patientData.allergies || patientData.allergies.length === 0) {
+        fields.push({
+          field: 'allergies',
+          label: 'Allergies',
+          description: 'List any known allergies (medications, food, environmental)',
+          priority: 'medium' as const,
+          type: 'json' as const
+        });
+      }
+      
+      if (!patientData.emergency_contact) {
+        fields.push({
+          field: 'emergency_contact',
+          label: 'Emergency Contact',
+          description: 'Name and phone number of emergency contact person',
+          priority: 'high' as const,
+          type: 'json' as const
+        });
+      }
+      
+      setMissingFields(fields);
+      if (fields.length > 0 && (!patientData.name || !patientData.dob || !patientData.gender)) {
+        setMissingInfoDialogOpen(true);
+      }
     }
   }, [patientData]);
 
@@ -213,11 +250,13 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {patientData && (
+      {patientData && missingFields.length > 0 && (
         <MissingInfoDialog
-          patient={patientData}
+          patientId={patientData.id}
+          missingFields={missingFields}
           open={isMissingInfoDialogOpen}
           onOpenChange={setMissingInfoDialogOpen}
+          onUpdate={() => fetchPatientData(user.id)}
         />
       )}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -388,9 +427,9 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
                                const { data } = await supabase.storage.from('medical-documents').createSignedUrl(doc.file_path, 3600);
                                if (data?.signedUrl) window.open(data.signedUrl, '_blank');
                             }}><Download className="h-4 w-4 mr-2" />View</Button>
-                            <ExtractTextDialog document={doc}>
-                              <Button size="sm" variant="outline" title="Extract text"><FileText className="h-4 w-4 mr-2" />Extract</Button>
-                            </ExtractTextDialog>
+                            <DocumentSummaryDialog document={doc}>
+                              <Button size="sm" variant="outline" title="View AI summary"><Bot className="h-4 w-4 mr-2" />Summary</Button>
+                            </DocumentSummaryDialog>
                             <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument(doc.id, doc.filename)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>

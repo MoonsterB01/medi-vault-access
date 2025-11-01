@@ -1,83 +1,181 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-interface MissingInfoDialogProps {
-  patient: any;
-  onOpenChange: (open: boolean) => void;
-  open: boolean;
+interface MissingField {
+  field: string;
+  label: string;
+  description: string;
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  type: 'text' | 'textarea' | 'json';
 }
 
-export default function MissingInfoDialog({ patient, open, onOpenChange }: MissingInfoDialogProps) {
-  const [name, setName] = useState("");
-  const [dob, setDob] = useState("");
-  const [gender, setGender] = useState("");
+interface MissingInfoDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  patientId: string;
+  missingFields: MissingField[];
+  onUpdate: () => void;
+}
+
+export function MissingInfoDialog({ 
+  open, 
+  onOpenChange, 
+  patientId, 
+  missingFields,
+  onUpdate 
+}: MissingInfoDialogProps) {
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (patient) {
-      setName(patient.name || "");
-      setDob(patient.dob || "");
-      setGender(patient.gender || "");
-    }
-  }, [patient]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
 
-  const handleSubmit = async () => {
     try {
+      const updateData: Record<string, any> = {};
+      
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value) {
+          const field = missingFields.find(f => f.field === key);
+          if (field?.type === 'json') {
+            try {
+              updateData[key] = JSON.parse(value);
+            } catch {
+              updateData[key] = [value];
+            }
+          } else {
+            updateData[key] = value;
+          }
+        }
+      });
+
       const { error } = await supabase
-        .from("patients")
-        .update({
-          name,
-          dob,
-          gender,
-        })
-        .eq("id", patient.id);
+        .from('patients')
+        .update(updateData)
+        .eq('id', patientId);
 
       if (error) throw error;
-      toast({ title: "Success", description: "Patient information updated." });
+
+      toast({
+        title: "Information Updated",
+        description: "Your medical information has been saved successfully.",
+      });
+
+      onUpdate();
       onOpenChange(false);
+      setFormData({});
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      console.error('Error updating patient info:', error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "Could not save information",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'critical':
+        return 'text-red-600 bg-red-50 border-red-200';
+      case 'high':
+        return 'text-orange-600 bg-orange-50 border-orange-200';
+      case 'medium':
+        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      default:
+        return 'text-blue-600 bg-blue-50 border-blue-200';
+    }
+  };
+
+  if (missingFields.length === 0) return null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
         <DialogHeader>
-          <DialogTitle>Complete Your Profile</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-orange-600" />
+            Complete Your Medical Profile
+          </DialogTitle>
           <DialogDescription>
-            Please fill in the missing information to help us provide a better experience.
+            We've detected some missing information in your medical profile. 
+            Adding this information helps us provide better insights and summaries.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="name">Name</Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Alert className={getPriorityColor(missingFields[0]?.priority || 'medium')}>
+            <AlertDescription>
+              <strong>Priority:</strong> {missingFields.length} field{missingFields.length > 1 ? 's' : ''} need{missingFields.length === 1 ? 's' : ''} your attention
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-4">
+            {missingFields.map((field) => (
+              <div key={field.field} className="space-y-2">
+                <Label htmlFor={field.field} className="flex items-center gap-2">
+                  {field.label}
+                  {field.priority === 'critical' && (
+                    <span className="text-xs text-red-600 font-semibold">(Required)</span>
+                  )}
+                </Label>
+                <p className="text-sm text-muted-foreground">{field.description}</p>
+                
+                {field.type === 'textarea' ? (
+                  <Textarea
+                    id={field.field}
+                    placeholder={`Enter ${field.label.toLowerCase()}`}
+                    value={formData[field.field] || ''}
+                    onChange={(e) => setFormData({ ...formData, [field.field]: e.target.value })}
+                    required={field.priority === 'critical'}
+                    rows={3}
+                  />
+                ) : (
+                  <Input
+                    id={field.field}
+                    type="text"
+                    placeholder={`Enter ${field.label.toLowerCase()}`}
+                    value={formData[field.field] || ''}
+                    onChange={(e) => setFormData({ ...formData, [field.field]: e.target.value })}
+                    required={field.priority === 'critical'}
+                  />
+                )}
+              </div>
+            ))}
           </div>
-          <div>
-            <Label htmlFor="dob">Date of Birth</Label>
-            <Input id="dob" type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+
+          <div className="flex justify-end gap-3">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Skip for Now
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Information'
+              )}
+            </Button>
           </div>
-          <div>
-            <Label htmlFor="gender">Gender</Label>
-            <Input id="gender" value={gender} onChange={(e) => setGender(e.target.value)} />
-          </div>
-          <Button onClick={handleSubmit} className="w-full">
-            Save
-          </Button>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
