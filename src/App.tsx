@@ -15,6 +15,7 @@ import ContactUs from "./pages/ContactUs";
 import NotFound from "./pages/NotFound";
 import DoctorAuth from "./pages/DoctorAuth";
 import DoctorDashboard from "./pages/DoctorDashboard";
+import HeroBanner from "./components/HeroBanner";
 const queryClient = new QueryClient();
 
 /**
@@ -27,6 +28,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <HeroBanner />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
