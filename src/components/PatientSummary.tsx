@@ -6,7 +6,7 @@ import { AlertCircle, Heart, Stethoscope, TestTube, Calendar, Bot, Pencil, EyeOf
 import { CorrectionDialog } from "@/components/CorrectionDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { PatientSummary } from "@/types/patient-summary";
+import type { PatientSummary } from "@/types/patient-summary";
 
 interface PatientSummaryProps {
   summary: PatientSummary | null;
@@ -140,7 +140,7 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
                                 <p className="text-xs text-muted-foreground">{med.dose} {med.frequency}</p>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Badge variant={med.status === 'active' ? 'green' : 'outline'}>{med.status}</Badge>
+                                <Badge variant={med.status === 'active' ? 'default' : 'outline'}>{med.status}</Badge>
                                 <CorrectionDialog
                                   field={`medications.${med.id}.name`}
                                   originalValue={med.name}

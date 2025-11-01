@@ -26,3 +26,24 @@ verify_jwt = true
 
 [functions.pdf-text-extractor]
 verify_jwt = true
+
+[functions.generate-patient-summary]
+verify_jwt = true
+
+[functions.hide-summary-item]
+verify_jwt = true
+
+[functions.submit-correction]
+verify_jwt = true
+
+[functions.enhanced-document-analyze]
+verify_jwt = true
+
+[functions.pdf-to-images]
+verify_jwt = true
+
+[functions.notify-patient-upload]
+verify_jwt = true
+
+[functions.appointment-notifications]
+verify_jwt = true
