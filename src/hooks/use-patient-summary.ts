@@ -18,13 +18,14 @@ export const usePatientSummary = (patientId: string | null) => {
       setIsLoading(true);
       setError(null);
       try {
-        const { data, error } = await supabase
+        // Use type assertion since types haven't regenerated yet
+        const { data, error } = await (supabase as any)
           .from('patient_summaries')
           .select('summary')
           .eq('patient_id', patientId)
-          .single();
+          .maybeSingle();
 
-        if (error && error.code !== 'PGRST116') { // Ignore 'not found'
+        if (error) {
           throw error;
         }
 
