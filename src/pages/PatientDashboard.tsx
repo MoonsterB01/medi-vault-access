@@ -7,14 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { usePatientSummary } from "@/hooks/use-patient-summary";
-import { User, FileText, Share2, Copy, Upload, Download, Calendar, Clock, Trash2, Users, Search, Bot, Shield } from "lucide-react";
+import { User, FileText, Share2, Copy, Upload, Download, Calendar, Clock, Trash2, Users, Search, Bot } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentUpload from "@/components/DocumentUpload";
 import FamilyAccessManager from "@/components/FamilyAccessManager";
 import { EnhancedDocumentSearch } from "@/components/EnhancedDocumentSearch";
-import { ExtractTextDialog } from "@/components/ExtractTextDialog";
-import { DocumentVerificationManager } from "@/components/DocumentVerificationManager";
 import AppointmentBooking from "@/components/AppointmentBooking";
 import AppointmentTracker from "@/components/AppointmentTracker";
 import PatientSummary from "@/components/PatientSummary";
@@ -49,7 +47,6 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   const { summary, isLoading: isSummaryLoading, error: summaryError } = usePatientSummary(patientData?.id);
   const [isMissingInfoDialogOpen, setMissingInfoDialogOpen] = useState(false);
   const [missingFields, setMissingFields] = useState<any[]>([]);
-  const [selectedDocForVerify, setSelectedDocForVerify] = useState<any>(null);
 
   useEffect(() => {
     if (patientData) {
@@ -389,7 +386,6 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
               <TabsTrigger value="summary"><Bot className="h-4 w-4 mr-1" />Summary</TabsTrigger>
               <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-1" />Documents</TabsTrigger>
               <TabsTrigger value="search"><Search className="h-4 w-4 mr-1" />Search</TabsTrigger>
-              <TabsTrigger value="verify"><Shield className="h-4 w-4 mr-1" />Verify</TabsTrigger>
               <TabsTrigger value="appointments"><Calendar className="h-4 w-4 mr-1" />Appointments</TabsTrigger>
               <TabsTrigger value="book-appointment"><Clock className="h-4 w-4 mr-1" />Book</TabsTrigger>
               <TabsTrigger value="upload"><Upload className="h-4 w-4 mr-1" />Upload</TabsTrigger>
@@ -454,38 +450,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
             <TabsContent value="search" className="mt-6">
               <EnhancedDocumentSearch 
                 patientId={patientData?.id} 
-                onDocumentSelect={(doc) => {
-                  const fullDoc = documents.find(d => d.id === doc.id);
-                  if (fullDoc) {
-                    setSelectedDocForVerify(fullDoc);
-                    setActiveTab('verify');
-                  }
-                }}
               />
-            </TabsContent>
-
-            <TabsContent value="verify" className="mt-6">
-              {selectedDocForVerify ? (
-                <DocumentVerificationManager
-                  documentId={selectedDocForVerify.id}
-                  currentStatus={selectedDocForVerify.verification_status || 'unverified'}
-                  onStatusChange={() => {
-                    if (patientData?.id) fetchDocuments(patientData.id);
-                    toast({
-                      title: "Status Updated",
-                      description: "Document verification status has been updated",
-                    });
-                  }}
-                />
-              ) : (
-                <Card>
-                  <CardContent className="p-8 text-center text-muted-foreground">
-                    <Shield className="h-12 w-12 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No Document Selected</h3>
-                    <p>Search for a document and click on it to verify</p>
-                  </CardContent>
-                </Card>
-              )}
             </TabsContent>
 
             <TabsContent value="appointments" className="mt-6">

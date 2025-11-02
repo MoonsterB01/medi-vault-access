@@ -92,21 +92,40 @@ serve(async (req: Request) => {
     const summary = aiData.choices?.[0]?.message?.content || 'Unable to generate summary.';
     const confidence = 0.85; // Default confidence for AI-generated summaries
 
-    // Update the document with the summary
-    const { error: updateError } = await supabaseClient
+    // Update document with summary
+    const { data: updatedDoc, error: updateError } = await supabaseClient
       .from('documents')
       .update({
         ai_summary: summary,
         summary_confidence: confidence,
         summary_generated_at: new Date().toISOString(),
       })
-      .eq('id', documentId);
+      .eq('id', documentId)
+      .select('patient_id')
+      .single();
 
     if (updateError) {
       console.error('Error updating document with summary:', updateError);
     }
 
     console.log('Document summary generated successfully');
+
+    // Trigger patient summary update after document summary is generated
+    if (updatedDoc?.patient_id) {
+      try {
+        const { error: patientSummaryError } = await supabaseClient.functions.invoke('generate-patient-summary', {
+          body: { patientId: updatedDoc.patient_id }
+        });
+        
+        if (patientSummaryError) {
+          console.error('Failed to trigger patient summary update:', patientSummaryError);
+        } else {
+          console.log('✅ Triggered patient summary update after document summary');
+        }
+      } catch (err) {
+        console.error('Error triggering patient summary update:', err);
+      }
+    }
 
     return new Response(
       JSON.stringify({ 
