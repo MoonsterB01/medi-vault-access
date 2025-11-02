@@ -50,3 +50,6 @@ verify_jwt = true
 
 [functions.generate-document-summary]
 verify_jwt = true
+
+[functions.enhanced-search]
+verify_jwt = true
