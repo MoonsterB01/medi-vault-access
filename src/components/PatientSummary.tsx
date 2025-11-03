@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Heart, Stethoscope, TestTube, Calendar, Bot, Pencil, EyeOff, FileText, Upload, RefreshCw } from "lucide-react";
 import { CorrectionDialog } from "@/components/CorrectionDialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,7 +55,33 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
   };
 
   if (isLoading) {
-    return <div>Loading summary...</div>;
+    return (
+      <div className="space-y-6">
+        <Card className="border-2 border-primary">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <Skeleton className="h-6 w-48" />
+              <div className="flex gap-2">
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-6 w-20" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-16 w-full" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-40" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-16 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (error) {
@@ -174,10 +201,10 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
                   Upload your first medical document to get AI-powered insights about your health history, diagnoses, medications, and more.
                 </p>
               </div>
-              <Button onClick={() => {
-                const uploadTab = document.querySelector('[value="upload"]') as HTMLElement;
-                uploadTab?.click();
-              }}>
+              <Button 
+                onClick={() => window.location.hash = '#upload'}
+                className="shadow-lg"
+              >
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Your First Document
               </Button>
@@ -188,19 +215,30 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
 
       {/* Patient Information - Compact */}
       {summary.patientInfo && (
-        <Card>
-          <CardHeader>
+        <Card className="transition-all hover:shadow-md">
+          <CardHeader className="pb-3">
             <CardTitle className="text-base">Patient Information</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm space-y-1">
-            <p><strong>Name:</strong> {summary.patientInfo.name || 'N/A'}</p>
-            <p><strong>DOB:</strong> {summary.patientInfo.dob || 'N/A'}</p>
-            <p><strong>Gender:</strong> {summary.patientInfo.gender || 'N/A'}</p>
+          <CardContent className="text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <p className="text-muted-foreground text-xs">Name</p>
+                <p className="font-medium">{summary.patientInfo.name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Date of Birth</p>
+                <p className="font-medium">{summary.patientInfo.dob || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Gender</p>
+                <p className="font-medium">{summary.patientInfo.gender || 'N/A'}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      <Accordion type="multiple" defaultValue={['diagnoses', 'medications']} className="w-full">
+      <Accordion type="multiple" defaultValue={['diagnoses', 'medications']} className="w-full space-y-2">
         <AccordionItem value="diagnoses">
           <AccordionTrigger><Stethoscope className="h-5 w-5 mr-2" />Recent Diagnoses</AccordionTrigger>
           <AccordionContent>
@@ -268,13 +306,13 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
             <AccordionContent>
                 {summary.labs?.latest?.length ? (
                     <ul className="space-y-2">
-                        {summary.labs.latest.map((lab, index) => (
-                        <li key={index} className="p-2 border rounded-md">
-                            <div className="flex justify-between">
-                            <span className="font-semibold">{lab.test}</span>
-                            <span>{lab.value}</span>
+                        {summary.labs.latest.map((lab: any, index) => (
+                        <li key={index} className="p-3 border rounded-md hover:bg-accent/50 transition-colors">
+                            <div className="flex justify-between items-center">
+                              <span className="font-semibold">{lab.test_name || lab.test}</span>
+                              <span className="text-sm font-mono bg-muted px-2 py-1 rounded">{lab.value}</span>
                             </div>
-                            <p className="text-xs text-muted-foreground">Date: {lab.date}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Date: {lab.date}</p>
                         </li>
                         ))}
                     </ul>
