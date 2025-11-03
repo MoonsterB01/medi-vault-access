@@ -49,6 +49,19 @@ export const patientSchema = z.object({
 });
 
 /**
+ * Extended schema for editing patient information with optional fields
+ */
+export const editPatientSchema = patientSchema.extend({
+  blood_group: z.enum(['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', '']).optional(),
+  allergies: z.array(z.string().trim().min(1).max(100)).max(20).optional(),
+  emergency_contact: z.object({
+    name: z.string().trim().min(2).max(100).regex(NAME_REGEX, "Name can only contain letters, spaces, hyphens, and apostrophes"),
+    phone: z.string().regex(PHONE_REGEX, "Invalid phone number format")
+  }).optional(),
+  medical_notes: z.string().trim().max(2000, "Medical notes must be less than 2000 characters").optional()
+});
+
+/**
  * @constant {z.ZodObject} documentSchema
  * @description A Zod schema for validating document upload information.
  */

@@ -6,6 +6,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Heart, Stethoscope, TestTube, Calendar, Bot, Pencil, EyeOff, FileText, Upload, RefreshCw } from "lucide-react";
 import { CorrectionDialog } from "@/components/CorrectionDialog";
+import { EditPatientInfoDialog } from "@/components/EditPatientInfoDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { PatientSummary } from "@/types/patient-summary";
@@ -20,6 +21,7 @@ interface PatientSummaryProps {
 const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
   const { toast } = useToast();
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const handleHide = async (itemType: string, itemId: string) => {
     if (!summary) return;
@@ -215,10 +217,18 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
 
       {/* Patient Information - Compact */}
       {summary.patientInfo && (
-        <Card className="transition-all hover:shadow-md">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Patient Information</CardTitle>
-          </CardHeader>
+            <Card className="transition-all hover:shadow-md">
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                <CardTitle className="text-base">Patient Information</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditDialogOpen(true)}
+                >
+                  <Pencil className="h-4 w-4 mr-1" />
+                  Edit
+                </Button>
+              </CardHeader>
           <CardContent className="text-sm">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
@@ -355,6 +365,18 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
             </AccordionContent>
         </AccordionItem>
       </Accordion>
+
+      {/* Edit Patient Info Dialog */}
+      <EditPatientInfoDialog
+        isOpen={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
+        patientData={summary?.patientInfo}
+        patientId={summary?.patientId || ""}
+        onSuccess={() => {
+          toast({ title: "Patient information updated successfully" });
+          // The summary will auto-refresh via the realtime subscription
+        }}
+      />
     </div>
   );
 };

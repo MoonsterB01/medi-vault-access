@@ -53,3 +53,6 @@ verify_jwt = true
 
 [functions.enhanced-search]
 verify_jwt = true
+
+[functions.medibot-chat]
+verify_jwt = true
