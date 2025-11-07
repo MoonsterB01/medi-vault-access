@@ -16,9 +16,10 @@ interface PatientSummaryProps {
   summary: PatientSummary | null;
   isLoading: boolean;
   error: Error | null;
+  onRefresh?: () => Promise<void>;
 }
 
-const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
+const PatientSummary = ({ summary, isLoading, error, onRefresh }: PatientSummaryProps) => {
   const { toast } = useToast();
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -372,9 +373,9 @@ const PatientSummary = ({ summary, isLoading, error }: PatientSummaryProps) => {
         onClose={() => setIsEditDialogOpen(false)}
         patientData={summary?.patientInfo}
         patientId={summary?.patientId || ""}
-        onSuccess={() => {
+        onSuccess={async () => {
           toast({ title: "Patient information updated successfully" });
-          // The summary will auto-refresh via the realtime subscription
+          if (onRefresh) await onRefresh();
         }}
       />
     </div>

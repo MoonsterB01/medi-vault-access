@@ -18,6 +18,7 @@ import AppointmentTracker from "@/components/AppointmentTracker";
 import PatientSummary from "@/components/PatientSummary";
 import { MissingInfoDialog } from "@/components/MissingInfoDialog";
 import { DocumentSummaryDialog } from "@/components/DocumentSummaryDialog";
+import { MediBot } from "@/components/MediBot";
 
 /**
  * @interface PatientDashboardProps
@@ -247,6 +248,12 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
     navigate(`#${tab}`);
   };
 
+  const refreshPatientData = async () => {
+    if (user?.id) {
+      await fetchPatientData(user.id);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       {patientData && missingFields.length > 0 && (
@@ -393,7 +400,12 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
             </TabsList>
 
             <TabsContent value="summary" className="mt-6">
-              <PatientSummary summary={summary} isLoading={isSummaryLoading} error={summaryError} />
+              <PatientSummary 
+                summary={summary} 
+                isLoading={isSummaryLoading} 
+                error={summaryError}
+                onRefresh={refreshPatientData}
+              />
             </TabsContent>
 
             <TabsContent value="documents" className="mt-6">
@@ -471,6 +483,9 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
           </Tabs>
         </div>
       </div>
+      
+      {/* MediBot - Always visible floating button */}
+      {patientData?.id && <MediBot patientId={patientData.id} />}
     </div>
   );
 }
