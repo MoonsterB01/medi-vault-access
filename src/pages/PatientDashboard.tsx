@@ -249,8 +249,20 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   };
 
   const refreshPatientData = async () => {
-    if (user?.id) {
-      await fetchPatientData(user.id);
+    try {
+      if (patientData?.id) {
+        const { data, error } = await supabase
+          .from('patients')
+          .select('*')
+          .eq('id', patientData.id)
+          .single();
+        if (error) throw error;
+        if (data) setPatientData(data);
+      } else if (user?.id) {
+        await fetchPatientData(user.id);
+      }
+    } catch (err: any) {
+      toast({ title: "Refresh failed", description: err.message, variant: "destructive" });
     }
   };
 

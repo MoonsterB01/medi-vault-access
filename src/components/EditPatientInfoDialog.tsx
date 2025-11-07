@@ -102,6 +102,15 @@ export function EditPatientInfoDialog({
 
       if (error) throw error;
 
+      // Regenerate patient summary so UI reflects latest demographics
+      try {
+        await supabase.functions.invoke('generate-patient-summary', {
+          body: { patientId }
+        });
+      } catch (e) {
+        console.warn('Summary regeneration failed (non-blocking):', e);
+      }
+
       toast.success("Patient information updated successfully");
       onSuccess();
       onClose();
@@ -112,7 +121,6 @@ export function EditPatientInfoDialog({
       setIsSubmitting(false);
     }
   };
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
