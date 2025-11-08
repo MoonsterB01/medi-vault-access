@@ -55,9 +55,13 @@ export const editPatientSchema = patientSchema.extend({
   blood_group: z.enum(['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', '']).optional(),
   allergies: z.array(z.string().trim().min(1).max(100)).max(20).optional(),
   emergency_contact: z.object({
-    name: z.string().trim().min(2).max(100).regex(NAME_REGEX, "Name can only contain letters, spaces, hyphens, and apostrophes"),
-    phone: z.string().regex(PHONE_REGEX, "Invalid phone number format")
-  }).optional(),
+    name: z.string().trim().min(2).max(100).regex(NAME_REGEX, "Name can only contain letters, spaces, hyphens, and apostrophes").or(z.literal("")),
+    phone: z.string().regex(PHONE_REGEX, "Invalid phone number format").or(z.literal(""))
+  }).optional().transform((val) => {
+    // If both fields are empty, return undefined so it saves as null
+    if (val && (!val.name || !val.phone)) return undefined;
+    return val;
+  }),
   medical_notes: z.string().trim().max(2000, "Medical notes must be less than 2000 characters").optional()
 });
 
