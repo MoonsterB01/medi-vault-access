@@ -26,6 +26,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { usePreventNavigation } from '@/hooks/usePreventNavigation';
 import jsPDF from 'jspdf';
 
 /**
@@ -76,6 +77,11 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
   const [sessionToRecover, setSessionToRecover] = useState<any | null>(null);
   const { toast } = useToast();
 
+  usePreventNavigation(
+    scannedImages.length > 0 || isCapturing,
+    'You have captured images that will be lost. Are you sure?'
+  );
+
   const clearSession = useCallback(() => {
     localStorage.removeItem('scannerSession');
     console.log('Scanner session cleared');
@@ -104,12 +110,18 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
         const savedSession = localStorage.getItem('scannerSession');
         if (savedSession) {
           const session = JSON.parse(savedSession);
-          // Auto-clear stale sessions (e.g., older than 2 hours)
-          if (Date.now() - session.timestamp > 2 * 60 * 60 * 1000) {
-            clearSession();
-            setSessionToRecover(null);
-          } else {
+          const isRecent = Date.now() - session.timestamp < 2 * 60 * 60 * 1000;
+          const hasData = session.scannedImages?.length > 0 || session.documentName;
+          
+          if (isRecent && hasData) {
             setSessionToRecover(session);
+            toast({
+              title: 'Previous Session Found',
+              description: `Found ${session.scannedImages?.length || 0} captured pages.`,
+              duration: 5000,
+            });
+          } else {
+            clearSession();
           }
         }
       } catch (error) {
@@ -117,10 +129,9 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
         clearSession();
       }
     } else {
-      // Reset recovery prompt when dialog is closed
       setSessionToRecover(null);
     }
-  }, [open, clearSession]);
+  }, [open, clearSession, toast]);
 
   const restoreSession = () => {
     if (sessionToRecover) {
@@ -150,6 +161,10 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
     try {
       setIsCapturing(true);
 
+      if (window.history && window.history.pushState) {
+        window.history.pushState(null, '', window.location.href);
+      }
+
       const image = await Camera.getPhoto({
         quality: 90,
         resultType: CameraResultType.DataUrl,
@@ -158,6 +173,10 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
         height: 1024,
         correctOrientation: true,
         saveToGallery: false,
+        presentationStyle: 'fullscreen',
+        promptLabelCancel: 'Cancel',
+        promptLabelPhoto: 'Choose from Gallery',
+        promptLabelPicture: 'Take Photo',
       });
 
       if (image.dataUrl) {
@@ -169,7 +188,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
 
         const updatedImages = [...scannedImages, newImage];
         setScannedImages(updatedImages);
-        saveSession(updatedImages, documentName); // Save session after update
+        saveSession(updatedImages, documentName);
 
         toast({
           title: 'Image Captured',
@@ -177,19 +196,25 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
         });
       }
     } catch (error) {
-      let errorMessage = 'Failed to capture image. Please try again.';
-      if (error instanceof Error && error.message.includes('cancelled')) {
-        errorMessage = 'Camera capture was cancelled.';
-      } else if (
-        error instanceof Error &&
-        error.message.includes('permission')
-      ) {
-        errorMessage =
-          'Camera permission is required. Please enable it in your device settings.';
+      if (error instanceof Error) {
+        if (error.message.includes('cancelled') || error.message.includes('cancel')) {
+          console.log('Camera capture cancelled by user');
+          return;
+        }
+        
+        if (error.message.includes('permission')) {
+          toast({
+            title: 'Camera Permission Required',
+            description: 'Please enable camera access in your device settings.',
+            variant: 'destructive',
+          });
+          return;
+        }
       }
+      
       toast({
         title: 'Camera Error',
-        description: errorMessage,
+        description: 'Failed to capture image. Please try again.',
         variant: 'destructive',
       });
     } finally {

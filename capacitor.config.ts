@@ -10,7 +10,8 @@ const config: CapacitorConfig = {
   },
   plugins: {
     Camera: {
-      permissions: ['camera', 'photos']
+      permissions: ['camera', 'photos'],
+      presentationStyle: 'fullscreen'
     }
   }
 };

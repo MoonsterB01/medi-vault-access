@@ -111,3 +111,16 @@ All colors MUST be HSL.
     @apply bg-background;
   }
 }
+
+/* Mobile-specific styles */
+@media (max-width: 767px) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* Smooth scroll for mobile sections */
+  [id^="tab-content-"] {
+    scroll-margin-top: 1rem;
+    min-height: calc(100vh - 10rem);
+  }
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PatientSummary } from '@/types/patient-summary';
 
@@ -6,6 +6,11 @@ export const usePatientSummary = (patientId: string | null) => {
   const [summary, setSummary] = useState<PatientSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const refresh = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     if (!patientId) {
@@ -61,7 +66,7 @@ export const usePatientSummary = (patientId: string | null) => {
       supabase.removeChannel(channel);
     };
 
-  }, [patientId]);
+  }, [patientId, refreshTrigger]);
 
-  return { summary, isLoading, error };
+  return { summary, isLoading, error, refresh };
 };

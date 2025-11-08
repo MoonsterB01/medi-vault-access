@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,8 @@ import PatientSummary from "@/components/PatientSummary";
 import { MissingInfoDialog } from "@/components/MissingInfoDialog";
 import { DocumentSummaryDialog } from "@/components/DocumentSummaryDialog";
 import { MediBot } from "@/components/MediBot";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { cn } from "@/lib/utils";
 
 /**
  * @interface PatientDashboardProps
@@ -45,7 +48,8 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   const location = useLocation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("documents");
-  const { summary, isLoading: isSummaryLoading, error: summaryError } = usePatientSummary(patientData?.id);
+  const isMobile = useIsMobile();
+  const { summary, isLoading: isSummaryLoading, error: summaryError, refresh: refreshSummary } = usePatientSummary(patientData?.id);
   const [isMissingInfoDialogOpen, setMissingInfoDialogOpen] = useState(false);
   const [missingFields, setMissingFields] = useState<any[]>([]);
 
@@ -246,6 +250,15 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     navigate(`#${tab}`);
+    
+    if (isMobile) {
+      const contentElement = document.getElementById(`tab-content-${tab}`);
+      if (contentElement) {
+        contentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
   };
 
   const refreshPatientData = async () => {
@@ -258,6 +271,11 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
           .single();
         if (error) throw error;
         if (data) setPatientData(data);
+        
+        if (refreshSummary) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          refreshSummary();
+        }
       } else if (user?.id) {
         await fetchPatientData(user.id);
       }
@@ -267,7 +285,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className={cn("container mx-auto px-4 py-8", isMobile && "pb-24")}>
       {patientData && missingFields.length > 0 && (
         <MissingInfoDialog
           patientId={patientData.id}
@@ -401,17 +419,19 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
           </div>
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="grid w-full grid-cols-7">
-              <TabsTrigger value="summary"><Bot className="h-4 w-4 mr-1" />Summary</TabsTrigger>
-              <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-1" />Documents</TabsTrigger>
-              <TabsTrigger value="search"><Search className="h-4 w-4 mr-1" />Search</TabsTrigger>
-              <TabsTrigger value="appointments"><Calendar className="h-4 w-4 mr-1" />Appointments</TabsTrigger>
-              <TabsTrigger value="book-appointment"><Clock className="h-4 w-4 mr-1" />Book</TabsTrigger>
-              <TabsTrigger value="upload"><Upload className="h-4 w-4 mr-1" />Upload</TabsTrigger>
-              <TabsTrigger value="family"><Share2 className="h-4 w-4 mr-1" />Family</TabsTrigger>
-            </TabsList>
+            {!isMobile && (
+              <TabsList className="grid w-full grid-cols-7">
+                <TabsTrigger value="summary"><Bot className="h-4 w-4 mr-1" />Summary</TabsTrigger>
+                <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-1" />Documents</TabsTrigger>
+                <TabsTrigger value="search"><Search className="h-4 w-4 mr-1" />Search</TabsTrigger>
+                <TabsTrigger value="appointments"><Calendar className="h-4 w-4 mr-1" />Appointments</TabsTrigger>
+                <TabsTrigger value="book-appointment"><Clock className="h-4 w-4 mr-1" />Book</TabsTrigger>
+                <TabsTrigger value="upload"><Upload className="h-4 w-4 mr-1" />Upload</TabsTrigger>
+                <TabsTrigger value="family"><Share2 className="h-4 w-4 mr-1" />Family</TabsTrigger>
+              </TabsList>
+            )}
 
-            <TabsContent value="summary" className="mt-6">
+            <TabsContent value="summary" className="mt-6" id="tab-content-summary">
               <PatientSummary 
                 summary={summary} 
                 isLoading={isSummaryLoading} 
@@ -420,7 +440,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
               />
             </TabsContent>
 
-            <TabsContent value="documents" className="mt-6">
+            <TabsContent value="documents" className="mt-6" id="tab-content-documents">
               <Card>
                 <CardHeader>
                   <CardTitle>My Documents</CardTitle>
@@ -471,32 +491,33 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
               </Card>
             </TabsContent>
 
-            <TabsContent value="search" className="mt-6">
+            <TabsContent value="search" className="mt-6" id="tab-content-search">
               <EnhancedDocumentSearch 
                 patientId={patientData?.id} 
               />
             </TabsContent>
 
-            <TabsContent value="appointments" className="mt-6">
+            <TabsContent value="appointments" className="mt-6" id="tab-content-appointments">
               <AppointmentTracker user={user} />
             </TabsContent>
-            <TabsContent value="book-appointment" className="mt-6">
+            <TabsContent value="book-appointment" className="mt-6" id="tab-content-book-appointment">
               <AppointmentBooking user={user} />
             </TabsContent>
-            <TabsContent value="upload" className="mt-6">
+            <TabsContent value="upload" className="mt-6" id="tab-content-upload">
               <DocumentUpload
                 shareableId={patientData?.shareable_id}
                 onUploadSuccess={onUploadSuccess}
               />
             </TabsContent>
-            <TabsContent value="family" className="mt-6">
+            <TabsContent value="family" className="mt-6" id="tab-content-family">
               <FamilyAccessManager patientId={patientData?.id} patientShareableId={patientData?.shareable_id} />
             </TabsContent>
           </Tabs>
         </div>
       </div>
       
-      {/* MediBot - Always visible floating button */}
+      {isMobile && <MobileBottomNav activeTab={activeTab} onTabChange={handleTabChange} />}
+      
       {patientData?.id && <MediBot patientId={patientData.id} />}
     </div>
   );
