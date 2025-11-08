@@ -24,7 +24,69 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
 
-        const { patientId, correction } = await req.json();
+    const { patientId, correction } = await req.json();
+
+    // Validate input
+    if (!patientId || !correction) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(patientId)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid patient ID format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate correction object structure
+    if (typeof correction !== 'object' || !correction.field || !correction.valueAfter) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid correction format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate field path (alphanumeric, dots, underscores only)
+    const fieldRegex = /^[a-zA-Z0-9_.]+$/;
+    if (!fieldRegex.test(correction.field) || correction.field.length > 100) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid field name' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate value lengths
+    const valueBefore = String(correction.valueBefore || '');
+    const valueAfter = String(correction.valueAfter || '');
+    if (valueBefore.length > 1000 || valueAfter.length > 1000) {
+      return new Response(
+        JSON.stringify({ error: 'Values too long' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate sourceDocs if present
+    if (correction.sourceDocs) {
+      if (!Array.isArray(correction.sourceDocs) || correction.sourceDocs.length > 20) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid source documents' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      for (const docId of correction.sourceDocs) {
+        if (!uuidRegex.test(docId)) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid document ID in sources' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
 
         if (!patientId || !correction) {
             return new Response(JSON.stringify({ error: 'patientId and correction are required' }), {

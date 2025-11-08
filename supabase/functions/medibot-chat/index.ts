@@ -15,18 +15,43 @@ serve(async (req) => {
   try {
     const { message, patientId } = await req.json();
 
-    if (!message || !patientId) {
+    // Validate input format
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
       return new Response(
-        JSON.stringify({ error: "Message and patientId are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: 'Message is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate message length
     if (message.length > 500) {
       return new Response(
-        JSON.stringify({ error: "Message too long (max 500 characters)" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: 'Message too long (max 500 characters)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate message content (alphanumeric, spaces, basic punctuation only)
+    const messageRegex = /^[a-zA-Z0-9\s.,!?'"-]+$/;
+    if (!messageRegex.test(message)) {
+      return new Response(
+        JSON.stringify({ error: 'Message contains invalid characters' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!patientId) {
+      return new Response(
+        JSON.stringify({ error: 'Patient ID is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(patientId)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid patient ID format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -232,9 +257,9 @@ Answer the patient's questions accurately based on their medical records.`;
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
-    console.error("Error in medibot-chat:", error);
+    console.error("[INTERNAL] Error in medibot-chat:", error.name, error.message);
     return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
+      JSON.stringify({ error: "An error occurred processing your request" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

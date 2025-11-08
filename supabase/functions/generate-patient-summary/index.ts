@@ -26,6 +26,23 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
+    // Validate UUID format for patientId
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(patientId)) {
+      return new Response(JSON.stringify({ error: 'Invalid patient ID format' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
+    // Validate documentId if provided
+    if (documentId && !uuidRegex.test(documentId)) {
+      return new Response(JSON.stringify({ error: 'Invalid document ID format' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
     // If a documentId is provided, process the new document
     if (documentId) {
         const { data: document, error: docError } = await supabase
@@ -350,8 +367,8 @@ Be concise, accurate, and prioritize actionable medical information.`;
     });
 
   } catch (error: any) {
-    console.error('Error in generate-patient-summary function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('[INTERNAL] Error in generate-patient-summary:', error.name);
+    return new Response(JSON.stringify({ error: 'An error occurred generating the summary' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
