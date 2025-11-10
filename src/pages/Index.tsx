@@ -213,6 +213,29 @@ export default function Index() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="mt-16 py-8 border-t">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col md:flex-row justify-center items-center gap-6 text-sm text-muted-foreground">
+            <a href="/faq" className="hover:text-primary transition-colors">
+              FAQ
+            </a>
+            <a href="/privacy-policy" className="hover:text-primary transition-colors">
+              Privacy Policy
+            </a>
+            <a href="/how-it-works" className="hover:text-primary transition-colors">
+              How It Works
+            </a>
+            <a href="/contact-us" className="hover:text-primary transition-colors">
+              Contact Us
+            </a>
+          </div>
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            © {new Date().getFullYear()} MediVault. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </PublicLayout>
   );
 }

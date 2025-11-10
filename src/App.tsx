@@ -15,6 +15,8 @@ import ContactUs from "./pages/ContactUs";
 import NotFound from "./pages/NotFound";
 import DoctorAuth from "./pages/DoctorAuth";
 import DoctorDashboard from "./pages/DoctorDashboard";
+import FAQ from "./pages/FAQ";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import HeroBanner from "./components/HeroBanner";
 const queryClient = new QueryClient();
 
@@ -39,6 +41,8 @@ const App = () => (
           <Route path="/upload" element={<PublicUpload />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/contact-us" element={<ContactUs />} />
+          <Route path="/faq" element={<FAQ />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/doctor-auth" element={<DoctorAuth />} />
           <Route path="/doctor-dashboard" element={<AppLayout userRole="doctor"><DoctorDashboard /></AppLayout>} />
           
