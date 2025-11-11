@@ -42,6 +42,8 @@ const signUpSchema = z.object({
  */
 export default function Auth() {
   const [loading, setLoading] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState("");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -126,6 +128,31 @@ export default function Auth() {
     }
   };
 
+  const handlePasswordRecovery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(recoveryEmail, {
+        redirectTo: `${window.location.origin}/`,
+      });
+      if (error) throw error;
+      toast({
+        title: "Recovery email sent!",
+        description: "Please check your email for the password reset link.",
+      });
+      setShowRecovery(false);
+      setRecoveryEmail("");
+    } catch (error: any) {
+      toast({
+        title: "Recovery Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <PublicLayout>
       <div className="flex items-center justify-center p-4">
@@ -149,19 +176,60 @@ export default function Auth() {
                   <TabsTrigger value="signup">Sign Up</TabsTrigger>
                 </TabsList>
                 <TabsContent value="signin" className="pt-4">
-                  <form onSubmit={handleSignIn} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="signin-email">Email</Label>
-                      <Input id="signin-email" type="email" placeholder="m@example.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className={validationErrors.email ? "border-destructive" : ""} />
-                      {validationErrors.email && <p className="text-sm text-destructive">{validationErrors.email}</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="signin-password">Password</Label>
-                      <Input id="signin-password" type="password" placeholder="••••••••" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required className={validationErrors.password ? "border-destructive" : ""} />
-                      {validationErrors.password && <p className="text-sm text-destructive">{validationErrors.password}</p>}
-                    </div>
-                    <Button type="submit" className="w-full" disabled={loading}>{loading ? "Signing in..." : "Sign In"}</Button>
-                  </form>
+                  {!showRecovery ? (
+                    <form onSubmit={handleSignIn} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="signin-email">Email</Label>
+                        <Input id="signin-email" type="email" placeholder="m@example.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className={validationErrors.email ? "border-destructive" : ""} />
+                        {validationErrors.email && <p className="text-sm text-destructive">{validationErrors.email}</p>}
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="signin-password">Password</Label>
+                          <button
+                            type="button"
+                            onClick={() => setShowRecovery(true)}
+                            className="text-sm text-primary hover:underline"
+                          >
+                            Forgot Password?
+                          </button>
+                        </div>
+                        <Input id="signin-password" type="password" placeholder="••••••••" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required className={validationErrors.password ? "border-destructive" : ""} />
+                        {validationErrors.password && <p className="text-sm text-destructive">{validationErrors.password}</p>}
+                      </div>
+                      <Button type="submit" className="w-full" disabled={loading}>{loading ? "Signing in..." : "Sign In"}</Button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handlePasswordRecovery} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="recovery-email">Email Address</Label>
+                        <Input
+                          id="recovery-email"
+                          type="email"
+                          placeholder="m@example.com"
+                          value={recoveryEmail}
+                          onChange={(e) => setRecoveryEmail(e.target.value)}
+                          required
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Enter your email address and we'll send you a link to reset your password.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Button type="submit" className="w-full" disabled={loading}>
+                          {loading ? "Sending..." : "Send Recovery Email"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full"
+                          onClick={() => setShowRecovery(false)}
+                        >
+                          Back to Sign In
+                        </Button>
+                      </div>
+                    </form>
+                  )}
                 </TabsContent>
                 <TabsContent value="signup" className="pt-4">
                   <form onSubmit={handleSignUp} className="space-y-4">
