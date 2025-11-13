@@ -1,123 +1,46 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { useLocation, useNavigate } from "react-router-dom";
-import { Upload, Users, Bot } from "lucide-react";
+import { Search, DollarSign, ClipboardList, Users, Calendar, TrendingUp, Download, Printer } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
-/**
- * @interface HospitalDashboardProps
- * @description Defines the props for the HospitalDashboard component.
- * @property {any} [user] - The current user object.
- */
 interface HospitalDashboardProps {
   user?: any;
 }
 
-/**
- * @function HospitalDashboard
- * @description A dashboard page for hospital staff, allowing them to upload and manage patient medical records.
- * @param {HospitalDashboardProps} [props] - The props for the component.
- * @returns {JSX.Element} - The rendered HospitalDashboard page component.
- */
+// Mock data
+const mockConsultants = [
+  { id: "doc_001", name: "Dr. Amit Sharma", avatarUrl: null, revenue: 37500, appointments: 12 },
+  { id: "doc_002", name: "Dr. Priya Verma", avatarUrl: null, revenue: 42000, appointments: 15 },
+  { id: "doc_003", name: "Dr. Rajesh Kumar", avatarUrl: null, revenue: 28500, appointments: 9 },
+  { id: "doc_004", name: "Dr. Anita Desai", avatarUrl: null, revenue: 51000, appointments: 18 },
+];
+
+const mockAppointmentsData = [
+  { date: "Nov 1", count: 12 },
+  { date: "Nov 2", count: 18 },
+  { date: "Nov 3", count: 15 },
+  { date: "Nov 4", count: 22 },
+  { date: "Nov 5", count: 19 },
+  { date: "Nov 6", count: 25 },
+  { date: "Nov 7", count: 21 },
+  { date: "Nov 8", count: 28 },
+  { date: "Nov 9", count: 24 },
+  { date: "Nov 10", count: 30 },
+  { date: "Nov 11", count: 26 },
+  { date: "Nov 12", count: 32 },
+  { date: "Nov 13", count: 29 },
+];
+
 export default function HospitalDashboard({ user }: HospitalDashboardProps = {}) {
-  const [patients, setPatients] = useState<any[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [uploadData, setUploadData] = useState({
-    recordType: "",
-    description: "",
-    severity: "low",
-    recordDate: new Date().toISOString().split('T')[0],
-    file: null as File | null,
-  });
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [showSummary, setShowSummary] = useState(false);
-
-  useEffect(() => {
-    setShowSummary(location.hash === "#summary");
-  }, [location]);
-
-  useEffect(() => {
-    if (user) {
-      fetchPatients();
-    }
-  }, [user]);
-
-  const fetchPatients = async () => {
-    const { data, error } = await supabase.from('patients').select('*').order('name');
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch patients",
-        variant: "destructive",
-      });
-    } else {
-      setPatients(data || []);
-    }
-  };
-
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!uploadData.file || !selectedPatient) {
-      toast({
-        title: "Error",
-        description: "Please select a patient and file",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append('file', uploadData.file);
-      formData.append('patientId', selectedPatient);
-      formData.append('recordType', uploadData.recordType);
-      formData.append('description', uploadData.description);
-      formData.append('severity', uploadData.severity);
-      formData.append('recordDate', uploadData.recordDate);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(`https://qiqepumdtaozjzfjbggl.supabase.co/functions/v1/upload-record`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${session?.access_token}` },
-        body: formData,
-      });
-
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Upload failed');
-
-      toast({
-        title: "Success!",
-        description: "Medical record uploaded successfully",
-      });
-      setUploadData({
-        recordType: "",
-        description: "",
-        severity: "low",
-        recordDate: new Date().toISOString().split('T')[0],
-        file: null,
-      });
-      setSelectedPatient("");
-    } catch (error: any) {
-      toast({
-        title: "Upload Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
+  const [timeRange, setTimeRange] = useState("week");
+  const [dateFrom, setDateFrom] = useState(new Date().toISOString().split('T')[0]);
+  const [dateTo, setDateTo] = useState(new Date().toISOString().split('T')[0]);
 
   return (
     <div className="container mx-auto px-4 py-8">
