@@ -175,6 +175,15 @@ export default function Index() {
               </p>
             </div>
           </div>
+          <div className="text-center mt-12">
+            <Button 
+              size="lg" 
+              onClick={() => window.location.href = '/hospital-dashboard'}
+              className="px-8"
+            >
+              View Hospital Dashboard
+            </Button>
+          </div>
         </div>
       </section>
 
