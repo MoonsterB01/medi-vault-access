@@ -80,6 +80,9 @@ export default function Index() {
           <Button variant="secondary" size="lg" className="px-8 py-3" onClick={() => navigate('/doctor-auth')}>
             Doctor Portal
           </Button>
+          <Button variant="secondary" size="lg" className="px-8 py-3" onClick={() => navigate('/hospital-auth')}>
+            Hospital Portal
+          </Button>
         </div>
       </header>
 

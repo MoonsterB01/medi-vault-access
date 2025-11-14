@@ -17,6 +17,9 @@ import DoctorAuth from "./pages/DoctorAuth";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import FAQ from "./pages/FAQ";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import HospitalRegistration from "./pages/HospitalRegistration";
+import HospitalAuth from "./pages/HospitalAuth";
+import HMSDashboard from "./pages/HMSDashboard";
 import HeroBanner from "./components/HeroBanner";
 const queryClient = new QueryClient();
 
@@ -45,6 +48,9 @@ const App = () => (
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/doctor-auth" element={<DoctorAuth />} />
           <Route path="/doctor-dashboard" element={<AppLayout userRole="doctor"><DoctorDashboard /></AppLayout>} />
+          <Route path="/hospital-registration" element={<HospitalRegistration />} />
+          <Route path="/hospital-auth" element={<HospitalAuth />} />
+          <Route path="/hms-dashboard" element={<HMSDashboard />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
