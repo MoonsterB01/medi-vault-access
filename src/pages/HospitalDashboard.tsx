@@ -1,318 +1,269 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, DollarSign, ClipboardList, Users, Calendar, TrendingUp, Download, Printer } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Upload, Users, Bot } from "lucide-react";
 
+/**
+ * @interface HospitalDashboardProps
+ * @description Defines the props for the HospitalDashboard component.
+ * @property {any} [user] - The current user object.
+ */
 interface HospitalDashboardProps {
   user?: any;
 }
 
-// Mock data
-const mockConsultants = [
-  { id: "doc_001", name: "Dr. Amit Sharma", avatarUrl: null, revenue: 37500, appointments: 12 },
-  { id: "doc_002", name: "Dr. Priya Verma", avatarUrl: null, revenue: 42000, appointments: 15 },
-  { id: "doc_003", name: "Dr. Rajesh Kumar", avatarUrl: null, revenue: 28500, appointments: 9 },
-  { id: "doc_004", name: "Dr. Anita Desai", avatarUrl: null, revenue: 51000, appointments: 18 },
-];
-
-const mockAppointmentsData = [
-  { date: "Nov 1", count: 12 },
-  { date: "Nov 2", count: 18 },
-  { date: "Nov 3", count: 15 },
-  { date: "Nov 4", count: 22 },
-  { date: "Nov 5", count: 19 },
-  { date: "Nov 6", count: 25 },
-  { date: "Nov 7", count: 21 },
-  { date: "Nov 8", count: 28 },
-  { date: "Nov 9", count: 24 },
-  { date: "Nov 10", count: 30 },
-  { date: "Nov 11", count: 26 },
-  { date: "Nov 12", count: 32 },
-  { date: "Nov 13", count: 29 },
-];
-
+/**
+ * @function HospitalDashboard
+ * @description A dashboard page for hospital staff, allowing them to upload and manage patient medical records.
+ * @param {HospitalDashboardProps} [props] - The props for the component.
+ * @returns {JSX.Element} - The rendered HospitalDashboard page component.
+ */
 export default function HospitalDashboard({ user }: HospitalDashboardProps = {}) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDoctor, setSelectedDoctor] = useState<string>("all");
-  const [timeRange, setTimeRange] = useState("week");
-  const [dateFrom, setDateFrom] = useState(new Date().toISOString().split('T')[0]);
-  const [dateTo, setDateTo] = useState(new Date().toISOString().split('T')[0]);
+  const [patients, setPatients] = useState<any[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [uploadData, setUploadData] = useState({
+    recordType: "",
+    description: "",
+    severity: "low",
+    recordDate: new Date().toISOString().split('T')[0],
+    file: null as File | null,
+  });
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [showSummary, setShowSummary] = useState(false);
+
+  useEffect(() => {
+    setShowSummary(location.hash === "#summary");
+  }, [location]);
+
+  useEffect(() => {
+    if (user) {
+      fetchPatients();
+    }
+  }, [user]);
+
+  const fetchPatients = async () => {
+    const { data, error } = await supabase.from('patients').select('*').order('name');
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch patients",
+        variant: "destructive",
+      });
+    } else {
+      setPatients(data || []);
+    }
+  };
+
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadData.file || !selectedPatient) {
+      toast({
+        title: "Error",
+        description: "Please select a patient and file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadData.file);
+      formData.append('patientId', selectedPatient);
+      formData.append('recordType', uploadData.recordType);
+      formData.append('description', uploadData.description);
+      formData.append('severity', uploadData.severity);
+      formData.append('recordDate', uploadData.recordDate);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`https://qiqepumdtaozjzfjbggl.supabase.co/functions/v1/upload-record`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${session?.access_token}` },
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Upload failed');
+
+      toast({
+        title: "Success!",
+        description: "Medical record uploaded successfully",
+      });
+      setUploadData({
+        recordType: "",
+        description: "",
+        severity: "low",
+        recordDate: new Date().toISOString().split('T')[0],
+        file: null,
+      });
+      setSelectedPatient("");
+    } catch (error: any) {
+      toast({
+        title: "Upload Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="p-4 md:p-6 space-y-6 mv-header">
-      {/* Header with Search */}
-      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Hospital Dashboard</h1>
-          <p className="text-muted-foreground">Monitor appointments, consultants, and operations</p>
-        </div>
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search patients, doctors..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
-
-      {/* Consultant Cards */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Top Consultants</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {mockConsultants.map((consultant) => (
-            <Card key={consultant.id} className="mv-consultant-card hover:shadow-lg transition-shadow cursor-pointer">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-lg font-semibold text-primary">
-                      {consultant.name.split(' ').map(n => n[0]).join('')}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base truncate">{consultant.name}</CardTitle>
-                    <p className="text-xs text-muted-foreground">Consultant</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Revenue</span>
-                  <span className="font-semibold">₹{consultant.revenue.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Appointments</span>
-                  <Badge variant="secondary">{consultant.appointments}</Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mv-stats">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Payment Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Pending</span>
-                <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400">0</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Received</span>
-                <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400">5</Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Treatment Plans</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Ongoing</span>
-                <Badge variant="outline" className="bg-blue-500/10 text-blue-700 dark:text-blue-400">2</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Complete</span>
-                <Badge variant="outline" className="bg-green-500/10 text-green-700 dark:text-green-400">3</Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Patients</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">20</div>
-            <div className="flex items-center gap-4 mt-2 text-sm">
-              <span className="text-muted-foreground">Old: 12</span>
-              <span className="text-muted-foreground">New: 8</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Appointments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">54</div>
-            <div className="flex items-center gap-2 mt-2 text-sm text-green-600 dark:text-green-400">
-              <TrendingUp className="h-4 w-4" />
-              <span>+12% from last week</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Appointments Chart and Report Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Appointments Chart */}
-        <Card className="lg:col-span-2 mv-appointments-chart">
+    <div className="container mx-auto px-4 py-8">
+      {showSummary ? (
+        <Card className="mb-8">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Appointments Overview</CardTitle>
-              <Select value={timeRange} onValueChange={setTimeRange}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="week">This Week</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
-                  <SelectItem value="year">This Year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              Summary View
+            </CardTitle>
+            <CardDescription>AI-generated summaries of patient data will be displayed here.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={mockAppointmentsData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis 
-                  dataKey="date" 
-                  className="text-xs"
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+            <p>Summary content is not yet available for hospital staff.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Card>
+            <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Upload Medical Record
+            </CardTitle>
+            <CardDescription>
+              Upload and categorize patient medical records
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleUpload} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Select Patient</Label>
+                <Select value={selectedPatient} onValueChange={setSelectedPatient}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a patient" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {patients.map((patient) => (
+                      <SelectItem key={patient.id} value={patient.id}>
+                        {patient.name} - DOB: {patient.dob}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Record Type</Label>
+                <Select value={uploadData.recordType} onValueChange={(value) =>
+                  setUploadData({ ...uploadData, recordType: value })
+                }>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select record type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="prescription">Prescription</SelectItem>
+                    <SelectItem value="test_report">Test Report</SelectItem>
+                    <SelectItem value="scan">Medical Scan</SelectItem>
+                    <SelectItem value="discharge_summary">Discharge Summary</SelectItem>
+                    <SelectItem value="consultation_notes">Consultation Notes</SelectItem>
+                    <SelectItem value="lab_results">Lab Results</SelectItem>
+                    <SelectItem value="imaging">Medical Imaging</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Severity</Label>
+                <Select value={uploadData.severity} onValueChange={(value) =>
+                  setUploadData({ ...uploadData, severity: value })
+                }>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low Priority</SelectItem>
+                    <SelectItem value="moderate">Moderate</SelectItem>
+                    <SelectItem value="high">High Priority</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Record Date</Label>
+                <Input
+                  type="date"
+                  value={uploadData.recordDate}
+                  onChange={(e) => setUploadData({ ...uploadData, recordDate: e.target.value })}
                 />
-                <YAxis 
-                  className="text-xs"
-                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Description (Optional)</Label>
+                <Textarea
+                  placeholder="Additional notes about this record..."
+                  value={uploadData.description}
+                  onChange={(e) => setUploadData({ ...uploadData, description: e.target.value })}
                 />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
+              </div>
+
+              <div className="space-y-2">
+                <Label>File</Label>
+                <Input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  onChange={(e) => setUploadData({ ...uploadData, file: e.target.files?.[0] || null })}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="count" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--primary))', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+              </div>
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Uploading..." : "Upload Record"}
+              </Button>
+            </form>
           </CardContent>
         </Card>
 
-        {/* Report Panel */}
-        <Card className="mv-report-panel">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-base">Appointment Report</CardTitle>
-            <CardDescription>Generate custom reports</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Patient Records
+            </CardTitle>
+            <CardDescription>
+              View and manage patient medical records
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">From Date</label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">To Date</label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Doctor</label>
-              <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Doctors</SelectItem>
-                  {mockConsultants.map((doc) => (
-                    <SelectItem key={doc.id} value={doc.id}>
-                      {doc.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 pt-2">
-              <Button className="w-full" variant="default">
-                <Download className="h-4 w-4 mr-2" />
-                Download CSV
-              </Button>
-              <Button className="w-full" variant="outline">
-                <Printer className="h-4 w-4 mr-2" />
-                Print Report
-              </Button>
+          <CardContent>
+            <div className="space-y-4">
+              {patients.map((patient) => (
+                <div key={patient.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <h3 className="font-semibold">{patient.name}</h3>
+                    <p className="text-sm text-muted-foreground">DOB: {patient.dob}</p>
+                    <p className="text-sm text-muted-foreground">Contact: {patient.primary_contact}</p>
+                  </div>
+                </div>
+              ))}
+              {patients.length === 0 && (
+                <p className="text-center text-muted-foreground py-8">No patients found</p>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Metrics Table */}
-      <Card className="mv-metrics-table">
-        <CardHeader>
-          <CardTitle>Key Metrics</CardTitle>
-          <CardDescription>Performance indicators for the selected period</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <Calendar className="h-4 w-4" />
-                <span className="text-xs">Avg Waiting Time</span>
-              </div>
-              <div className="text-2xl font-bold">4m 0s</div>
-            </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <Users className="h-4 w-4" />
-                <span className="text-xs">Avg Engaged Time</span>
-              </div>
-              <div className="text-2xl font-bold">15m 0s</div>
-            </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <ClipboardList className="h-4 w-4" />
-                <span className="text-xs">Avg Time/Patient</span>
-              </div>
-              <div className="text-2xl font-bold">19m 0s</div>
-            </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <DollarSign className="h-4 w-4" />
-                <span className="text-xs">Missed Appointments</span>
-              </div>
-              <div className="text-2xl font-bold">1</div>
-            </div>
-            <div className="p-4 rounded-lg border bg-card">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <TrendingUp className="h-4 w-4" />
-                <span className="text-xs">Cancelled</span>
-              </div>
-              <div className="text-2xl font-bold">0</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      )}
     </div>
   );
 }
