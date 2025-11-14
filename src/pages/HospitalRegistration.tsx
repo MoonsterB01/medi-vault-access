@@ -55,41 +55,59 @@ export default function HospitalRegistration() {
 
       if (authError) throw authError;
 
-      if (authData.user) {
-        // Create hospital record
-        const { data: hospitalData, error: hospitalError } = await supabase
-          .from('hospitals')
-          .insert({
-            name: formData.name,
-            registration_number: formData.registration_number,
-            contact_email: formData.email,
-            phone: formData.phone,
-            address: formData.address,
-            city: formData.city,
-            state: formData.state,
-            pincode: formData.pincode,
-            admin_username: formData.admin_username,
-            verified: false,
-          })
-          .select()
-          .single();
+      // Ensure we have an authenticated session before inserting (RLS requires it)
+      let userId = authData.user?.id;
+      let { data: sessionData } = await supabase.auth.getSession();
 
-        if (hospitalError) throw hospitalError;
+      if (!sessionData?.session) {
+        // Try to sign in immediately (works if email confirmation is disabled)
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
 
-        // Link user to hospital as admin
-        const { error: adminError } = await supabase
-          .from('hospital_admins')
-          .insert({
-            user_id: authData.user.id,
-            hospital_id: hospitalData.id,
-            is_primary_admin: true,
-          });
+        if (signInError || !signInData?.session) {
+          toast.success("Account created. Please verify your email, then log in to complete registration.");
+          navigate('/hospital-auth');
+          return;
+        }
 
-        if (adminError) throw adminError;
-
-        toast.success("Hospital registered successfully! Please check your email to verify your account.");
-        navigate('/hospital-auth');
+        userId = signInData.user?.id || userId;
       }
+
+      // Create hospital record (now authenticated)
+      const { data: hospitalData, error: hospitalError } = await supabase
+        .from('hospitals')
+        .insert({
+          name: formData.name,
+          registration_number: formData.registration_number,
+          contact_email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          pincode: formData.pincode,
+          admin_username: formData.admin_username,
+          verified: false,
+        })
+        .select()
+        .single();
+
+      if (hospitalError) throw hospitalError;
+
+      // Link user to hospital as admin
+      const { error: adminError } = await supabase
+        .from('hospital_admins')
+        .insert({
+          user_id: userId!,
+          hospital_id: hospitalData.id,
+          is_primary_admin: true,
+        });
+
+      if (adminError) throw adminError;
+
+      toast.success("Hospital registered successfully!");
+      navigate('/hospital-auth');
     } catch (error: any) {
       toast.error(error.message || "Registration failed");
     } finally {
