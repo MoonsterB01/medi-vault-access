@@ -116,16 +116,24 @@ export default function HMSDashboard() {
     <div className="min-h-screen bg-background">
       {/* Fixed Top Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-card border-b shadow-sm">
-        <div className="flex items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-3">
-            <Building2 className="h-6 w-6 text-primary" />
-            <div>
-              <h1 className="font-semibold text-lg">{hospitalData?.name || 'Hospital Management System'}</h1>
-              <p className="text-xs text-muted-foreground">Hospital Portal</p>
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <Building2 className="h-6 w-6 text-primary" />
+              <div>
+                <h1 className="font-semibold text-lg">{hospitalData?.name || 'Hospital Management System'}</h1>
+                <p className="text-xs text-muted-foreground">Hospital Portal</p>
+              </div>
             </div>
+            
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </Button>
           </div>
           
-          <div className="flex items-center gap-2">
+          {/* Scrollable Module Navigation */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
             {modules.map((module) => {
               const Icon = module.icon;
               return (
@@ -134,24 +142,19 @@ export default function HMSDashboard() {
                   variant={activeModule === module.id ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setActiveModule(module.id as Module)}
-                  className="gap-2"
+                  className="gap-2 whitespace-nowrap flex-shrink-0"
                 >
                   <Icon className="h-4 w-4" />
-                  <span className="hidden md:inline">{module.label}</span>
+                  <span>{module.label}</span>
                 </Button>
               );
             })}
-            
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2 ml-2">
-              <LogOut className="h-4 w-4" />
-              <span className="hidden md:inline">Logout</span>
-            </Button>
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="pt-20 px-6 pb-6">
+      <main className="pt-32 px-4 pb-6 md:px-6">
         {renderModule()}
       </main>
     </div>
