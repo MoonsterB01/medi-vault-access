@@ -77,50 +77,13 @@ serve(async (req) => {
     // No family notifications - removed family_access feature
     console.log('Document upload notification - family access feature removed');
 
-    console.log('Family access data:', familyAccess);
-
-    const notifications = [];
-    const docTypeText = documentType ? ` (${documentType})` : '';
-    const title = `New Document Uploaded for ${patient.name}`;
-    const message = `${uploaderName} uploaded a new document${docTypeText}: ${filename || 'Document'} for patient ${patient.name}`;
-
-    // Create notifications for family members with access
-    if (familyAccess && familyAccess.length > 0) {
-      for (const access of familyAccess) {
-        const { data: notificationId, error: notificationError } = await supabaseClient
-          .rpc('create_notification', {
-            target_user_id: access.user_id,
-            notification_title: title,
-            notification_message: message,
-            notification_type: 'document_uploaded',
-            metadata_param: {
-              document_id: documentId,
-              patient_id: patientId,
-              patient_name: patient.name,
-              uploaded_by: uploadedBy,
-              uploader_name: uploaderName,
-              filename: filename || 'Document',
-              document_type: documentType
-            }
-          });
-
-        if (notificationError) {
-          console.error('Error creating notification:', notificationError);
-        } else {
-          notifications.push({ success: true, id: notificationId, user_id: access.user_id });
-        }
-      }
-    }
-
-    console.log(`Successfully created ${notifications.length} notifications for document upload`);
-
     return new Response(
       JSON.stringify({ 
         success: true,
-        notificationsSent: notifications.length,
-        message: `Sent ${notifications.length} notifications for new document upload` 
+        message: 'Family access feature removed - no notifications sent'
       }),
-      { headers: corsHeaders }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
     );
 
   } catch (error: any) {
