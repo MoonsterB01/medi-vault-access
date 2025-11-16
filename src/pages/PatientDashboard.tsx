@@ -15,6 +15,7 @@ import DocumentUpload from "@/components/DocumentUpload";
 import { EnhancedDocumentSearch } from "@/components/EnhancedDocumentSearch";
 import AppointmentBooking from "@/components/AppointmentBooking";
 import AppointmentTracker from "@/components/AppointmentTracker";
+import AppointmentCalendar from "@/components/AppointmentCalendar";
 import PatientSummary from "@/components/PatientSummary";
 import { MissingInfoDialog } from "@/components/MissingInfoDialog";
 import { DocumentSummaryDialog } from "@/components/DocumentSummaryDialog";
@@ -357,12 +358,13 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             {!isMobile && (
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger value="summary"><Bot className="h-4 w-4 mr-1" />Summary</TabsTrigger>
                 <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-1" />Documents</TabsTrigger>
                 <TabsTrigger value="search"><Search className="h-4 w-4 mr-1" />Search</TabsTrigger>
-                <TabsTrigger value="appointments"><Calendar className="h-4 w-4 mr-1" />Appointments</TabsTrigger>
-                <TabsTrigger value="book-appointment"><Clock className="h-4 w-4 mr-1" />Book</TabsTrigger>
+                <TabsTrigger value="appointments"><Clock className="h-4 w-4 mr-1" />Appointments</TabsTrigger>
+                <TabsTrigger value="calendar"><Calendar className="h-4 w-4 mr-1" />Calendar</TabsTrigger>
+                <TabsTrigger value="book-appointment"><Calendar className="h-4 w-4 mr-1" />Book</TabsTrigger>
                 <TabsTrigger value="upload"><Upload className="h-4 w-4 mr-1" />Upload</TabsTrigger>
               </TabsList>
             )}
@@ -436,6 +438,11 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
             <TabsContent value="appointments" className="mt-6" id="tab-content-appointments">
               <AppointmentTracker user={user} />
             </TabsContent>
+
+            <TabsContent value="calendar" className="mt-6" id="tab-content-calendar">
+              <AppointmentCalendar user={user} />
+            </TabsContent>
+
             <TabsContent value="book-appointment" className="mt-6" id="tab-content-book-appointment">
               <AppointmentBooking user={user} />
             </TabsContent>

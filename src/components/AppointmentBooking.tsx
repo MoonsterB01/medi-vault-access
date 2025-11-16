@@ -133,9 +133,24 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
         .order('years_experience', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('Fetched doctors:', data); // Debug log
       setDoctors(data || []);
+      
+      if (!data || data.length === 0) {
+        toast({
+          title: "No Doctors Available",
+          description: "There are currently no doctors available for booking. Please try again later.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error('Error fetching doctors:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load doctors. Please refresh the page.",
+        variant: "destructive",
+      });
     }
   };
 
