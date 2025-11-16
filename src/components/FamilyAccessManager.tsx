@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Trash2, UserPlus, Search, Users, Heart, Shield } from "lucide-react";
+import { Trash2, UserPlus, Users, Lightbulb } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -19,82 +18,157 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 
-/**
- * @interface FamilyAccess
- * @description Defines the structure of a family access object.
- */
-interface FamilyAccess {
+interface FamilyAccessRecord {
   id: string;
   user_id: string;
-  patient_id: string;
-  can_view: boolean;
   created_at: string;
-  granted_by: string;
   users: {
     name: string;
-    email: string;
     user_shareable_id: string | null;
   };
-  patients?: {
-    name: string;
-    shareable_id: string;
-  };
 }
 
-/**
- * @interface PatientAccess
- * @description Defines the structure of a patient access object.
- */
-interface PatientAccess {
-  id: string;
-  patient_id: string;
-  can_view: boolean;
-  created_at: string;
-  granted_by: string;
-  patients: {
-    name: string;
-    shareable_id: string;
-  };
-  granted_by_user?: {
-    name: string;
-    email: string;
-  };
-}
-
-/**
- * @interface FamilyAccessManagerProps
- * @description Defines the props for the FamilyAccessManager component.
- * @property {string} patientId - The ID of the patient.
- * @property {string} patientShareableId - The shareable ID of the patient.
- */
 interface FamilyAccessManagerProps {
   patientId: string;
   patientShareableId: string;
 }
 
-/**
- * @function FamilyAccessManager
- * @description A component for managing family access to a patient's records. It allows granting and revoking access to family members.
- * @param {FamilyAccessManagerProps} props - The props for the component.
- * @returns {JSX.Element} - The rendered FamilyAccessManager component.
- */
 export default function FamilyAccessManager({ patientId, patientShareableId }: FamilyAccessManagerProps) {
-  const [familyAccess, setFamilyAccess] = useState<FamilyAccess[]>([]);
-  const [patientAccess, setPatientAccess] = useState<PatientAccess[]>([]);
+  const [accessList, setAccessList] = useState<FamilyAccessRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [grantLoading, setGrantLoading] = useState(false);
-  const [emailOrId, setEmailOrId] = useState("");
-  const [searchFilter, setSearchFilter] = useState("");
-  const [deleteAccess, setDeleteAccess] = useState<FamilyAccess | null>(null);
+  const [userId, setUserId] = useState("");
+  const [deleteAccess, setDeleteAccess] = useState<FamilyAccessRecord | null>(null);
+  const [patientName, setPatientName] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
     if (patientId) {
-      fetchFamilyData();
+      fetchAccessList();
+      fetchPatientName();
     }
   }, [patientId]);
 
-  // Don't render if no patientId
+  const fetchPatientName = async () => {
+    const { data } = await supabase
+      .from('patients')
+      .select('name')
+      .eq('id', patientId)
+      .single();
+    
+    if (data) setPatientName(data.name);
+  };
+
+  const fetchAccessList = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('family_access')
+        .select(`
+          id,
+          user_id,
+          created_at,
+          users!user_id (
+            name,
+            user_shareable_id
+          )
+        `)
+        .eq('patient_id', patientId)
+        .eq('can_view', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setAccessList(data || []);
+    } catch (error) {
+      console.error('Error fetching access list:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load access list",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGrantAccess = async () => {
+    const trimmedId = userId.trim().toUpperCase();
+    
+    if (!trimmedId) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter a USER-ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!trimmedId.startsWith('USER-')) {
+      toast({
+        title: "Invalid Format",
+        description: "USER-ID must start with 'USER-' (e.g., USER-A1B2C3D4)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGrantLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('grant-access-to-family', {
+        body: {
+          patientId,
+          familyMemberEmail: trimmedId,
+          canView: true,
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Access granted successfully",
+      });
+      
+      setUserId("");
+      fetchAccessList();
+    } catch (error: any) {
+      console.error('Error granting access:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to grant access",
+        variant: "destructive",
+      });
+    } finally {
+      setGrantLoading(false);
+    }
+  };
+
+  const handleRevokeAccess = async (accessId: string) => {
+    try {
+      const { error } = await supabase
+        .from('family_access')
+        .delete()
+        .eq('id', accessId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Access revoked successfully",
+      });
+      
+      fetchAccessList();
+    } catch (error) {
+      console.error('Error revoking access:', error);
+      toast({
+        title: "Error",
+        description: "Failed to revoke access",
+        variant: "destructive",
+      });
+    }
+    setDeleteAccess(null);
+  };
+
   if (!patientId) {
     return (
       <Card>
@@ -107,392 +181,142 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
     );
   }
 
-  const fetchFamilyData = async () => {
-    setLoading(true);
-    try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Fetch family members who have access to the current patient
-      const { data: familyData, error: familyError } = await supabase
-        .from('family_access')
-        .select(`
-          id,
-          user_id,
-          patient_id,
-          can_view,
-          created_at,
-          granted_by,
-          users!user_id (
-            name,
-            email,
-            user_shareable_id
-          ),
-          patients!patient_id (
-            name,
-            shareable_id
-          )
-        `)
-        .eq('patient_id', patientId)
-        .order('created_at', { ascending: false });
-
-      // Fetch patients that the current user has access to
-      const { data: patientData, error: patientError } = await supabase
-        .from('family_access')
-        .select(`
-          id,
-          patient_id,
-          can_view,
-          created_at,
-          granted_by,
-          patients!patient_id (
-            name,
-            shareable_id
-          ),
-          granted_by_user:users!granted_by (
-            name,
-            email
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-      // Fetch all access granted BY the current user (across all their patients)
-      const { data: grantedData, error: grantedError } = await supabase
-        .from('family_access')
-        .select(`
-          id,
-          user_id,
-          patient_id,
-          can_view,
-          created_at,
-          granted_by,
-          users!user_id (
-            name,
-            email,
-            user_shareable_id
-          ),
-          patients!patient_id (
-            name,
-            shareable_id
-          )
-        `)
-        .eq('granted_by', user.id)
-        .order('created_at', { ascending: false });
-
-      if (familyError) {
-        console.error('Error fetching family access:', familyError);
-        toast({
-          title: "Error",
-          description: "Failed to load family access list",
-          variant: "destructive",
-        });
-      } else {
-        // Combine current patient access with all granted access
-        const allGrantedAccess = grantedData || [];
-        const currentPatientAccess = familyData || [];
-        
-        // Filter to avoid duplicates and merge
-        const uniqueAccess = [...currentPatientAccess];
-        allGrantedAccess.forEach(access => {
-          if (!uniqueAccess.find(existing => existing.id === access.id)) {
-            uniqueAccess.push(access);
-          }
-        });
-        
-        setFamilyAccess(uniqueAccess);
-      }
-
-      if (patientError) {
-        console.error('Error fetching patient access:', patientError);
-      } else {
-        setPatientAccess(patientData || []);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load family access data",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGrantAccess = async () => {
-    if (!emailOrId.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter an email address or user ID",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setGrantLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('grant-access-to-family', {
-        body: {
-          patientId,
-          familyMemberEmail: emailOrId.trim(),
-          canView: true,
-        },
-      });
-
-      if (error) {
-        console.error('Grant access error:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to grant access",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Success",
-          description: data?.message || "Access granted successfully",
-        });
-        setEmailOrId("");
-        fetchFamilyData(); // Refresh the list
-      }
-    } catch (error: any) {
-      console.error('Grant access catch error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to grant access",
-        variant: "destructive",
-      });
-    } finally {
-      setGrantLoading(false);
-    }
-  };
-
-  const handleRevokeAccess = async () => {
-    if (!deleteAccess) return;
-
-    try {
-      const { error } = await supabase
-        .from('family_access')
-        .delete()
-        .eq('id', deleteAccess.id);
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to revoke access",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Success",
-          description: "Access revoked successfully",
-        });
-        fetchFamilyData(); // Refresh the list
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to revoke access",
-        variant: "destructive",
-      });
-    } finally {
-      setDeleteAccess(null);
-    }
-  };
-
-  const filteredAccess = familyAccess.filter(access =>
-    access.users?.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
-    access.users?.email.toLowerCase().includes(searchFilter.toLowerCase()) ||
-    access.patients?.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
-    (access.users?.user_shareable_id && access.users.user_shareable_id.toLowerCase().includes(searchFilter.toLowerCase()))
-  );
-
-  const filteredPatientAccess = patientAccess.filter(access =>
-    access.patients?.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
-    access.granted_by_user?.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
-    access.granted_by_user?.email.toLowerCase().includes(searchFilter.toLowerCase())
-  );
-
   return (
     <div className="space-y-6">
-      {/* Patients I Can Access */}
-      {patientAccess.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Heart className="h-5 w-5" />
-              Patients I Can Access ({patientAccess.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {filteredPatientAccess.map((access) => (
-                <div
-                  key={access.id}
-                  className="flex items-center justify-between p-4 border rounded-lg"
-                >
-                  <div className="flex-1">
-                    <div className="font-medium">{access.patients?.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      Patient ID: {access.patients?.shareable_id}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      Access granted by: {access.granted_by_user?.name} ({access.granted_by_user?.email})
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Granted on {new Date(access.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={access.can_view ? "default" : "secondary"}>
-                      {access.can_view ? "Can View & Upload" : "No Access"}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader>
+          <div className="flex items-start gap-3">
+            <Lightbulb className="h-5 w-5 text-primary mt-0.5" />
+            <div>
+              <CardTitle className="text-lg">How to Share Access</CardTitle>
+              <CardDescription className="mt-2">
+                Give family members access to view medical records for <span className="font-semibold text-foreground">{patientName}</span> ({patientShareableId})
+              </CardDescription>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 text-sm">
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 font-semibold text-primary">1️⃣</div>
+              <div>
+                <div className="font-medium mb-1">Ask your family member to:</div>
+                <ul className="list-disc list-inside space-y-1 text-muted-foreground ml-2">
+                  <li>Sign up at this application</li>
+                  <li>Choose "Family Member" as their role</li>
+                  <li>Share their USER-ID with you</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <div className="flex-shrink-0 font-semibold text-primary">2️⃣</div>
+              <div>
+                <div className="font-medium mb-1">Enter their USER-ID below</div>
+                <div className="text-muted-foreground">Their USER-ID looks like: <code className="bg-muted px-1.5 py-0.5 rounded text-xs">USER-A1B2C3D4</code></div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      <Separator />
-
-      {/* Grant New Access */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            Grant Family Access
+            Grant Access
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="emailOrId">Family Member Email, User ID, or Patient ID</Label>
-            <Input
-              id="emailOrId"
-              type="text"
-              value={emailOrId}
-              onChange={(e) => setEmailOrId(e.target.value)}
-              placeholder="Enter email, User ID (USER-XXXXXXXX), or Patient ID (MED-XXXXXXXX)"
-              className="mt-1"
-            />
-            <p className="text-sm text-muted-foreground">
-              You can enter an email address, User ID, or Patient ID. The person must already have an account.
-            </p>
-          </div>
-          <Button 
-            onClick={handleGrantAccess} 
-            disabled={grantLoading || !emailOrId.trim()}
-            className="w-full sm:w-auto"
-          >
-            {grantLoading ? "Granting Access..." : "Grant Access"}
-          </Button>
-          
-          <div className="text-sm text-muted-foreground">
-            <p>Your shareable ID: <span className="font-mono font-medium">{patientShareableId}</span></p>
-            <p>Family members can use this ID to upload documents to your account.</p>
+        <CardContent>
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <Label htmlFor="userId" className="sr-only">Family Member USER-ID</Label>
+              <Input
+                id="userId"
+                placeholder="USER-XXXXXXXX"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleGrantAccess()}
+                className="font-mono"
+              />
+            </div>
+            <Button 
+              onClick={handleGrantAccess} 
+              disabled={grantLoading || !userId.trim()}
+            >
+              {grantLoading ? "Granting..." : "Grant Access"}
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* All Family Access Relationships */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            All Family Access Relationships ({filteredAccess.length})
+            <Users className="h-5 w-5" />
+            People with Access ({accessList.length})
           </CardTitle>
-          {(familyAccess.length > 0 || patientAccess.length > 0) && (
-            <div className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search family members..."
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                className="max-w-sm"
-              />
-            </div>
-          )}
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="text-center py-8 text-muted-foreground">
-              Loading family access list...
+              Loading...
             </div>
-          ) : filteredAccess.length === 0 ? (
+          ) : accessList.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {familyAccess.length === 0 ? 
-                "No family members have access yet. Grant access to allow family members to upload documents." :
-                "No family members match your search."
-              }
+              No one has been granted access yet. Use the form above to share access with family members.
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredAccess.map((access) => {
-                const isCurrentUser = access.user_id === access.granted_by;
-                const isGrantedByCurrentUser = access.granted_by && access.users;
-                
-                return (
-                  <div
-                    key={access.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div className="flex-1">
-                      <div className="font-medium">
-                        {access.users?.name || 'Unknown User'}
-                        {isCurrentUser && <Badge variant="outline" className="ml-2 text-xs">You</Badge>}
+            <div className="space-y-3">
+              {accessList.map((access, index) => (
+                <div key={access.id}>
+                  {index > 0 && <Separator className="my-3" />}
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <div className="font-medium">{access.users.name}</div>
+                      <div className="text-sm text-muted-foreground font-mono">
+                        {access.users.user_shareable_id || 'No USER-ID'}
                       </div>
-                      <div className="text-sm text-muted-foreground">{access.users?.email}</div>
-                      <div className="text-sm text-muted-foreground">
-                        Patient: <span className="font-medium">{access.patients?.name}</span> ({access.patients?.shareable_id})
-                      </div>
-                      {access.users?.user_shareable_id && (
-                        <div className="text-xs text-muted-foreground font-mono">
-                          User ID: {access.users.user_shareable_id}
-                        </div>
-                      )}
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {isGrantedByCurrentUser ? 
-                          `You granted access on ${new Date(access.created_at).toLocaleDateString()}` :
-                          `Access granted on ${new Date(access.created_at).toLocaleDateString()}`
-                        }
+                      <div className="text-xs text-muted-foreground">
+                        Added: {new Date(access.created_at).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={access.can_view ? "default" : "secondary"}>
-                        {access.can_view ? "Can Upload" : "No Access"}
-                      </Badge>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDeleteAccess(access)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteAccess(access)}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Revoke
+                    </Button>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteAccess} onOpenChange={() => setDeleteAccess(null)}>
+      <AlertDialog open={!!deleteAccess} onOpenChange={(open) => !open && setDeleteAccess(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Revoke Access</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to revoke access for {deleteAccess?.users?.name}? 
-              They will no longer be able to upload documents to your account.
+              Are you sure you want to revoke access for <strong>{deleteAccess?.users.name}</strong>? 
+              They will no longer be able to view medical records for this patient.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRevokeAccess} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={() => deleteAccess && handleRevokeAccess(deleteAccess.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Revoke Access
             </AlertDialogAction>
           </AlertDialogFooter>
