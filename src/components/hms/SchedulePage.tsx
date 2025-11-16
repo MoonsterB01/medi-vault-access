@@ -4,10 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Calendar, Printer, ChevronLeft, ChevronRight } from "lucide-react";
-import { format } from "date-fns";
+import { Calendar, Printer, ChevronLeft, ChevronRight, MoreVertical, Edit, XCircle, Phone } from "lucide-react";
+import { format, addDays } from "date-fns";
 
 type AppointmentStatus = 'scheduled' | 'checked_in' | 'engaged' | 'done';
 
@@ -18,6 +23,12 @@ export default function SchedulePage({ hospitalData }: { hospitalData: any }) {
   const [timestampInterval, setTimestampInterval] = useState(15);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [filteredStatus, setFilteredStatus] = useState<AppointmentStatus | null>(null);
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const [newDate, setNewDate] = useState<string>("");
+  const [newTime, setNewTime] = useState<string>("");
+  const [cancellationReason, setCancellationReason] = useState<string>("");
 
   useEffect(() => {
     fetchDoctors();
@@ -94,6 +105,94 @@ export default function SchedulePage({ hospitalData }: { hospitalData: any }) {
     } catch (error: any) {
       toast.error('Failed to update status');
     }
+  };
+
+  const handleReschedule = async () => {
+    if (!selectedAppointment || !newDate || !newTime) {
+      toast.error('Please fill all fields');
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase.functions.invoke('reschedule-appointment', {
+        body: {
+          appointment_id: selectedAppointment.id,
+          new_date: newDate,
+          new_time: newTime,
+          rescheduled_by: user.id,
+          reason: `Rescheduled by hospital staff`
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      toast.success('Appointment rescheduled successfully');
+      setRescheduleDialogOpen(false);
+      setSelectedAppointment(null);
+      setNewDate("");
+      setNewTime("");
+      fetchAppointments();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to reschedule');
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!selectedAppointment) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('appointments')
+        .update({ 
+          status: 'cancelled',
+          cancellation_reason: cancellationReason,
+          cancelled_by: user.id
+        })
+        .eq('id', selectedAppointment.id);
+
+      if (error) throw error;
+
+      // Send notification to patient
+      await supabase.rpc('create_notification', {
+        target_user_id: selectedAppointment.patients?.created_by,
+        notification_title: 'Appointment Cancelled',
+        notification_message: `Your appointment on ${selectedAppointment.appointment_date} at ${selectedAppointment.appointment_time} has been cancelled. ${cancellationReason ? `Reason: ${cancellationReason}` : ''}`,
+        notification_type: 'appointment_cancelled_by_hospital',
+        appointment_id_param: selectedAppointment.id,
+        metadata_param: { reason: cancellationReason }
+      });
+
+      toast.success('Appointment cancelled');
+      setCancelDialogOpen(false);
+      setSelectedAppointment(null);
+      setCancellationReason("");
+      fetchAppointments();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to cancel');
+    }
+  };
+
+  const openRescheduleDialog = (appointment: any) => {
+    setSelectedAppointment(appointment);
+    setNewDate(appointment.appointment_date);
+    setNewTime(appointment.appointment_time);
+    setRescheduleDialogOpen(true);
+  };
+
+  const openCancelDialog = (appointment: any) => {
+    setSelectedAppointment(appointment);
+    setCancelDialogOpen(true);
   };
 
   return (
@@ -271,6 +370,88 @@ export default function SchedulePage({ hospitalData }: { hospitalData: any }) {
           </Card>
         </div>
       </div>
+
+      {/* Reschedule Dialog */}
+      <Dialog open={rescheduleDialogOpen} onOpenChange={setRescheduleDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reschedule Appointment</DialogTitle>
+            <DialogDescription>
+              Select new date and time for the appointment
+            </DialogDescription>
+          </DialogHeader>
+          {selectedAppointment && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted rounded-md">
+                <div><strong>Patient:</strong> {selectedAppointment.patients?.name}</div>
+                <div><strong>Current:</strong> {selectedAppointment.appointment_date} at {selectedAppointment.appointment_time}</div>
+              </div>
+              <div className="space-y-2">
+                <Label>New Date</Label>
+                <Input
+                  type="date"
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  min={format(new Date(), 'yyyy-MM-dd')}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>New Time</Label>
+                <Input
+                  type="time"
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleReschedule} className="flex-1">
+                  Confirm Reschedule
+                </Button>
+                <Button variant="outline" onClick={() => setRescheduleDialogOpen(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Appointment</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel this appointment?
+            </DialogDescription>
+          </DialogHeader>
+          {selectedAppointment && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted rounded-md">
+                <div><strong>Patient:</strong> {selectedAppointment.patients?.name}</div>
+                <div><strong>Date:</strong> {selectedAppointment.appointment_date} at {selectedAppointment.appointment_time}</div>
+              </div>
+              <div className="space-y-2">
+                <Label>Cancellation Reason (Optional)</Label>
+                <Textarea
+                  placeholder="Reason for cancellation..."
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  rows={3}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleCancel} variant="destructive" className="flex-1">
+                  Confirm Cancellation
+                </Button>
+                <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+                  Back
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

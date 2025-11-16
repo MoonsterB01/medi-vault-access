@@ -1770,6 +1770,14 @@ export type Database = {
         Args: { patient_id_param: string }
         Returns: boolean
       }
+      check_slot_availability: {
+        Args: { p_doctor_id: string; p_slot_date: string; p_start_time: string }
+        Returns: {
+          available: boolean
+          current_bookings: number
+          max_appointments: number
+        }[]
+      }
       create_notification: {
         Args: {
           appointment_id_param?: string
@@ -1781,6 +1789,10 @@ export type Database = {
         }
         Returns: string
       }
+      decrement_slot_booking: {
+        Args: { p_doctor_id: string; p_slot_date: string; p_start_time: string }
+        Returns: boolean
+      }
       extract_patient_id_from_path: {
         Args: { file_path: string }
         Returns: string
@@ -1789,6 +1801,17 @@ export type Database = {
       generate_doctor_id: { Args: never; Returns: string }
       generate_shareable_id: { Args: never; Returns: string }
       generate_user_shareable_id: { Args: never; Returns: string }
+      get_available_time_slots: {
+        Args: { p_doctor_id: string; p_slot_date: string }
+        Returns: {
+          available_slots: number
+          current_bookings: number
+          end_time: string
+          max_appointments: number
+          slot_id: string
+          start_time: string
+        }[]
+      }
       get_user_primary_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
@@ -1798,6 +1821,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["user_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      increment_slot_booking: {
+        Args: { p_doctor_id: string; p_slot_date: string; p_start_time: string }
         Returns: boolean
       }
       is_file_blocked: { Args: { hash_input: string }; Returns: boolean }
