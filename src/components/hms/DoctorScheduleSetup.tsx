@@ -14,7 +14,7 @@ import { format, addDays } from "date-fns";
 interface Doctor {
   id: string;
   doctor_id: string;
-  users: { name: string };
+  users: { name: string } | null;
   specialization: string;
 }
 
@@ -180,7 +180,7 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
                 <SelectContent>
                   {doctors.map((doctor) => (
                     <SelectItem key={doctor.id} value={doctor.id}>
-                      {doctor.users.name} - {doctor.specialization}
+                      {doctor.users?.name || doctor.doctor_id} - {doctor.specialization}
                     </SelectItem>
                   ))}
                 </SelectContent>
