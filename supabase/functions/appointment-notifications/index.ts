@@ -142,8 +142,8 @@ serve(async (req) => {
           doctor_name: doctorName,
           old_status: appointmentWithDetails.status,
           new_status: status
-          }
-        });
+        }
+      });
       }
     }
 
