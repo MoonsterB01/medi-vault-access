@@ -48,22 +48,14 @@ export default function ProfileSelector({ onProfileChange, selectedShareableId }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Get patients the user has access to via family_access
-      const { data: familyAccess, error: accessError } = await supabase
-        .from('family_access')
-        .select(`
-          patient_id,
-          patients:patient_id (
-            id,
-            name,
-            shareable_id
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('can_view', true);
+      // Get patients the user created
+      const { data: patients, error: patientsError } = await supabase
+        .from('patients')
+        .select('id, name, shareable_id')
+        .eq('created_by', user.id);
 
-      if (accessError) {
-        console.error('Error fetching family access:', accessError);
+      if (patientsError) {
+        console.error('Error fetching patients:', patientsError);
         toast({
           title: "Error",
           description: "Failed to load available profiles",
@@ -72,14 +64,10 @@ export default function ProfileSelector({ onProfileChange, selectedShareableId }
         return;
       }
 
-      const patients = (familyAccess || [])
-        .map(access => access.patients)
-        .filter(Boolean) as Patient[];
-
-      setAvailablePatients(patients);
+      setAvailablePatients((patients || []).filter(p => p.shareable_id) as Patient[]);
 
       // Auto-select if only one patient available
-      if (patients.length === 1 && patients[0].shareable_id && !selectedShareableId) {
+      if (patients && patients.length === 1 && patients[0].shareable_id && !selectedShareableId) {
         onProfileChange(patients[0].shareable_id, patients[0].name);
       }
     } catch (error) {

@@ -12,7 +12,6 @@ import { User, FileText, Share2, Copy, Upload, Download, Calendar, Clock, Trash2
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentUpload from "@/components/DocumentUpload";
-import FamilyAccessManager from "@/components/FamilyAccessManager";
 import { EnhancedDocumentSearch } from "@/components/EnhancedDocumentSearch";
 import AppointmentBooking from "@/components/AppointmentBooking";
 import AppointmentTracker from "@/components/AppointmentTracker";
@@ -42,7 +41,6 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   const [patientData, setPatientData] = useState<any>(null);
   const [availablePatients, setAvailablePatients] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
-  const [familyEmail, setFamilyEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const location = useLocation();
@@ -109,18 +107,14 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
 
   const fetchPatientData = async (userId: string) => {
     try {
-      const { data: familyAccess, error: faErr } = await supabase
-        .from('family_access')
-        .select(`
-          patient_id,
-          patients:patient_id (*)
-        `)
-        .eq('user_id', userId)
-        .eq('can_view', true);
+      const { data: patients, error: patientsErr } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('created_by', userId);
 
-      if (faErr) throw faErr;
+      if (patientsErr) throw patientsErr;
 
-      if (!familyAccess || familyAccess.length === 0) {
+      if (!patients || patients.length === 0) {
         toast({
           title: "No Patient Record",
           description: "No patient record found for your account.",
@@ -129,7 +123,6 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
         return;
       }
 
-      const patients = familyAccess.map(access => access.patients).filter(Boolean);
       setAvailablePatients(patients);
 
       if (patients.length === 1) {
@@ -137,8 +130,8 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
         await fetchDocuments(patients[0].id);
       } else if (patients.length > 1) {
         toast({
-          title: "Multiple Patient Access",
-          description: `You have access to ${patients.length} patient records. Please select one to view.`,
+          title: "Multiple Patient Records",
+          description: `You have ${patients.length} patient records. Please select one to view.`,
         });
       }
     } catch (error: any) {
@@ -179,39 +172,6 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
     }
   };
 
-  const handleGrantAccess = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!familyEmail || !patientData) return;
-
-    setLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch(`https://qiqepumdtaozjzfjbggl.supabase.co/functions/v1/grant-access-to-family`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          patientId: patientData.id,
-          familyMemberEmail: familyEmail,
-          canView: true,
-        }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Failed to grant access');
-
-      toast({
-        title: "Access Granted!",
-        description: `${familyEmail} now has access to view medical records`,
-      });
-      setFamilyEmail("");
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const copyShareableId = (id: string) => {
     navigator.clipboard.writeText(id);
@@ -386,29 +346,6 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
               </Card>
             </>
           )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Share2 className="h-5 w-5" />
-                Grant Family Access
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleGrantAccess} className="space-y-4">
-                <Input
-                  type="email"
-                  placeholder="Family member's email"
-                  value={familyEmail}
-                  onChange={(e) => setFamilyEmail(e.target.value)}
-                  required
-                />
-                <Button type="submit" className="w-full" disabled={loading || !patientData}>
-                  {loading ? "Granting..." : "Grant Access"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
         </div>
 
         <div className="lg:col-span-3">
@@ -420,14 +357,13 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
 
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             {!isMobile && (
-              <TabsList className="grid w-full grid-cols-7">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="summary"><Bot className="h-4 w-4 mr-1" />Summary</TabsTrigger>
                 <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-1" />Documents</TabsTrigger>
                 <TabsTrigger value="search"><Search className="h-4 w-4 mr-1" />Search</TabsTrigger>
                 <TabsTrigger value="appointments"><Calendar className="h-4 w-4 mr-1" />Appointments</TabsTrigger>
                 <TabsTrigger value="book-appointment"><Clock className="h-4 w-4 mr-1" />Book</TabsTrigger>
                 <TabsTrigger value="upload"><Upload className="h-4 w-4 mr-1" />Upload</TabsTrigger>
-                <TabsTrigger value="family"><Share2 className="h-4 w-4 mr-1" />Family</TabsTrigger>
               </TabsList>
             )}
 
@@ -508,9 +444,6 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
                 shareableId={patientData?.shareable_id}
                 onUploadSuccess={onUploadSuccess}
               />
-            </TabsContent>
-            <TabsContent value="family" className="mt-6" id="tab-content-family">
-              <FamilyAccessManager patientId={patientData?.id} patientShareableId={patientData?.shareable_id} />
             </TabsContent>
           </Tabs>
         </div>

@@ -169,18 +169,17 @@ serve(async (req) => {
 
     console.log(`Enhanced search for user ${userId}, query: "${query}"`);
 
-    // Get accessible patient IDs for the user
+    // Get accessible patient IDs for the user (patients they created)
     const { data: accessData, error: accessError } = await supabase
-      .from('family_access')
-      .select('patient_id')
-      .eq('user_id', userId)
-      .eq('can_view', true);
+      .from('patients')
+      .select('id')
+      .eq('created_by', userId);
 
     if (accessError) {
-      throw new Error(`Failed to get user access: ${accessError.message}`);
+      throw new Error(`Failed to get user's patients: ${accessError.message}`);
     }
 
-    const accessiblePatientIds = accessData.map(row => row.patient_id);
+    const accessiblePatientIds = accessData.map(row => row.id);
 
     if (accessiblePatientIds.length === 0) {
       return new Response(JSON.stringify({ documents: [], total: 0 }), {

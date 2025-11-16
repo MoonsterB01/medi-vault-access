@@ -118,18 +118,14 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
 
   const fetchPatients = async () => {
     try {
-      // Get patients that the user has access to
+      // Get patients that the user created
       const { data, error } = await supabase
-        .from('family_access')
-        .select(`
-          patient_id,
-          patients!inner(id, name, shareable_id)
-        `)
-        .eq('user_id', user.id)
-        .eq('can_view', true);
+        .from('patients')
+        .select('id, name, shareable_id')
+        .eq('created_by', user.id);
 
       if (error) throw error;
-      const patientsData = data?.map(fa => fa.patients).filter(Boolean) || [];
+      const patientsData = data || [];
       setPatients(patientsData);
     } catch (error) {
       console.error('Error fetching patients:', error);

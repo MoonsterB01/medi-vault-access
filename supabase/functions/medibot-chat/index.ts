@@ -73,16 +73,15 @@ serve(async (req) => {
       });
     }
 
-    // Verify user has access to patient
-    const { data: accessCheck } = await supabase
-      .from("family_access")
-      .select("patient_id")
-      .eq("patient_id", patientId)
-      .eq("user_id", user.id)
-      .eq("can_view", true)
+    // Verify user created this patient
+    const { data: patient } = await supabase
+      .from("patients")
+      .select("id, created_by")
+      .eq("id", patientId)
+      .eq("created_by", user.id)
       .single();
 
-    if (!accessCheck) {
+    if (!patient) {
       return new Response(JSON.stringify({ error: "Access denied" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
