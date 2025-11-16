@@ -79,15 +79,13 @@ export default function DocumentTimeline({ user }: DocumentTimelineProps = {}) {
   const fetchAccessiblePatients = async () => {
     setLoading(true);
     try {
-      const { data: familyAccess, error } = await supabase
-        .from('family_access')
-        .select(`patients(*)`)
-        .eq('user_id', user.id)
-        .eq('can_view', true);
+      const { data: patients, error } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('created_by', user.id);
       if (error) throw error;
-      const patients = familyAccess.map(p => p.patients).filter(Boolean);
-      setAvailablePatients(patients);
-      if (patients.length === 1) {
+      setAvailablePatients(patients || []);
+      if (patients && patients.length === 1) {
         setSelectedPatient(patients[0]);
         fetchDocuments(patients[0].id);
       }
