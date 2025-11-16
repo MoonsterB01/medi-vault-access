@@ -25,7 +25,7 @@ interface FamilyAccessRecord {
   users: {
     name: string;
     user_shareable_id: string | null;
-  };
+  } | null;
 }
 
 interface FamilyAccessManagerProps {
@@ -273,9 +273,9 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
                   {index > 0 && <Separator className="my-3" />}
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                      <div className="font-medium">{access.users.name}</div>
+                      <div className="font-medium">{access.users?.name || 'Unknown User'}</div>
                       <div className="text-sm text-muted-foreground font-mono">
-                        {access.users.user_shareable_id || 'No USER-ID'}
+                        {access.users?.user_shareable_id || 'No USER-ID'}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Added: {new Date(access.created_at).toLocaleDateString('en-US', { 
@@ -306,10 +306,10 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Revoke Access</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to revoke access for <strong>{deleteAccess?.users.name}</strong>? 
-              They will no longer be able to view medical records for this patient.
-            </AlertDialogDescription>
+          <AlertDialogDescription>
+            Are you sure you want to revoke access for <strong>{deleteAccess?.users?.name || 'this user'}</strong>? 
+            They will no longer be able to view medical records for this patient.
+          </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
