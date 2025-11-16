@@ -418,38 +418,33 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
 
                         <div>
                           <Label>Time Slot</Label>
-                          <Select value={selectedTime} onValueChange={setSelectedTime}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select time" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {timeSlots
-                                .filter((time) => {
-                                  if (!selectedDate) return true;
-                                  
-                                  // If selected date is today, filter out past time slots
-                                  const today = new Date();
-                                  const isToday = selectedDate.toDateString() === today.toDateString();
-                                  
-                                  if (!isToday) return true;
-                                  
-                                  // Parse time slot and compare with current time
-                                  const [hours, minutes] = time.split(':').map(Number);
-                                  const slotTime = new Date();
-                                  slotTime.setHours(hours, minutes, 0, 0);
-                                  
-                                  return slotTime > today;
-                                })
-                                .map((time) => (
-                                <SelectItem key={time} value={time}>
-                                  <div className="flex items-center">
-                                    <Clock className="w-4 h-4 mr-2" />
-                                    {time}
-                                  </div>
-                                </SelectItem>
+                          {!selectedDate ? (
+                            <div className="text-center py-4 text-sm text-muted-foreground border rounded-md">
+                              Please select a date first
+                            </div>
+                          ) : availableSlots.length === 0 ? (
+                            <div className="text-center py-4 text-sm text-muted-foreground border rounded-md">
+                              No available slots for this date
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-3 gap-2 max-h-[200px] overflow-y-auto border rounded-md p-2">
+                              {availableSlots.map((slot) => (
+                                <Button
+                                  key={slot.start_time}
+                                  type="button"
+                                  variant={selectedTime === slot.start_time ? "default" : "outline"}
+                                  onClick={() => setSelectedTime(slot.start_time)}
+                                  className="w-full flex flex-col h-auto py-2"
+                                >
+                                  <Clock className="h-4 w-4 mb-1" />
+                                  <span className="text-sm">{slot.start_time}</span>
+                                  <Badge variant="secondary" className="mt-1 text-xs">
+                                    {slot.current_bookings}/{slot.max_appointments}
+                                  </Badge>
+                                </Button>
                               ))}
-                            </SelectContent>
-                          </Select>
+                            </div>
+                          )}
                         </div>
 
                         <div>
