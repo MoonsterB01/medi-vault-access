@@ -27,10 +27,8 @@ import PharmacyPage from "@/components/hms/PharmacyPage";
 import LaboratoryPage from "@/components/hms/LaboratoryPage";
 import ReportsPage from "@/components/hms/ReportsPage";
 import SettingsPage from "@/components/hms/SettingsPage";
-import HospitalAppointmentBooking from "@/components/hms/HospitalAppointmentBooking";
-import DoctorScheduleSetup from "@/components/hms/DoctorScheduleSetup";
 
-type Module = 'overview' | 'schedule' | 'book_appointment' | 'schedule_setup' | 'billing' | 'ipd' | 'opd' | 'ehr' | 'pharmacy' | 'laboratory' | 'reports' | 'settings';
+type Module = 'overview' | 'schedule' | 'billing' | 'ipd' | 'opd' | 'ehr' | 'pharmacy' | 'laboratory' | 'reports' | 'settings';
 
 export default function HMSDashboard() {
   const navigate = useNavigate();
@@ -78,8 +76,6 @@ export default function HMSDashboard() {
   const modules = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'schedule', label: 'Schedule', icon: Calendar },
-    { id: 'book_appointment', label: 'Book Appointment', icon: Calendar },
-    { id: 'schedule_setup', label: 'Schedule Setup', icon: Settings },
     { id: 'billing', label: 'Billing', icon: CreditCard },
     { id: 'ipd', label: 'IPD', icon: BedDouble },
     { id: 'opd', label: 'OPD', icon: Stethoscope },
@@ -96,8 +92,6 @@ export default function HMSDashboard() {
     switch (activeModule) {
       case 'overview': return <OverviewPage {...props} />;
       case 'schedule': return <SchedulePage {...props} />;
-      case 'book_appointment': return <HospitalAppointmentBooking {...props} />;
-      case 'schedule_setup': return <DoctorScheduleSetup {...props} />;
       case 'billing': return <BillingPage {...props} />;
       case 'ipd': return <IPDPage {...props} />;
       case 'opd': return <OPDPage {...props} />;

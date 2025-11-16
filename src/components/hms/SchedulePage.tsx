@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AppointmentScheduleView from "./AppointmentScheduleView";
 import DoctorScheduleSetup from "./DoctorScheduleSetup";
+import HospitalAppointmentBooking from "./HospitalAppointmentBooking";
 
 export default function SchedulePage({ hospitalData }: { hospitalData: any }) {
   return (
@@ -14,6 +15,7 @@ export default function SchedulePage({ hospitalData }: { hospitalData: any }) {
         <TabsList>
           <TabsTrigger value="calendar">Appointment Schedule</TabsTrigger>
           <TabsTrigger value="setup">Slot Setup</TabsTrigger>
+          <TabsTrigger value="book">Book Appointment</TabsTrigger>
         </TabsList>
 
         <TabsContent value="calendar" className="space-y-4">
@@ -22,6 +24,10 @@ export default function SchedulePage({ hospitalData }: { hospitalData: any }) {
 
         <TabsContent value="setup" className="space-y-4">
           <DoctorScheduleSetup hospitalData={hospitalData} />
+        </TabsContent>
+
+        <TabsContent value="book" className="space-y-4">
+          <HospitalAppointmentBooking hospitalData={hospitalData} />
         </TabsContent>
       </Tabs>
     </div>
