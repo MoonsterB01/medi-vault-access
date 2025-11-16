@@ -50,7 +50,7 @@ const App = () => (
           <Route path="/doctor-dashboard" element={<AppLayout userRole="doctor"><DoctorDashboard /></AppLayout>} />
           <Route path="/hospital-registration" element={<HospitalRegistration />} />
           <Route path="/hospital-auth" element={<HospitalAuth />} />
-          <Route path="/hms-dashboard" element={<HMSDashboard />} />
+          <Route path="/hms-dashboard" element={<AppLayout userRole="hospital_staff"><HMSDashboard /></AppLayout>} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
