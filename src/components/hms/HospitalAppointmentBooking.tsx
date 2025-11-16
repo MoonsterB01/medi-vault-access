@@ -18,7 +18,7 @@ interface Doctor {
   id: string;
   doctor_id: string;
   specialization: string;
-  users: { name: string; email: string };
+  users: { name: string; email: string } | null;
 }
 
 interface Patient {
@@ -252,7 +252,7 @@ export default function HospitalAppointmentBooking({ hospitalData }: { hospitalD
                 <SelectContent>
                   {doctors.map((doctor) => (
                     <SelectItem key={doctor.id} value={doctor.id}>
-                      {doctor.users.name} - {doctor.specialization}
+                      {doctor.users?.name || doctor.doctor_id} - {doctor.specialization}
                     </SelectItem>
                   ))}
                 </SelectContent>
