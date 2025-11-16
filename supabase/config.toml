@@ -6,9 +6,6 @@ verify_jwt = true
 [functions.get-patient-timeline]
 verify_jwt = true
 
-[functions.grant-access-to-family]
-verify_jwt = true
-
 [functions.notify-patient-new-record]
 verify_jwt = false
 
@@ -49,9 +46,6 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.generate-document-summary]
-verify_jwt = true
-
-[functions.enhanced-search]
 verify_jwt = true
 
 [functions.medibot-chat]

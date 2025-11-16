@@ -74,24 +74,8 @@ serve(async (req) => {
 
     const uploaderName = uploader?.name || 'Someone';
 
-    // Get all users who have access to this patient (family members)
-    const { data: familyAccess, error: accessError } = await supabaseClient
-      .from('family_access')
-      .select(`
-        user_id,
-        users(name, email)
-      `)
-      .eq('patient_id', patientId)
-      .eq('can_view', true)
-      .neq('user_id', uploadedBy); // Don't notify the uploader
-
-    if (accessError) {
-      console.error('Error fetching family access:', accessError);
-      return new Response(
-        JSON.stringify({ error: 'Database error fetching family access', details: accessError.message }),
-        { status: 500, headers: corsHeaders }
-      );
-    }
+    // No family notifications - removed family_access feature
+    console.log('Document upload notification - family access feature removed');
 
     console.log('Family access data:', familyAccess);
 

@@ -46,38 +46,30 @@ serve(async (req) => {
       });
     }
 
-    // Get all users who have access to this patient (family members + patient themselves)
-    const { data: familyAccess, error: accessError } = await supabase
-      .from('family_access')
-      .select(`
-        user_id,
-        can_view,
-        users:user_id(name, email)
-      `)
-      .eq('patient_id', patientId)
-      .eq('can_view', true);
+    // Get patient creator to notify
+    const { data: creatorUser, error: creatorError } = await supabase
+      .from('users')
+      .select('id, name, email')
+      .eq('id', patient.created_by)
+      .single();
 
-    if (accessError) {
-      console.error('Access fetch error:', accessError);
+    if (creatorError) {
+      console.error('Creator fetch error:', creatorError);
     }
 
     const notificationPromises = [];
 
-    // Send notifications to family members
-    if (familyAccess && familyAccess.length > 0) {
-      for (const access of familyAccess) {
-        if (access.users) {
-          notificationPromises.push(
-            sendNotification({
-              to: (access.users as any)?.email,
-              patientName: patient.name,
-              recordType,
-              severity,
-              recipientName: (access.users as any)?.name,
-            })
-          );
-        }
-      }
+    // Send notification to patient creator
+    if (creatorUser) {
+      notificationPromises.push(
+        sendNotification({
+          to: creatorUser.email,
+          patientName: patient.name,
+          recordType,
+          severity,
+          recipientName: creatorUser.name,
+        })
+      );
     }
 
     // Send SMS notification to patient's primary contact if it's a phone number

@@ -97,25 +97,22 @@ serve(async (req) => {
       doctors: doctor
     };
 
-    // Get all users who have access to this patient (family members)
-    const { data: familyAccess, error: accessError } = await supabaseClient
-      .from('family_access')
-      .select(`
-        user_id,
-        users(name, email)
-      `)
-      .eq('patient_id', appointmentWithDetails.patient_id)
-      .eq('can_view', true);
+    // Notify only the patient creator
+    const { data: creatorUser, error: creatorError } = await supabaseClient
+      .from('users')
+      .select('id, name, email')
+      .eq('id', patient.created_by)
+      .single();
 
-    if (accessError) {
-      console.error('Error fetching family access:', accessError);
+    if (creatorError) {
+      console.error('Error fetching creator:', creatorError);
       return new Response(
-        JSON.stringify({ error: 'Database error fetching family access', details: accessError.message }),
+        JSON.stringify({ error: 'Database error fetching creator', details: creatorError.message }),
         { status: 500, headers: corsHeaders }
       );
     }
 
-    console.log('Family access data:', familyAccess);
+    console.log('Creator data:', creatorUser);
 
     const notifications = [];
     const doctorName = appointmentWithDetails.doctors?.users?.name || appointmentWithDetails.doctors?.doctor_id || 'Doctor';
@@ -127,25 +124,24 @@ serve(async (req) => {
       appointmentFound: !!appointmentWithDetails,
       patientName: appointmentWithDetails?.patients?.name,
       doctorName,
-      familyAccessCount: familyAccess?.length || 0
+      creatorFound: !!creatorUser
     });
 
-    // Create notifications for family members with access
-    if (familyAccess && familyAccess.length > 0) {
-      for (const access of familyAccess) {
-        notifications.push({
-          user_id: access.user_id,
-          notification_type: 'appointment_status_update',
-          title: getNotificationTitle(status, doctorName),
-          message: getNotificationMessage(status, appointmentWithDetails, doctorName),
-          appointment_id: appointmentId,
-          metadata: {
-            appointment_date: appointmentWithDetails.appointment_date,
-            appointment_time: appointmentWithDetails.appointment_time,
-            patient_name: appointmentWithDetails.patients?.name,
-            doctor_name: doctorName,
-            old_status: appointmentWithDetails.status,
-            new_status: status
+    // Create notification for patient creator
+    if (creatorUser) {
+      notifications.push({
+        user_id: creatorUser.id,
+        notification_type: 'appointment_status_update',
+        title: getNotificationTitle(status, doctorName),
+        message: getNotificationMessage(status, appointmentWithDetails, doctorName),
+        appointment_id: appointmentId,
+        metadata: {
+          appointment_date: appointmentWithDetails.appointment_date,
+          appointment_time: appointmentWithDetails.appointment_time,
+          patient_name: appointmentWithDetails.patients?.name,
+          doctor_name: doctorName,
+          old_status: appointmentWithDetails.status,
+          new_status: status
           }
         });
       }

@@ -132,20 +132,18 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Check 3: Does user have family_access?
+    // Check 3: Is user admin?
     if (!hasPermission) {
-      const { data: familyAccess } = await supabase
-        .from('family_access')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('patient_id', patient.id)
-        .eq('can_view', true)
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
         .single();
 
-      if (familyAccess) {
+      if (userData?.role === 'admin') {
         hasPermission = true;
-        permissionReason = 'family_access';
-        console.log(`✅ Permission granted: User has family access`);
+        permissionReason = 'admin';
+        console.log(`✅ Permission granted: Admin user`);
       }
     }
 
@@ -154,7 +152,7 @@ const handler = async (req: Request): Promise<Response> => {
       return new Response(
         JSON.stringify({ 
           error: 'Permission denied',
-          details: 'You do not have permission to upload documents for this patient. You must either be the patient\'s creator, hospital staff, or have been granted family access.'
+          details: 'You do not have permission to upload documents for this patient. You must either be the patient creator, hospital staff at the patient\'s hospital, or an admin.'
         }),
         { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );

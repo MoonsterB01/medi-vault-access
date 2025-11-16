@@ -92,15 +92,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Searching documents for user:', user.id, 'with filters:', { patientId, query, documentType, tags });
 
-    // Get user's accessible patient IDs first
-    const { data: familyAccess, error: accessError } = await supabase
-      .from('family_access')
-      .select('patient_id')
-      .eq('user_id', user.id)
-      .eq('can_view', true);
+    // Get user's accessible patient IDs (patients they created)
+    const { data: patients, error: accessError } = await supabase
+      .from('patients')
+      .select('id')
+      .eq('created_by', user.id);
 
     if (accessError) {
-      console.error('Error getting family access:', accessError);
+      console.error('Error getting patients:', accessError);
       return new Response(
         JSON.stringify({ error: 'Access denied' }),
         { 
@@ -110,7 +109,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const accessiblePatientIds = familyAccess?.map(fa => fa.patient_id) || [];
+    const accessiblePatientIds = patients?.map(p => p.id) || [];
     console.log('User has access to patients:', accessiblePatientIds);
 
     if (accessiblePatientIds.length === 0) {

@@ -89,23 +89,22 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
     try {
       console.log('Fetching appointments for user:', user.id);
       
-      // Get appointments for patients the user has access to
-      const { data: familyAccess, error: accessError } = await supabase
-        .from('family_access')
-        .select('patient_id')
-        .eq('user_id', user.id)
-        .eq('can_view', true);
+      // Get appointments for patients the user created
+      const { data: patients, error: patientsError } = await supabase
+        .from('patients')
+        .select('id')
+        .eq('created_by', user.id);
 
-      if (accessError) {
-        console.error('Error fetching family access:', accessError);
-        throw accessError;
+      if (patientsError) {
+        console.error('Error fetching patients:', patientsError);
+        throw patientsError;
       }
 
-      console.log('Family access data:', familyAccess);
-      const patientIds = familyAccess?.map(fa => fa.patient_id) || [];
+      console.log('Patients data:', patients);
+      const patientIds = patients?.map(p => p.id) || [];
 
       if (patientIds.length === 0) {
-        console.log('No patient access found for user');
+        console.log('No patients found for user');
         setAppointments([]);
         return;
       }
@@ -152,13 +151,13 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
       }
 
       // Get patient details separately
-      const { data: patientsData, error: patientsError } = await supabase
+      const { data: patientsData, error: patientsDetailsError } = await supabase
         .from('patients')
         .select('id, name, shareable_id')
         .in('id', patientIds);
 
-      if (patientsError) {
-        console.error('Error fetching patients:', patientsError);
+      if (patientsDetailsError) {
+        console.error('Error fetching patients:', patientsDetailsError);
       }
 
       // Combine the data
