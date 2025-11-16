@@ -74,12 +74,8 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
   const [specialtyFilter, setSpecialtyFilter] = useState<string>("all");
   const [loading, setLoading] = useState(false);
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState<any[]>([]);
   const { toast } = useToast();
-
-  const timeSlots = [
-    "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-    "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"
-  ];
 
   const specialties = [
     "cardiology", "neurology", "orthopedics", "pediatrics", 
@@ -90,6 +86,33 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
     fetchDoctors();
     fetchPatients();
   }, []);
+
+  useEffect(() => {
+    if (selectedDoctor && selectedDate) {
+      fetchAvailableSlots();
+    }
+  }, [selectedDoctor, selectedDate]);
+
+  // Real-time subscription for slot updates
+  useEffect(() => {
+    if (!selectedDoctor || !selectedDate) return;
+
+    const channel = supabase
+      .channel('appointment-slots-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'appointment_slots',
+        filter: `doctor_id=eq.${selectedDoctor.id}`
+      }, () => {
+        fetchAvailableSlots();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedDoctor, selectedDate]);
 
   const fetchDoctors = async () => {
     try {
@@ -118,22 +141,39 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
 
   const fetchPatients = async () => {
     try {
-      // Get patients that the user created
       const { data, error } = await supabase
         .from('patients')
         .select('id, name, shareable_id')
         .eq('created_by', user.id);
 
       if (error) throw error;
-      const patientsData = data || [];
-      setPatients(patientsData);
+
+      setPatients(data || []);
     } catch (error) {
       console.error('Error fetching patients:', error);
       toast({
         title: "Error",
-        description: "Failed to load patients. Please try again.",
+        description: "Failed to load your patients.",
         variant: "destructive",
       });
+    }
+  };
+
+  const fetchAvailableSlots = async () => {
+    if (!selectedDoctor || !selectedDate) return;
+
+    try {
+      const { data, error } = await supabase
+        .rpc('get_available_time_slots', {
+          p_doctor_id: selectedDoctor.id,
+          p_slot_date: format(selectedDate, 'yyyy-MM-dd')
+        });
+
+      if (error) throw error;
+      setAvailableSlots(data || []);
+    } catch (error) {
+      console.error('Error fetching slots:', error);
+      setAvailableSlots([]);
     }
   };
 

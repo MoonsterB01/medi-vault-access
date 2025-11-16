@@ -50,3 +50,9 @@ verify_jwt = true
 
 [functions.medibot-chat]
 verify_jwt = true
+
+[functions.book-appointment]
+verify_jwt = true
+
+[functions.reschedule-appointment]
+verify_jwt = true
