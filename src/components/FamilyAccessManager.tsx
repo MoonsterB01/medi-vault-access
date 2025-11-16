@@ -88,6 +88,12 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
   const [deleteAccess, setDeleteAccess] = useState<FamilyAccess | null>(null);
   const { toast } = useToast();
 
+  useEffect(() => {
+    if (patientId) {
+      fetchFamilyData();
+    }
+  }, [patientId]);
+
   // Don't render if no patientId
   if (!patientId) {
     return (
@@ -100,10 +106,6 @@ export default function FamilyAccessManager({ patientId, patientShareableId }: F
       </Card>
     );
   }
-
-  useEffect(() => {
-    fetchFamilyData();
-  }, [patientId]);
 
   const fetchFamilyData = async () => {
     setLoading(true);
