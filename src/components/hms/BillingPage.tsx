@@ -1,98 +1,171 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { Plus, Search } from "lucide-react";
+import { Plus, Trash, Search } from "lucide-react";
 
 export default function BillingPage({ hospitalData }: { hospitalData: any }) {
-  const [bills, setBills] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [billableItems, setBillableItems] = useState([{ item: "", qty: 1, cost: 0, discount: 0, tax: 0, total: 0 }]);
 
-  useEffect(() => {
-    fetchBills();
-  }, [hospitalData]);
-
-  const fetchBills = async () => {
-    if (!hospitalData?.id) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('billing')
-        .select('*, patients(name)')
-        .eq('hospital_id', hospitalData.id)
-        .order('bill_date', { ascending: false });
-
-      if (error) throw error;
-      setBills(data || []);
-    } catch (error: any) {
-      toast.error('Failed to load bills');
-    }
+  const handleAddItem = () => {
+    setBillableItems([...billableItems, { item: "", qty: 1, cost: 0, discount: 0, tax: 0, total: 0 }]);
   };
 
-  const filteredBills = bills.filter(bill =>
-    bill.bill_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    bill.patients?.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleRemoveItem = (index: number) => {
+    const newItems = billableItems.filter((_, i) => i !== index);
+    setBillableItems(newItems);
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold">Billing Management</h2>
-          <p className="text-muted-foreground">Manage patient bills and payments</p>
-        </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          New Bill
-        </Button>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Patient Details</CardTitle>
+          <CardDescription>Search for and manage patient information.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <label>Patient Name</label>
+              <Input placeholder="Patient Name" />
+            </div>
+            <div className="space-y-2">
+              <label>Patient ID</label>
+              <Input placeholder="Patient ID" />
+            </div>
+            <div className="space-y-2">
+              <label>Gender</label>
+              <Input placeholder="Gender" />
+            </div>
+            <div className="space-y-2">
+              <label>Mobile No</label>
+              <Input placeholder="Mobile No" />
+            </div>
+            <div className="space-y-2">
+              <label>Billing Date</label>
+              <Input type="date" />
+            </div>
+            <div className="space-y-2">
+              <label>Visits</label>
+              <Input placeholder="Visits" />
+            </div>
+            <div className="col-span-full flex justify-end">
+              <Button>
+                <Search className="h-4 w-4 mr-2" />
+                Search Patient
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-4">
-            <Search className="h-5 w-5 text-muted-foreground" />
-            <Input
-              placeholder="Search by bill number or patient name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1"
-            />
+          <CardTitle>Billing Details</CardTitle>
+          <CardDescription>Select billing options and packages.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <label>Billing Head</label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="OPD" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="opd">OPD</SelectItem>
+                  <SelectItem value="ipd">IPD</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label>Select Package</label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Billing Package" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="package1">Package 1</SelectItem>
+                  <SelectItem value="package2">Package 2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label>Select Category</label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="CASH" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">CASH</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="insurance">Insurance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Particulars</CardTitle>
+            <CardDescription>Add or remove billable items from the invoice.</CardDescription>
+          </div>
+          <Button onClick={handleAddItem} size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            Add More Items
+          </Button>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Bill Number</TableHead>
-                <TableHead>Patient</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Paid</TableHead>
-                <TableHead>Balance</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>Particulars</TableHead>
+                <TableHead>Qty</TableHead>
+                <TableHead>Cost</TableHead>
+                <TableHead>Discount</TableHead>
+                <TableHead>Tax</TableHead>
+                <TableHead>Total Amount</TableHead>
+                <TableHead>Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredBills.map((bill) => (
-                <TableRow key={bill.id}>
-                  <TableCell className="font-medium">{bill.bill_number}</TableCell>
-                  <TableCell>{bill.patients?.name}</TableCell>
-                  <TableCell>{new Date(bill.bill_date).toLocaleDateString()}</TableCell>
-                  <TableCell>₹{bill.total_amount}</TableCell>
-                  <TableCell>₹{bill.paid_amount}</TableCell>
-                  <TableCell>₹{bill.balance_amount}</TableCell>
+              {billableItems.map((item, index) => (
+                <TableRow key={index}>
                   <TableCell>
-                    <Badge variant={bill.payment_status === 'paid' ? 'default' : 'secondary'}>
-                      {bill.payment_status}
-                    </Badge>
+                    <Select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Billable Item" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="consultation">Consultation</SelectItem>
+                        <SelectItem value="xray">X-Ray</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm">View</Button>
+                    <Input type="number" value={item.qty} />
+                  </TableCell>
+                  <TableCell>
+                    <Input type="number" value={item.cost} />
+                  </TableCell>
+                  <TableCell>
+                    <Input type="number" value={item.discount} />
+                  </TableCell>
+                  <TableCell>
+                    <Input type="number" value={item.tax} />
+                  </TableCell>
+                  <TableCell>
+                    <Input type="number" value={item.total} readOnly />
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>
+                      <Trash className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -100,6 +173,48 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
           </Table>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Payment Details</CardTitle>
+          <CardDescription>Manage discounts and payment methods.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <label>Select Payment Mode</label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Cash" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="insurance">Insurance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label>Total Discount</label>
+              <Input type="number" placeholder="0.0" />
+            </div>
+            <div className="space-y-2">
+              <label>Payable Amount</label>
+              <Input type="number" placeholder="00" readOnly />
+            </div>
+            <div className="space-y-2">
+              <label>Remaining Amount</label>
+              <Input type="number" placeholder="00" readOnly />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end space-x-2">
+        <Button variant="outline">Save Bill</Button>
+        <Button variant="ghost">Cancel</Button>
+        <Button>Collect Payment</Button>
+      </div>
     </div>
   );
 }
