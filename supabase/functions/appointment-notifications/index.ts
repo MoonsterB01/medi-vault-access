@@ -144,7 +144,6 @@ serve(async (req) => {
           new_status: status
         }
       });
-      }
     }
 
     // Use the unified notification creation function
