@@ -174,8 +174,8 @@ serve(async (req) => {
       });
     }
 
-    // Create or update family access
-    const { data: accessData, error: accessError } = await supabase
+    // Create or update family access using service role (bypasses RLS since we've already validated permissions)
+    const { data: accessData, error: accessError } = await supabaseAdmin
       .from('family_access')
       .upsert({
         patient_id: patientId,
