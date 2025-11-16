@@ -6,22 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-/**
- * @interface UploadRequest
- * @description Defines the structure of the request body for the document upload function.
- * @property {string} shareableId - The shareable ID of the patient.
- * @property {object} file - The file to be uploaded.
- * @property {string} file.name - The name of the file.
- * @property {string} file.content - The base64-encoded content of the file.
- * @property {string} file.type - The MIME type of the file.
- * @property {number} file.size - The size of the file in bytes.
- * @property {string} documentType - The type of the document.
- * @property {string} [description] - An optional description of the document.
- * @property {string[]} [tags] - An optional array of tags for the document.
- * @property {object} [ocrResult] - An optional object containing the results of OCR processing.
- * @property {object} [aiAnalysisResult] - An optional object containing the results of AI analysis.
- * @property {string} [fileHash] - An optional hash of the file.
- */
 interface UploadRequest {
   shareableId: string;
   file: {
@@ -33,244 +17,185 @@ interface UploadRequest {
   documentType: string;
   description?: string;
   tags?: string[];
-  ocrResult?: {
-    text: string;
-    confidence: number;
-    textDensityScore: number;
-    medicalKeywordCount: number;
-    detectedKeywords: string[];
-    verificationStatus: string;
-    formatSupported: boolean;
-    processingNotes: string;
-    structuralCues: any;
-  };
-  aiAnalysisResult?: {
-    keywords: string[];
-    categories: string[];
-    confidence: number;
-    entities: any;
-    verificationStatus: string;
-    textDensityScore: number;
-    medicalKeywordCount: number;
-    processingNotes: string;
-  };
+  ocrResult?: any;
+  aiAnalysisResult?: any;
   fileHash?: string;
 }
 
-/**
- * @function handler
- * @description A Supabase Edge Function that handles the uploading of a document.
- * @param {Request} req - The incoming HTTP request.
- * @returns {Promise<Response>} - A promise that resolves with a JSON response indicating the success or failure of the upload.
- */
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // ============ AUTHENTICATION ============
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: {
-            Authorization: req.headers.get('Authorization')!,
-          },
+          headers: { Authorization: req.headers.get('Authorization')! },
         },
       }
     );
 
-    // Get authenticated user
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     if (authError || !user) {
+      console.error('Authentication failed:', authError);
       return new Response(
         JSON.stringify({ error: 'Authentication required' }),
-        {
-          status: 401,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        }
+        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
-    // Use service role client for admin operations
+    console.log(`📤 Upload request from user: ${user.id}`);
+
+    // Use service role for admin operations
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { 
-      shareableId, 
-      file, 
-      documentType, 
-      description, 
-      tags,
-      ocrResult,
-      aiAnalysisResult,
-      fileHash
-    }: UploadRequest = await req.json();
+    // ============ INPUT VALIDATION ============
+    const { shareableId, file, documentType, description, tags, ocrResult, aiAnalysisResult, fileHash }: UploadRequest = await req.json();
 
-    console.log(`Uploading document for shareable ID: ${shareableId} by user: ${user.id}`);
+    // Only accept MED-ID format for uploads
+    const upperId = shareableId.toUpperCase();
+    if (!upperId.startsWith('MED-')) {
+      console.error('❌ Invalid shareable ID format:', shareableId);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid patient ID format. Please use the patient\'s MED-ID (e.g., MED-12345678)',
+          details: 'Only MED-ID format is supported for document uploads'
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+      );
+    }
 
-    // Check if file is blocked (security measure)
+    // ============ FILE HASH SECURITY CHECK ============
     if (fileHash) {
-      const { data: isBlocked } = await supabase
-        .rpc('is_file_blocked', { hash_input: fileHash });
-      
+      const { data: isBlocked } = await supabase.rpc('is_file_blocked', { hash_input: fileHash });
       if (isBlocked) {
-        console.log(`Blocked file upload attempt: ${fileHash}`);
-        return new Response(JSON.stringify({ 
-          error: 'This file has been blocked and cannot be uploaded' 
-        }), {
-          status: 403,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        });
+        console.log(`🚫 Blocked file upload attempt: ${fileHash}`);
+        return new Response(
+          JSON.stringify({ error: 'This file has been blocked and cannot be uploaded' }),
+          { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
+        );
       }
     }
 
-    // Get uploader's details for traceability
-    const { data: uploaderUser, error: uploaderError } = await supabase
-      .from('users')
-      .select('user_shareable_id')
-      .eq('id', user.id)
+    // ============ PATIENT LOOKUP ============
+    const { data: patient, error: patientError } = await supabase
+      .from('patients')
+      .select('id, name, hospital_id, created_by')
+      .eq('shareable_id', upperId)
       .single();
 
-    if (uploaderError) {
-      console.error('Failed to get uploader details:', uploaderError);
-    }
-
-    // Resolve patient by shareableId (supports MED-XXXXXXXX and USER-XXXXXXXX)
-    const upperId = shareableId.toUpperCase();
-    let patient: { id: string; name: string } | null = null;
-    let hasPermission = false;
-
-    if (upperId.startsWith('MED-')) {
-      const { data: p, error: pErr } = await supabase
-        .from('patients')
-        .select('id, name')
-        .eq('shareable_id', upperId)
-        .single();
-      if (pErr || !p) {
-        console.error('Patient not found via MED ID:', pErr);
-      } else {
-        patient = p;
-        // Check if user has permission to upload to this patient
-        const { data: access } = await supabase
-          .from('family_access')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('patient_id', p.id)
-          .eq('can_view', true)
-          .single();
-        hasPermission = !!access;
-      }
-    } else if (upperId.startsWith('USER-')) {
-      // Find the user by their user_shareable_id, then map to a patient via family_access
-      const { data: usr, error: usrErr } = await supabase
-        .from('users')
-        .select('id')
-        .eq('user_shareable_id', upperId)
-        .single();
-
-      if (!usrErr && usr) {
-        const { data: fa, error: faErr } = await supabase
-          .from('family_access')
-          .select('patient_id')
-          .eq('user_id', usr.id)
-          .eq('can_view', true)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-
-        if (!faErr && fa?.patient_id) {
-          const { data: p2, error: p2Err } = await supabase
-            .from('patients')
-            .select('id, name')
-            .eq('id', fa.patient_id)
-            .single();
-          if (!p2Err && p2) {
-            patient = p2;
-            // Check if the current user has permission to upload to this patient
-            const { data: userAccess } = await supabase
-              .from('family_access')
-              .select('id')
-              .eq('user_id', user.id)
-              .eq('patient_id', p2.id)
-              .eq('can_view', true)
-              .single();
-            hasPermission = !!userAccess;
-          } else {
-            console.error('Patient lookup by family_access failed:', p2Err);
-          }
-        } else {
-          console.error('family_access lookup failed or not found:', faErr);
-        }
-      } else {
-        console.error('User not found via USER ID:', usrErr);
-      }
-    }
-
-    if (!patient) {
+    if (patientError || !patient) {
+      console.error('❌ Patient not found:', upperId, patientError);
       return new Response(
-        JSON.stringify({ error: 'Invalid shareable ID' }),
-        {
-          status: 404,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        }
+        JSON.stringify({ 
+          error: 'Patient not found',
+          details: `No patient found with ID: ${upperId}`
+        }),
+        { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
+    }
+
+    console.log(`📋 Found patient: ${patient.name} (${patient.id})`);
+
+    // ============ PERMISSION CHECK ============
+    let hasPermission = false;
+    let permissionReason = '';
+
+    // Check 1: Is user the creator of this patient?
+    if (patient.created_by === user.id) {
+      hasPermission = true;
+      permissionReason = 'creator';
+      console.log(`✅ Permission granted: User created this patient`);
+    }
+
+    // Check 2: Is user hospital staff for this patient's hospital?
+    if (!hasPermission && patient.hospital_id) {
+      const { data: staffUser } = await supabase
+        .from('users')
+        .select('id, role, hospital_id')
+        .eq('id', user.id)
+        .eq('role', 'hospital_staff')
+        .eq('hospital_id', patient.hospital_id)
+        .single();
+
+      if (staffUser) {
+        hasPermission = true;
+        permissionReason = 'hospital_staff';
+        console.log(`✅ Permission granted: User is hospital staff`);
+      }
+    }
+
+    // Check 3: Does user have family_access?
+    if (!hasPermission) {
+      const { data: familyAccess } = await supabase
+        .from('family_access')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('patient_id', patient.id)
+        .eq('can_view', true)
+        .single();
+
+      if (familyAccess) {
+        hasPermission = true;
+        permissionReason = 'family_access';
+        console.log(`✅ Permission granted: User has family access`);
+      }
     }
 
     if (!hasPermission) {
+      console.error('❌ Permission denied for user:', user.id, 'patient:', patient.id);
       return new Response(
-        JSON.stringify({ error: 'You do not have permission to upload documents for this patient' }),
-        {
-          status: 403,
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
-        }
+        JSON.stringify({ 
+          error: 'Permission denied',
+          details: 'You do not have permission to upload documents for this patient. You must either be the patient\'s creator, hospital staff, or have been granted family access.'
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
-    // --- Server-side Processing Orchestration ---
+    // ============ SERVER-SIDE PROCESSING ============
     let textToAnalyze: string | null = ocrResult?.text || null;
     let analysisSource = 'client-ocr';
     let requiresOcr = false;
-    // Only accept client AI result if it's high quality
-    let finalAiAnalysisResult = 
-      (aiAnalysisResult && aiAnalysisResult.confidence > 0.5 && aiAnalysisResult.keywords?.length > 0) 
+    let finalAiAnalysisResult = (aiAnalysisResult && aiAnalysisResult.confidence > 0.5 && aiAnalysisResult.keywords?.length > 0) 
       ? aiAnalysisResult 
       : null;
 
-    // 1. PDF Text Extraction
-    // If the file is a PDF and we don't have pre-computed text, extract it
+    // PDF Text Extraction
     if (file.type === 'application/pdf' && !textToAnalyze) {
-      console.log(`PDF detected, invoking pdf-text-extractor for ${file.name}`);
+      console.log(`📄 PDF detected, extracting text...`);
       analysisSource = 'server-pdf-extraction';
       try {
         const { data: extractionData, error: extractionError } = await supabase.functions.invoke('pdf-text-extractor', {
           body: { fileContent: file.content, filename: file.name }
         });
 
-        if (extractionError) throw new Error(`PDF text extraction failed: ${extractionError.message}`);
+        if (extractionError) throw new Error(`PDF extraction failed: ${extractionError.message}`);
 
         if (extractionData.success && extractionData.extractedText) {
           textToAnalyze = extractionData.extractedText;
           requiresOcr = extractionData.requiresOCR;
-          console.log(`Successfully extracted ${textToAnalyze?.length || 0} chars from PDF. Requires OCR: ${requiresOcr}`);
+          console.log(`✅ Extracted ${textToAnalyze?.length || 0} characters from PDF`);
         } else {
-          console.warn('pdf-text-extractor failed, falling back to OCR if possible.', extractionData.error);
+          console.warn('PDF extraction failed, may require OCR');
           requiresOcr = true;
         }
       } catch (error) {
-        console.error('Error invoking pdf-text-extractor:', error.message);
-        requiresOcr = true; // Flag for potential client-side OCR later
+        console.error('PDF extraction error:', error.message);
+        requiresOcr = true;
       }
     }
 
-    // 2. Enhanced Document Analysis
-    // For PDFs with extracted text, always run analysis unless we have high-quality client results
+    // Enhanced Document Analysis
     if (textToAnalyze && (!finalAiAnalysisResult || file.type === 'application/pdf')) {
-      console.log(`Invoking enhanced-document-analyze for document: ${file.name}`);
+      console.log(`🤖 Running AI analysis...`);
       analysisSource = 'server-ai-analysis';
       try {
         const { data: analysisData, error: analysisError } = await supabase.functions.invoke('enhanced-document-analyze', {
@@ -279,34 +204,27 @@ const handler = async (req: Request): Promise<Response> => {
             fileContent: file.content,
             contentType: file.type,
             filename: file.name,
-            ocrResult: { text: textToAnalyze } // Pass the extracted text
+            ocrResult: { text: textToAnalyze }
           }
         });
 
-        if (analysisError) throw new Error(`Enhanced analysis failed: ${analysisError.message}`);
+        if (analysisError) throw new Error(`AI analysis failed: ${analysisError.message}`);
         if (analysisData.success) {
           finalAiAnalysisResult = analysisData;
-          console.log(`Successfully analyzed document: ${file.name}`);
-        } else {
-          console.warn('enhanced-document-analyze indicated failure:', analysisData.error);
+          console.log(`✅ AI analysis complete`);
         }
       } catch (error) {
-        console.error('Error invoking enhanced-document-analyze:', error.message);
+        console.error('AI analysis error:', error.message);
       }
     }
 
-    // --- End of Server-side Processing ---
-
-    // Generate unique file path
+    // ============ STORAGE UPLOAD ============
     const fileExtension = file.name.split('.').pop();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const fileName = `${patient.id}/${timestamp}-${file.name}`;
-
-    // Convert base64 to binary
     const fileData = Uint8Array.from(atob(file.content), c => c.charCodeAt(0));
 
-    // Upload file to storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('medical-documents')
       .upload(fileName, fileData, {
         contentType: file.type,
@@ -314,17 +232,23 @@ const handler = async (req: Request): Promise<Response> => {
       });
 
     if (uploadError) {
-      console.error('Upload error:', uploadError);
+      console.error('❌ Storage upload error:', uploadError);
       return new Response(
-        JSON.stringify({ error: 'Failed to upload file' }),
-        { 
-          status: 500, 
-          headers: { 'Content-Type': 'application/json', ...corsHeaders } 
-        }
+        JSON.stringify({ error: 'Failed to upload file to storage' }),
+        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
-    // Save document metadata with enhanced analysis data
+    console.log(`✅ File uploaded to storage: ${fileName}`);
+
+    // Get uploader details for traceability
+    const { data: uploaderUser } = await supabase
+      .from('users')
+      .select('user_shareable_id')
+      .eq('id', user.id)
+      .single();
+
+    // ============ DATABASE INSERT ============
     const { data: documentData, error: documentError } = await supabase
       .from('documents')
       .insert({
@@ -336,16 +260,12 @@ const handler = async (req: Request): Promise<Response> => {
         document_type: documentType,
         description: description || null,
         tags: tags || [],
-        uploaded_by: user.id, // Track actual uploader
+        uploaded_by: user.id,
         uploaded_by_user_shareable_id: uploaderUser?.user_shareable_id || null,
         searchable_content: `${file.name} ${documentType} ${description || ''} ${tags?.join(' ') || ''}`,
         file_hash: fileHash || null,
-
-        // Use server-side extracted text if available
         extracted_text: textToAnalyze,
         ocr_extracted_text: ocrResult?.text || (file.type !== 'application/pdf' ? textToAnalyze : null),
-
-        // Use analysis results from server if available, otherwise fallback to client's
         text_density_score: finalAiAnalysisResult?.textDensityScore || ocrResult?.textDensityScore || 0,
         medical_keyword_count: finalAiAnalysisResult?.medicalKeywordCount || ocrResult?.medicalKeywordCount || 0,
         structural_cues: finalAiAnalysisResult?.structuralCues || ocrResult?.structuralCues || {},
@@ -358,7 +278,6 @@ const handler = async (req: Request): Promise<Response> => {
         extracted_entities: finalAiAnalysisResult?.entities || {},
         medical_specialties: finalAiAnalysisResult?.entities?.specialties || [],
         extracted_dates: finalAiAnalysisResult?.entities?.dates || [],
-
         extraction_metadata: {
           upload_timestamp: new Date().toISOString(),
           has_ocr_results: !!ocrResult,
@@ -366,90 +285,51 @@ const handler = async (req: Request): Promise<Response> => {
           content_type: file.type,
           filename: file.name,
           analysis_source: analysisSource,
-          requires_ocr: requiresOcr
+          requires_ocr: requiresOcr,
+          permission_reason: permissionReason
         }
       })
       .select()
       .single();
 
     if (documentError) {
-      console.error('Document metadata error:', documentError);
-      // Clean up uploaded file if metadata fails
+      console.error('❌ Database insert error:', documentError);
+      // Clean up uploaded file
       await supabase.storage.from('medical-documents').remove([fileName]);
-      
       return new Response(
         JSON.stringify({ error: 'Failed to save document metadata' }),
-        { 
-          status: 500, 
-          headers: { 'Content-Type': 'application/json', ...corsHeaders } 
-        }
+        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
 
-    console.log('Document uploaded successfully:', documentData.id);
+    console.log(`✅ Document saved to database: ${documentData.id}`);
 
-    // Generate patient summary with retry logic
-    let summaryAttempts = 0;
-    const maxAttempts = 2;
-    while (summaryAttempts < maxAttempts) {
-      try {
-        const { error: summaryError } = await supabase.functions.invoke('generate-patient-summary', {
-          body: {
-            documentId: documentData.id,
-            patientId: patient.id,
-          }
-        });
-        if (!summaryError) {
-          console.log('✅ Patient summary generated successfully');
-          break;
-        }
-        console.error(`Summary generation attempt ${summaryAttempts + 1} failed:`, summaryError);
-        summaryAttempts++;
-      } catch (err) {
-        console.error(`Summary generation attempt ${summaryAttempts + 1} failed:`, err);
-        summaryAttempts++;
-        if (summaryAttempts >= maxAttempts) {
-          console.error('Failed to generate patient summary after all attempts');
-        }
+    // ============ POST-PROCESSING ============
+    // Generate patient summary (non-blocking)
+    supabase.functions.invoke('generate-patient-summary', {
+      body: { documentId: documentData.id, patientId: patient.id }
+    }).catch(err => console.error('Summary generation error:', err));
+
+    // Send notifications (non-blocking)
+    supabase.functions.invoke('notify-patient-upload', {
+      body: {
+        documentId: documentData.id,
+        patientId: patient.id,
+        uploadedBy: user.id,
+        filename: file.name,
+        documentType: documentType
       }
-    }
+    }).catch(err => console.error('Notification error:', err));
 
-    // Send notifications to family members about the new document upload
-    try {
-      const { error: notificationError } = await supabase.functions.invoke('notify-patient-upload', {
-        body: {
-          documentId: documentData.id,
-          patientId: patient.id,
-          uploadedBy: user.id,
-          filename: file.name,
-          documentType: documentType
-        }
-      });
-      
-      if (notificationError) {
-        console.error('Error sending upload notifications:', notificationError);
-      } else {
-        console.log('Upload notifications sent successfully');
-      }
-    } catch (notificationError) {
-      console.error('Failed to send upload notifications:', notificationError);
-    }
-
-    // Insert keywords into document_keywords table if we have AI analysis
+    // Insert keywords if available
     if (finalAiAnalysisResult && finalAiAnalysisResult.keywords.length > 0) {
-      const keywordInserts: any[] = [];
-      
-      // Add general keywords
-      finalAiAnalysisResult.keywords.forEach(keyword => {
-        keywordInserts.push({
-          document_id: documentData.id,
-          keyword,
-          keyword_type: 'general',
-          confidence: finalAiAnalysisResult.confidence,
-        });
-      });
+      const keywordInserts = finalAiAnalysisResult.keywords.map(keyword => ({
+        document_id: documentData.id,
+        keyword,
+        keyword_type: 'general',
+        confidence: finalAiAnalysisResult.confidence,
+      }));
 
-      // Add entity-specific keywords
       if (finalAiAnalysisResult.entities) {
         Object.entries(finalAiAnalysisResult.entities).forEach(([entityType, entities]: [string, any]) => {
           if (Array.isArray(entities)) {
@@ -466,47 +346,26 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
-      if (keywordInserts.length > 0) {
-        const { error: keywordError } = await supabase
-          .from('document_keywords')
-          .insert(keywordInserts);
-
-        if (keywordError) {
-          console.error('Failed to insert keywords:', keywordError);
-        } else {
-          console.log(`Inserted ${keywordInserts.length} keywords for document ${documentData.id}`);
-        }
-      }
+      await supabase.from('document_keywords').insert(keywordInserts);
     }
-
-    // If we have comprehensive AI analysis, skip the enhanced analysis step
-    const skipEnhancedAnalysis = aiAnalysisResult && 
-      aiAnalysisResult.confidence > 0.5 && 
-      aiAnalysisResult.keywords.length > 0;
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         documentId: documentData.id,
         document: documentData,
-        message: `Document uploaded for ${patient.name}`,
-        skipAnalysis: skipEnhancedAnalysis,
-        analysisStatus: skipEnhancedAnalysis ? 'Complete' : 'Pending'
+        message: `Document uploaded successfully for ${patient.name}`,
+        skipAnalysis: !!finalAiAnalysisResult,
+        analysisStatus: finalAiAnalysisResult ? 'Complete' : 'Pending'
       }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      }
+      { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );
 
   } catch (error: any) {
-    console.error('Error in upload-document function:', error);
+    console.error('❌ Upload error:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
-      }
+      JSON.stringify({ error: error.message || 'Internal server error' }),
+      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );
   }
 };
