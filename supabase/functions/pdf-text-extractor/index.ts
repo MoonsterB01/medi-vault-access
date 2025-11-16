@@ -6,12 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Dynamic import for PDF.js - worker disabled for Deno edge function
+// Dynamic import for PDF.js with worker disabled
 async function getPDFLib() {
   const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/+esm');
   
-  // Don't configure worker - we disable it in getDocument options
-  // Setting workerSrc causes module loading errors in Deno edge functions
+  // Set workerSrc to empty string to satisfy PDF.js requirement
+  // We use disableWorker: true in getDocument options
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '';
   
   return pdfjsLib;
 }
