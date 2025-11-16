@@ -84,7 +84,6 @@ serve(async (req) => {
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-    );
 
   } catch (error: any) {
     console.error('Error in notify-patient-upload function:', error);
