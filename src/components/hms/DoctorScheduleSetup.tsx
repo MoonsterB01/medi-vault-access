@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Calendar, Clock, Settings, Plus } from "lucide-react";
 import { format, addDays } from "date-fns";
+import SlotCalendarView from "./SlotCalendarView";
 
 interface Doctor {
   id: string;
@@ -30,6 +31,8 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
   const [workingDays, setWorkingDays] = useState<number[]>([1, 2, 3, 4, 5]); // Mon-Fri
   const [loading, setLoading] = useState(false);
   const [previewSlots, setPreviewSlots] = useState<any[]>([]);
+  const [calendarSlots, setCalendarSlots] = useState<any[]>([]);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   const daysOfWeek = [
     { value: 0, label: 'Sunday' },
@@ -61,7 +64,7 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
     }
   };
 
-  const generatePreview = () => {
+  const generatePreview = async () => {
     const slots: any[] = [];
     let currentDate = new Date(startDate);
     const finalDate = new Date(endDate);
@@ -92,6 +95,7 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
             date: dateStr,
             start_time: slotStartTime,
             end_time: slotEndTime,
+            isExisting: false,
           });
           
           currentMinutes = nextMinutes;
@@ -101,57 +105,67 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
       currentDate = addDays(currentDate, 1);
     }
 
+    // Fetch existing slots to display in calendar
+    if (selectedDoctor) {
+      const { data: existingSlots } = await supabase
+        .from('appointment_slots')
+        .select('slot_date, start_time, end_time, id')
+        .eq('doctor_id', selectedDoctor)
+        .gte('slot_date', startDate)
+        .lte('slot_date', endDate);
+
+      const existing = (existingSlots || []).map(s => ({
+        date: s.slot_date,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        isExisting: true,
+        id: s.id,
+      }));
+
+      // Check for conflicts
+      const toMin = (t: string) => {
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+      };
+      const overlaps = (aStart: string, aEnd: string, bStart: string, bEnd: string) =>
+        toMin(aStart) < toMin(bEnd) && toMin(aEnd) > toMin(bStart);
+
+      const allSlots = [...existing, ...slots];
+      const slotsWithConflicts = allSlots.map(slot => ({
+        ...slot,
+        isConflict: allSlots.some(
+          other => 
+            other !== slot && 
+            other.date === slot.date && 
+            !slot.isExisting &&
+            overlaps(slot.start_time, slot.end_time, other.start_time, other.end_time)
+        ),
+      }));
+
+      setCalendarSlots(slotsWithConflicts);
+      setShowCalendar(true);
+    }
+
     setPreviewSlots(slots.slice(0, 10)); // Show first 10 as preview
     return slots;
   };
 
-  const handleGenerateSlots = async () => {
+  const handleSaveSlots = async () => {
     if (!selectedDoctor) {
       toast.error('Please select a doctor');
       return;
     }
 
-    // Helper overlap check
-    const toMinutes = (t: string) => {
-      const [h, m] = t.split(':').map(Number);
-      return h * 60 + m;
-    };
-    const overlaps = (aStart: string, aEnd: string, bStart: string, bEnd: string) =>
-      toMinutes(aStart) < toMinutes(bEnd) && toMinutes(aEnd) > toMinutes(bStart);
+    const newSlots = calendarSlots.filter(s => !s.isExisting && !s.isConflict);
+    
+    if (newSlots.length === 0) {
+      toast.info('No new slots to save');
+      return;
+    }
 
     setLoading(true);
     try {
-      const allSlots = generatePreview();
-
-      // Fetch existing slots for the selected date range to detect conflicts client-side
-      const { data: existingSlots, error: fetchErr } = await supabase
-        .from('appointment_slots')
-        .select('slot_date, start_time, end_time')
-        .eq('doctor_id', selectedDoctor)
-        .gte('slot_date', startDate)
-        .lte('slot_date', endDate);
-      if (fetchErr) throw fetchErr;
-
-      // Split into conflicting and safe slots
-      const conflicts: typeof allSlots = [];
-      const safe: typeof allSlots = [];
-      for (const s of allSlots) {
-        const conflict = (existingSlots || []).some(e =>
-          e.slot_date === s.date && overlaps(s.start_time, s.end_time, e.start_time, e.end_time)
-        );
-        if (conflict) conflicts.push(s); else safe.push(s);
-      }
-
-      if (conflicts.length > 0) {
-        toast.warning(`Skipped ${conflicts.length} conflicting slot(s). Creating ${safe.length} new slot(s).`);
-      }
-      if (safe.length === 0) {
-        toast.info('No new slots to create. All generated slots conflict with existing ones.');
-        return;
-      }
-
-      // Prepare safe slots for insertion
-      const slotsToInsert = safe.map(slot => ({
+      const slotsToInsert = newSlots.map(slot => ({
         doctor_id: selectedDoctor,
         slot_date: slot.date,
         start_time: slot.start_time,
@@ -171,10 +185,12 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
         if (error) throw error;
       }
 
-      toast.success(`Generated ${slotsToInsert.length} time slot(s) successfully`);
+      toast.success(`Saved ${slotsToInsert.length} time slot(s) successfully`);
+      setShowCalendar(false);
+      setCalendarSlots([]);
       setPreviewSlots([]);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to generate slots');
+      toast.error(error.message || 'Failed to save slots');
     } finally {
       setLoading(false);
     }
@@ -306,16 +322,9 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={generatePreview} variant="outline" className="flex-1">
+              <Button onClick={generatePreview} variant="outline" className="flex-1" disabled={!selectedDoctor}>
                 <Calendar className="h-4 w-4 mr-2" />
-                Preview
-              </Button>
-              <Button
-                onClick={handleGenerateSlots}
-                disabled={loading || !selectedDoctor}
-                className="flex-1"
-              >
-                {loading ? 'Generating...' : 'Generate Slots'}
+                {showCalendar ? 'Regenerate' : 'Generate & Preview'}
               </Button>
             </div>
           </CardContent>
@@ -332,7 +341,7 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
           <CardContent>
             {previewSlots.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Click "Preview" to see generated slots
+                Click "Generate & Preview" to see generated slots
               </div>
             ) : (
               <div className="space-y-2">
@@ -357,6 +366,20 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
           </CardContent>
         </Card>
       </div>
+
+      {/* Calendar View */}
+      {showCalendar && (
+        <div className="mt-6">
+          <SlotCalendarView
+            slots={calendarSlots}
+            onSlotsUpdate={setCalendarSlots}
+            onSave={handleSaveSlots}
+            startDate={startDate}
+            endDate={endDate}
+            viewMode="week"
+          />
+        </div>
+      )}
     </div>
   );
 }
