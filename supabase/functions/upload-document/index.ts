@@ -153,7 +153,7 @@ const handler = async (req: Request): Promise<Response> => {
       document_type: documentType,
       description: description || null,
       tags: tags || [],
-      verification_status: analysisResult ? 'verified' : 'pending',
+      verification_status: analysisResult ? 'verified_medical' : 'unverified',
       uploaded_by_user_shareable_id: user.user_metadata?.user_shareable_id || null,
     };
 
