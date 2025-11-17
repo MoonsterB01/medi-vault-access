@@ -1,16 +1,22 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.53.0";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import {
+  createRequestId,
+  logRequest,
+  logResponse,
+  logAuthDiagnostics,
+  corsHeaders,
+  parseRequestBody,
+  logDbQuery,
+  logStorageOperation,
+  createErrorResponse
+} from "../_shared/diagnostics.ts";
 
 interface UploadRequest {
   shareableId: string;
   file: {
     name: string;
-    content: string; // base64 encoded
+    content: string;
     type: string;
     size: number;
   };
@@ -23,348 +29,226 @@ interface UploadRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  const requestId = createRequestId();
+  const origin = req.headers.get('origin');
+  
+  logRequest(requestId, req);
+  
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders(origin) });
   }
 
   try {
-    // ============ AUTHENTICATION ============
+    logAuthDiagnostics(requestId, req);
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
+      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     );
 
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     if (authError || !user) {
-      console.error('Authentication failed:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Authentication required' }),
-        { status: 401, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
+      return createErrorResponse(requestId, 401, 'authentication_required', authError?.message, origin);
     }
 
-    console.log(`📤 Upload request from user: ${user.id}`);
-
-    // Use service role for admin operations
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // ============ INPUT VALIDATION ============
-    const { shareableId, file, documentType, description, tags, ocrResult, aiAnalysisResult, fileHash }: UploadRequest = await req.json();
-
-    // Only accept MED-ID format for uploads
-    const upperId = shareableId.toUpperCase();
-    if (!upperId.startsWith('MED-')) {
-      console.error('❌ Invalid shareable ID format:', shareableId);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Invalid patient ID format. Please use the patient\'s MED-ID (e.g., MED-12345678)',
-          details: 'Only MED-ID format is supported for document uploads'
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
+    let uploadData: UploadRequest;
+    try {
+      uploadData = await parseRequestBody(req, requestId);
+    } catch (err: any) {
+      return createErrorResponse(requestId, 400, 'invalid_request_body', err.message, origin);
     }
 
-    // ============ FILE HASH SECURITY CHECK ============
+    const { shareableId, file, documentType, description, tags, ocrResult, aiAnalysisResult, fileHash } = uploadData;
+
+    const upperId = shareableId.toUpperCase();
+    if (!upperId.startsWith('MED-')) {
+      return createErrorResponse(requestId, 400, 'invalid_patient_id_format', 'Only MED-ID format supported', origin);
+    }
+
     if (fileHash) {
-      const { data: isBlocked } = await supabase.rpc('is_file_blocked', { hash_input: fileHash });
+      const { data: isBlocked, error: hashError } = await supabase.rpc('is_file_blocked', { hash_input: fileHash });
+      logDbQuery(requestId, 'blocked_files', 'rpc_is_file_blocked', hashError, isBlocked ? 1 : 0);
       if (isBlocked) {
-        console.log(`🚫 Blocked file upload attempt: ${fileHash}`);
-        return new Response(
-          JSON.stringify({ error: 'This file has been blocked and cannot be uploaded' }),
-          { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-        );
+        return createErrorResponse(requestId, 403, 'file_blocked', 'File has been blocked', origin);
       }
     }
 
-    // ============ PATIENT LOOKUP ============
     const { data: patient, error: patientError } = await supabase
       .from('patients')
       .select('id, name, hospital_id, created_by')
       .eq('shareable_id', upperId)
       .single();
 
+    logDbQuery(requestId, 'patients', 'select_by_shareable_id', patientError, patient ? 1 : 0);
+
     if (patientError || !patient) {
-      console.error('❌ Patient not found:', upperId, patientError);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Patient not found',
-          details: `No patient found with ID: ${upperId}`
-        }),
-        { status: 404, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
+      return createErrorResponse(requestId, 404, 'patient_not_found', `No patient found: ${upperId}`, origin);
     }
 
-    console.log(`📋 Found patient: ${patient.name} (${patient.id})`);
-
-    // ============ PERMISSION CHECK ============
     let hasPermission = false;
-    let permissionReason = '';
-
-    // Check 1: Is user the creator of this patient?
     if (patient.created_by === user.id) {
       hasPermission = true;
-      permissionReason = 'creator';
-      console.log(`✅ Permission granted: User created this patient`);
     }
 
-    // Check 2: Is user hospital staff for this patient's hospital?
-    if (!hasPermission && patient.hospital_id) {
-      const { data: staffUser } = await supabase
-        .from('users')
-        .select('id, role, hospital_id')
-        .eq('id', user.id)
-        .eq('role', 'hospital_staff')
-        .eq('hospital_id', patient.hospital_id)
-        .single();
-
-      if (staffUser) {
-        hasPermission = true;
-        permissionReason = 'hospital_staff';
-        console.log(`✅ Permission granted: User is hospital staff`);
-      }
-    }
-
-    // Check 3: Is user admin?
     if (!hasPermission) {
       const { data: userData } = await supabase
         .from('users')
-        .select('role')
+        .select('role, hospital_id')
         .eq('id', user.id)
         .single();
 
-      if (userData?.role === 'admin') {
+      logDbQuery(requestId, 'users', 'select_for_permission', null, userData ? 1 : 0);
+
+      if (userData?.role === 'hospital_staff' && userData.hospital_id === patient.hospital_id) {
         hasPermission = true;
-        permissionReason = 'admin';
-        console.log(`✅ Permission granted: Admin user`);
+      }
+      if (!hasPermission && userData?.role === 'admin') {
+        hasPermission = true;
       }
     }
 
     if (!hasPermission) {
-      console.error('❌ Permission denied for user:', user.id, 'patient:', patient.id);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Permission denied',
-          details: 'You do not have permission to upload documents for this patient. You must either be the patient creator, hospital staff at the patient\'s hospital, or an admin.'
-        }),
-        { status: 403, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
+      return createErrorResponse(requestId, 403, 'access_denied', 'No permission - RLS mismatch', origin);
     }
 
-    // ============ SERVER-SIDE PROCESSING ============
-    let textToAnalyze: string | null = ocrResult?.text || null;
-    let analysisSource = 'client-ocr';
-    let requiresOcr = false;
-    let finalAiAnalysisResult = (aiAnalysisResult && aiAnalysisResult.confidence > 0.5 && aiAnalysisResult.keywords?.length > 0) 
-      ? aiAnalysisResult 
-      : null;
+    let extractedText = '';
+    let analysisResult: any = null;
 
-    // PDF Text Extraction
-    if (file.type === 'application/pdf' && !textToAnalyze) {
-      console.log(`📄 PDF detected, extracting text...`);
-      analysisSource = 'server-pdf-extraction';
+    if (file.type === 'application/pdf' && (!ocrResult || !ocrResult.text)) {
       try {
-        const { data: extractionData, error: extractionError } = await supabase.functions.invoke('pdf-text-extractor', {
-          body: { fileContent: file.content, filename: file.name }
+        const extractionResponse = await supabase.functions.invoke('pdf-text-extractor', {
+          body: { fileContent: file.content, fileName: file.name }
         });
-
-        if (extractionError) throw new Error(`PDF extraction failed: ${extractionError.message}`);
-
-        if (extractionData.success && extractionData.extractedText) {
-          textToAnalyze = extractionData.extractedText;
-          requiresOcr = extractionData.requiresOCR;
-          console.log(`✅ Extracted ${textToAnalyze?.length || 0} characters from PDF`);
-        } else {
-          console.warn('PDF extraction failed, may require OCR');
-          requiresOcr = true;
+        if (extractionResponse.data?.extractedText) {
+          extractedText = extractionResponse.data.extractedText;
         }
-      } catch (error) {
-        console.error('PDF extraction error:', error.message);
-        requiresOcr = true;
+      } catch (extractError) {
+        console.error('Text extraction failed:', extractError);
       }
+    } else if (ocrResult?.text) {
+      extractedText = ocrResult.text;
     }
 
-    // Enhanced Document Analysis
-    if (textToAnalyze && (!finalAiAnalysisResult || file.type === 'application/pdf')) {
-      console.log(`🤖 Running AI analysis...`);
-      analysisSource = 'server-ai-analysis';
+    if (extractedText && extractedText.length > 50) {
       try {
-        const { data: analysisData, error: analysisError } = await supabase.functions.invoke('enhanced-document-analyze', {
-          body: {
-            documentId: 'temp-analysis',
-            fileContent: file.content,
-            contentType: file.type,
-            filename: file.name,
-            ocrResult: { text: textToAnalyze }
-          }
+        const analysisResponse = await supabase.functions.invoke('enhanced-document-analyze', {
+          body: { documentText: extractedText, documentType, patientId: patient.id }
         });
-
-        if (analysisError) throw new Error(`AI analysis failed: ${analysisError.message}`);
-        if (analysisData.success) {
-          finalAiAnalysisResult = analysisData;
-          console.log(`✅ AI analysis complete`);
+        if (analysisResponse.data) {
+          analysisResult = analysisResponse.data;
         }
-      } catch (error) {
-        console.error('AI analysis error:', error.message);
+      } catch (analysisError) {
+        console.error('AI analysis failed:', analysisError);
       }
+    } else if (aiAnalysisResult) {
+      analysisResult = aiAnalysisResult;
     }
 
-    // ============ STORAGE UPLOAD ============
-    const fileExtension = file.name.split('.').pop();
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileName = `${patient.id}/${timestamp}-${file.name}`;
-    const fileData = Uint8Array.from(atob(file.content), c => c.charCodeAt(0));
+    const fileBuffer = Uint8Array.from(atob(file.content), c => c.charCodeAt(0));
+    const filePath = `${patient.id}/${crypto.randomUUID()}-${file.name}`;
 
-    const { error: uploadError } = await supabase.storage
+    const { data: uploadResult, error: uploadError } = await supabase.storage
       .from('medical-documents')
-      .upload(fileName, fileData, {
+      .upload(filePath, fileBuffer, {
         contentType: file.type,
-        upsert: false
+        upsert: false,
       });
 
+    logStorageOperation(requestId, 'medical-documents', 'upload', filePath, uploadError, !uploadError);
+
     if (uploadError) {
-      console.error('❌ Storage upload error:', uploadError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to upload file to storage' }),
-        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
+      return createErrorResponse(requestId, 500, 'storage_upload_failed', uploadError.message, origin);
     }
 
-    console.log(`✅ File uploaded to storage: ${fileName}`);
+    const documentData: any = {
+      patient_id: patient.id,
+      uploaded_by: user.id,
+      filename: file.name,
+      file_path: filePath,
+      file_size: file.size,
+      document_type: documentType,
+      description: description || null,
+      tags: tags || [],
+      verification_status: analysisResult ? 'verified' : 'pending',
+      uploaded_by_user_shareable_id: user.user_metadata?.user_shareable_id || null,
+    };
 
-    // Get uploader details for traceability
-    const { data: uploaderUser } = await supabase
-      .from('users')
-      .select('user_shareable_id')
-      .eq('id', user.id)
-      .single();
+    if (extractedText) {
+      documentData.extracted_text = extractedText;
+      documentData.ocr_extracted_text = ocrResult?.text || null;
+      documentData.searchable_content = extractedText.toLowerCase();
+    }
 
-    // ============ DATABASE INSERT ============
-    const { data: documentData, error: documentError } = await supabase
+    if (analysisResult) {
+      documentData.ai_summary = analysisResult.summary || null;
+      documentData.content_keywords = analysisResult.keywords || [];
+      documentData.auto_categories = analysisResult.categories || [];
+      documentData.extracted_entities = analysisResult.entities || null;
+      documentData.content_confidence = analysisResult.confidence || null;
+      documentData.medical_specialties = analysisResult.specialties || [];
+      documentData.medical_keyword_count = analysisResult.medicalKeywordCount || 0;
+    }
+
+    if (fileHash) {
+      documentData.file_hash = fileHash;
+      await supabase.rpc('register_file_hash', {
+        hash_input: fileHash,
+        filename_input: file.name,
+        size_input: file.size,
+        content_type_input: file.type
+      });
+    }
+
+    const { data: document, error: docError } = await supabase
       .from('documents')
-      .insert({
-        patient_id: patient.id,
-        filename: file.name,
-        file_path: fileName,
-        file_size: file.size,
-        content_type: file.type,
-        document_type: documentType,
-        description: description || null,
-        tags: tags || [],
-        uploaded_by: user.id,
-        uploaded_by_user_shareable_id: uploaderUser?.user_shareable_id || null,
-        searchable_content: `${file.name} ${documentType} ${description || ''} ${tags?.join(' ') || ''}`,
-        file_hash: fileHash || null,
-        extracted_text: textToAnalyze,
-        ocr_extracted_text: ocrResult?.text || (file.type !== 'application/pdf' ? textToAnalyze : null),
-        text_density_score: finalAiAnalysisResult?.textDensityScore || ocrResult?.textDensityScore || 0,
-        medical_keyword_count: finalAiAnalysisResult?.medicalKeywordCount || ocrResult?.medicalKeywordCount || 0,
-        structural_cues: finalAiAnalysisResult?.structuralCues || ocrResult?.structuralCues || {},
-        format_supported: ocrResult?.formatSupported ?? !requiresOcr,
-        processing_notes: finalAiAnalysisResult?.processingNotes || ocrResult?.processingNotes || null,
-        verification_status: finalAiAnalysisResult?.verificationStatus || ocrResult?.verificationStatus || 'unverified',
-        content_keywords: finalAiAnalysisResult?.keywords || [],
-        auto_categories: finalAiAnalysisResult?.categories || [],
-        content_confidence: finalAiAnalysisResult?.confidence || 0,
-        extracted_entities: finalAiAnalysisResult?.entities || {},
-        medical_specialties: finalAiAnalysisResult?.entities?.specialties || [],
-        extracted_dates: finalAiAnalysisResult?.entities?.dates || [],
-        extraction_metadata: {
-          upload_timestamp: new Date().toISOString(),
-          has_ocr_results: !!ocrResult,
-          has_ai_analysis: !!finalAiAnalysisResult,
-          content_type: file.type,
-          filename: file.name,
-          analysis_source: analysisSource,
-          requires_ocr: requiresOcr,
-          permission_reason: permissionReason
-        }
-      })
+      .insert([documentData])
       .select()
       .single();
 
-    if (documentError) {
-      console.error('❌ Database insert error:', documentError);
-      // Clean up uploaded file
-      await supabase.storage.from('medical-documents').remove([fileName]);
-      return new Response(
-        JSON.stringify({ error: 'Failed to save document metadata' }),
-        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-      );
+    logDbQuery(requestId, 'documents', 'insert', docError, document ? 1 : 0);
+
+    if (docError) {
+      await supabase.storage.from('medical-documents').remove([filePath]);
+      logStorageOperation(requestId, 'medical-documents', 'cleanup_delete', filePath, null, true);
+      return createErrorResponse(requestId, 500, 'document_creation_failed', docError.message, origin);
     }
 
-    console.log(`✅ Document saved to database: ${documentData.id}`);
+    supabase.functions.invoke('generate-patient-summary', { body: { patientId: patient.id } }).catch(() => {});
+    supabase.functions.invoke('notify-patient-upload', { body: { documentId: document.id, patientId: patient.id, uploadedBy: user.id } }).catch(() => {});
 
-    // ============ POST-PROCESSING ============
-    // Generate patient summary (non-blocking)
-    supabase.functions.invoke('generate-patient-summary', {
-      body: { documentId: documentData.id, patientId: patient.id }
-    }).catch(err => console.error('Summary generation error:', err));
+    if (analysisResult?.keywords?.length > 0 || analysisResult?.entities?.length > 0) {
+      const keywords = [
+        ...(analysisResult.keywords || []).map((kw: string) => ({ document_id: document.id, keyword: kw, keyword_type: 'auto_extracted' })),
+        ...(analysisResult.entities || []).map((ent: any) => ({ document_id: document.id, keyword: ent.text || ent.value, entity_type: ent.type, entity_category: ent.category, confidence: ent.confidence }))
+      ];
 
-    // Send notifications (non-blocking)
-    supabase.functions.invoke('notify-patient-upload', {
-      body: {
-        documentId: documentData.id,
-        patientId: patient.id,
-        uploadedBy: user.id,
-        filename: file.name,
-        documentType: documentType
+      if (keywords.length > 0) {
+        const { error: kwError } = await supabase.from('document_keywords').insert(keywords);
+        logDbQuery(requestId, 'document_keywords', 'bulk_insert', kwError, keywords.length);
       }
-    }).catch(err => console.error('Notification error:', err));
-
-    // Insert keywords if available
-    if (finalAiAnalysisResult && finalAiAnalysisResult.keywords.length > 0) {
-      const keywordInserts = finalAiAnalysisResult.keywords.map(keyword => ({
-        document_id: documentData.id,
-        keyword,
-        keyword_type: 'general',
-        confidence: finalAiAnalysisResult.confidence,
-      }));
-
-      if (finalAiAnalysisResult.entities) {
-        Object.entries(finalAiAnalysisResult.entities).forEach(([entityType, entities]: [string, any]) => {
-          if (Array.isArray(entities)) {
-            entities.forEach(entity => {
-              keywordInserts.push({
-                document_id: documentData.id,
-                keyword: entity,
-                keyword_type: entityType,
-                entity_category: entityType,
-                confidence: finalAiAnalysisResult.confidence,
-              });
-            });
-          }
-        });
-      }
-
-      await supabase.from('document_keywords').insert(keywordInserts);
     }
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        documentId: documentData.id,
-        document: documentData,
-        message: `Document uploaded successfully for ${patient.name}`,
-        skipAnalysis: !!finalAiAnalysisResult,
-        analysisStatus: finalAiAnalysisResult ? 'Complete' : 'Pending'
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-    );
+    const response = {
+      success: true,
+      documentId: document.id,
+      filePath: uploadResult.path,
+      extractedText: extractedText ? `${extractedText.substring(0, 200)}...` : null,
+      analysisCompleted: !!analysisResult,
+      requestId
+    };
+
+    logResponse(requestId, 200, response);
+    return new Response(JSON.stringify(response), { status: 200, headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' } });
 
   } catch (error: any) {
-    console.error('❌ Upload error:', error);
-    return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
-    );
+    console.error(JSON.stringify({ requestId, uncaughtError: error.message, stack: error.stack }));
+    return createErrorResponse(requestId, 500, 'internal_server_error', error.message, origin);
   }
 };
 
