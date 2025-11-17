@@ -74,14 +74,14 @@ serve(async (req) => {
     }
 
     // Verify user created this patient
-    const { data: patient } = await supabase
+    const { data: patientAccess } = await supabase
       .from("patients")
       .select("id, created_by")
       .eq("id", patientId)
       .eq("created_by", user.id)
       .single();
 
-    if (!patient) {
+    if (!patientAccess) {
       return new Response(JSON.stringify({ error: "Access denied" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
