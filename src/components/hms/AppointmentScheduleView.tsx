@@ -16,8 +16,8 @@ interface Appointment {
   appointment_date: string;
   appointment_time: string;
   status: string;
-  patient: { name: string; id: string };
-  doctor: { id: string; users: { name: string } | null };
+  patient: { name: string; id: string } | null;
+  doctor: { id: string; users: { name: string } | null } | null;
   chief_complaint: string | null;
 }
 
@@ -133,7 +133,7 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
 
   const filteredDoctors = doctors.filter(doctor =>
     doctorSearch === "" || 
-    doctor.users?.name.toLowerCase().includes(doctorSearch.toLowerCase()) ||
+    doctor.users?.name?.toLowerCase().includes(doctorSearch.toLowerCase()) ||
     doctor.specialization.toLowerCase().includes(doctorSearch.toLowerCase())
   );
 
@@ -183,7 +183,7 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
               </div>
             </div>
             {filteredDoctors.map((doctor) => {
-              const doctorAppointments = appointments.filter(a => a.doctor.id === doctor.id);
+              const doctorAppointments = appointments.filter(a => a.doctor?.id === doctor.id);
               return (
                 <div
                   key={doctor.id}
@@ -339,7 +339,7 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
                           <div className="font-medium truncate">
                             {apt.appointment_time} - {format(new Date(`2000-01-01 ${apt.appointment_time}`).getTime() + 30*60000, 'HH:mm')}
                           </div>
-                          <div className="truncate">{apt.patient.name}</div>
+                          <div className="truncate">{apt.patient?.name || 'Unknown Patient'}</div>
                         </div>
                       ))}
                     </div>
@@ -380,7 +380,7 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
               <div className="flex items-start gap-2 flex-1">
                 <div className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{apt.patient.name}</div>
+                  <div className="font-medium truncate">{apt.patient?.name || 'Unknown Patient'}</div>
                   <div className="text-xs text-muted-foreground">
                     {apt.appointment_time}
                   </div>
