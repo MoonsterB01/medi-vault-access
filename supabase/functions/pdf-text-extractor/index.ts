@@ -1,21 +1,15 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/+esm';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Dynamic import for PDF.js with worker disabled
-async function getPDFLib() {
-  const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/+esm');
-  
-  // Set workerSrc to empty string to satisfy PDF.js requirement
-  // We use disableWorker: true in getDocument options
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-  
-  return pdfjsLib;
-}
+// Configure PDF.js to work without worker in Deno environment
+// MUST be set immediately after import, before any PDF operations
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
 
 // Validate if extracted text is readable (not garbage)
 function isTextReadable(text: string): boolean {
@@ -50,14 +44,12 @@ async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<{
   try {
     console.log('Attempting PDF text extraction with PDF.js...');
     
-    const pdfjsLib = await getPDFLib();
-    
     // Load the PDF document with serverless-friendly options
     const loadingTask = pdfjsLib.getDocument({ 
       data: pdfBuffer,
       isEvalSupported: false,
       useSystemFonts: true,
-      disableWorker: true
+      disableWorker: false // Use worker since we configured it
     });
     const pdf = await loadingTask.promise;
     
