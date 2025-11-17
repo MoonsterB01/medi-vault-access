@@ -178,17 +178,50 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
     if (!selectedDoctor || !selectedDate) return;
 
     try {
+      // Try RPC function first
       const { data, error } = await supabase
         .rpc('get_available_time_slots', {
           p_doctor_id: selectedDoctor.id,
           p_slot_date: format(selectedDate, 'yyyy-MM-dd')
         });
 
-      if (error) throw error;
-      setAvailableSlots(data || []);
+      if (error) {
+        console.error('RPC error, trying direct query:', error);
+        // Fallback to direct query
+        const { data: directData, error: directError } = await supabase
+          .from('appointment_slots')
+          .select('id, start_time, end_time, current_bookings, max_appointments')
+          .eq('doctor_id', selectedDoctor.id)
+          .eq('slot_date', format(selectedDate, 'yyyy-MM-dd'))
+          .eq('is_available', true)
+          .order('start_time');
+        
+        if (directError) throw directError;
+        
+        // Transform direct data to match RPC format and filter available slots
+        const transformedData = (directData || [])
+          .filter(slot => (slot.current_bookings || 0) < (slot.max_appointments || 1))
+          .map(slot => ({
+            slot_id: slot.id,
+            start_time: slot.start_time,
+            end_time: slot.end_time,
+            current_bookings: slot.current_bookings || 0,
+            max_appointments: slot.max_appointments || 1,
+            available_slots: (slot.max_appointments || 1) - (slot.current_bookings || 0)
+          }));
+        
+        setAvailableSlots(transformedData);
+      } else {
+        setAvailableSlots(data || []);
+      }
     } catch (error) {
       console.error('Error fetching slots:', error);
       setAvailableSlots([]);
+      toast({
+        title: "Error Loading Slots",
+        description: "Unable to load available time slots. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 

@@ -165,6 +165,25 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
 
     setLoading(true);
     try {
+      // Log current user context for debugging
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Creating slots as user:', user?.email);
+      
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('hospital_id, role')
+        .eq('id', user?.id)
+        .single();
+      
+      console.log('User hospital context:', userData);
+      
+      // Show warning if hospital_id is null
+      if (!userData?.hospital_id) {
+        toast.error('Your account is not properly associated with a hospital. Please contact support.');
+        setLoading(false);
+        return;
+      }
+      
       const slotsToInsert = newSlots.map(slot => ({
         doctor_id: selectedDoctor,
         slot_date: slot.date,
@@ -182,7 +201,10 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
         const { error } = await supabase
           .from('appointment_slots')
           .insert(batch);
-        if (error) throw error;
+        if (error) {
+          console.error('Detailed insert error:', error);
+          throw error;
+        }
       }
 
       toast.success(`Saved ${slotsToInsert.length} time slot(s) successfully`);
@@ -190,6 +212,7 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
       setCalendarSlots([]);
       setPreviewSlots([]);
     } catch (error: any) {
+      console.error('Detailed error:', error);
       toast.error(error.message || 'Failed to save slots');
     } finally {
       setLoading(false);
