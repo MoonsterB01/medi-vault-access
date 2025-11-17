@@ -7,9 +7,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Configure PDF.js to work without worker in Deno environment
-// MUST be set immediately after import, before any PDF operations
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
+// Disable PDF.js worker for Deno/Edge Function environment
+// Workers are not supported in Supabase Edge Runtime
+pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 
 // Validate if extracted text is readable (not garbage)
 function isTextReadable(text: string): boolean {
@@ -44,12 +44,14 @@ async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<{
   try {
     console.log('Attempting PDF text extraction with PDF.js...');
     
-    // Load the PDF document with serverless-friendly options
+    // Load the PDF document with worker disabled for Edge Function environment
     const loadingTask = pdfjsLib.getDocument({ 
       data: pdfBuffer,
       isEvalSupported: false,
       useSystemFonts: true,
-      disableWorker: false // Use worker since we configured it
+      disableWorker: true, // CRITICAL: Must disable worker in Deno
+      useWorkerFetch: false,
+      verbosity: 0
     });
     const pdf = await loadingTask.promise;
     
