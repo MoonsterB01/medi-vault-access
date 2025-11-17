@@ -36,12 +36,7 @@ export default function PublicUpload() {
             </CardContent>
           </Card>
 
-          <DocumentUpload 
-            shareableId={shareableId}
-            onUploadSuccess={() => {
-              // Could add additional success handling here
-            }}
-          />
+      <DocumentUpload onUploadSuccess={() => {}} />
 
           <Card className="mt-6">
             <CardContent className="pt-6">
