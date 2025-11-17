@@ -111,12 +111,47 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
       return;
     }
 
+    // Helper overlap check
+    const toMinutes = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+    const overlaps = (aStart: string, aEnd: string, bStart: string, bEnd: string) =>
+      toMinutes(aStart) < toMinutes(bEnd) && toMinutes(aEnd) > toMinutes(bStart);
+
     setLoading(true);
     try {
       const allSlots = generatePreview();
-      
-      // Prepare slots for insertion
-      const slotsToInsert = allSlots.map(slot => ({
+
+      // Fetch existing slots for the selected date range to detect conflicts client-side
+      const { data: existingSlots, error: fetchErr } = await supabase
+        .from('appointment_slots')
+        .select('slot_date, start_time, end_time')
+        .eq('doctor_id', selectedDoctor)
+        .gte('slot_date', startDate)
+        .lte('slot_date', endDate);
+      if (fetchErr) throw fetchErr;
+
+      // Split into conflicting and safe slots
+      const conflicts: typeof allSlots = [];
+      const safe: typeof allSlots = [];
+      for (const s of allSlots) {
+        const conflict = (existingSlots || []).some(e =>
+          e.slot_date === s.date && overlaps(s.start_time, s.end_time, e.start_time, e.end_time)
+        );
+        if (conflict) conflicts.push(s); else safe.push(s);
+      }
+
+      if (conflicts.length > 0) {
+        toast.warning(`Skipped ${conflicts.length} conflicting slot(s). Creating ${safe.length} new slot(s).`);
+      }
+      if (safe.length === 0) {
+        toast.info('No new slots to create. All generated slots conflict with existing ones.');
+        return;
+      }
+
+      // Prepare safe slots for insertion
+      const slotsToInsert = safe.map(slot => ({
         doctor_id: selectedDoctor,
         slot_date: slot.date,
         start_time: slot.start_time,
@@ -133,11 +168,10 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
         const { error } = await supabase
           .from('appointment_slots')
           .insert(batch);
-
         if (error) throw error;
       }
 
-      toast.success(`Generated ${slotsToInsert.length} time slots successfully`);
+      toast.success(`Generated ${slotsToInsert.length} time slot(s) successfully`);
       setPreviewSlots([]);
     } catch (error: any) {
       toast.error(error.message || 'Failed to generate slots');
