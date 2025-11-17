@@ -13,7 +13,6 @@ import {
 } from "../_shared/diagnostics.ts";
 
 interface UploadRequest {
-  shareableId: string;
   file: {
     name: string;
     content: string;
@@ -64,12 +63,29 @@ const handler = async (req: Request): Promise<Response> => {
       return createErrorResponse(requestId, 400, 'invalid_request_body', err.message, origin);
     }
 
-    const { shareableId, file, documentType, description, tags, ocrResult, aiAnalysisResult, fileHash } = uploadData;
+    const { file, documentType, description, tags, ocrResult, aiAnalysisResult, fileHash } = uploadData;
 
-    const upperId = shareableId.toUpperCase();
-    if (!upperId.startsWith('MED-')) {
-      return createErrorResponse(requestId, 400, 'invalid_patient_id_format', 'Only MED-ID format supported', origin);
+    console.log(JSON.stringify({ requestId, userId: user.id, step: 'fetching_patient_record' }));
+
+    // Get patient record for authenticated user
+    const { data: patients, error: patientError } = await supabase
+      .from('patients')
+      .select('id, name, shareable_id')
+      .eq('created_by', user.id)
+      .limit(1);
+    
+    logDbQuery(requestId, 'patients', 'select_by_created_by', patientError, patients?.length);
+    
+    if (patientError) {
+      return createErrorResponse(requestId, 500, 'database_error', 'Failed to fetch patient record', origin);
     }
+    
+    if (!patients || patients.length === 0) {
+      return createErrorResponse(requestId, 404, 'no_patient_record', 'No patient record found. Please contact support.', origin);
+    }
+
+    const patient = patients[0];
+    console.log(JSON.stringify({ requestId, patientId: patient.id, patientName: patient.name, step: 'patient_found' }));
 
     if (fileHash) {
       const { data: isBlocked, error: hashError } = await supabase.rpc('is_file_blocked', { hash_input: fileHash });
@@ -77,44 +93,6 @@ const handler = async (req: Request): Promise<Response> => {
       if (isBlocked) {
         return createErrorResponse(requestId, 403, 'file_blocked', 'File has been blocked', origin);
       }
-    }
-
-    const { data: patient, error: patientError } = await supabase
-      .from('patients')
-      .select('id, name, hospital_id, created_by')
-      .eq('shareable_id', upperId)
-      .single();
-
-    logDbQuery(requestId, 'patients', 'select_by_shareable_id', patientError, patient ? 1 : 0);
-
-    if (patientError || !patient) {
-      return createErrorResponse(requestId, 404, 'patient_not_found', `No patient found: ${upperId}`, origin);
-    }
-
-    let hasPermission = false;
-    if (patient.created_by === user.id) {
-      hasPermission = true;
-    }
-
-    if (!hasPermission) {
-      const { data: userData } = await supabase
-        .from('users')
-        .select('role, hospital_id')
-        .eq('id', user.id)
-        .single();
-
-      logDbQuery(requestId, 'users', 'select_for_permission', null, userData ? 1 : 0);
-
-      if (userData?.role === 'hospital_staff' && userData.hospital_id === patient.hospital_id) {
-        hasPermission = true;
-      }
-      if (!hasPermission && userData?.role === 'admin') {
-        hasPermission = true;
-      }
-    }
-
-    if (!hasPermission) {
-      return createErrorResponse(requestId, 403, 'access_denied', 'No permission - RLS mismatch', origin);
     }
 
     let extractedText = '';

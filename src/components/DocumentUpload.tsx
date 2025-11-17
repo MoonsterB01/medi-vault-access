@@ -7,9 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, Camera, CheckCircle, AlertTriangle, Eye, Shield } from "lucide-react";
+import { Upload, FileText, Camera, CheckCircle, AlertTriangle, Eye, Shield, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import ProfileSelector from "@/components/ProfileSelector";
 import { DocumentScanner } from "@/components/DocumentScanner";
 import { ContentAnalyzer } from "@/components/ContentAnalyzer";
 import OCRProcessor from "@/components/OCRProcessor";
@@ -18,11 +17,9 @@ import { generateFileHash, getFileHashInfo } from "@/lib/fileHash";
 /**
  * @interface DocumentUploadProps
  * @description Defines the props for the DocumentUpload component.
- * @property {string} [shareableId] - The shareable ID of the patient to upload the document for.
  * @property {() => void} [onUploadSuccess] - An optional callback function to be called when the upload is successful.
  */
 interface DocumentUploadProps {
-  shareableId?: string;
   onUploadSuccess?: () => void;
 }
 
@@ -69,14 +66,14 @@ interface AIAnalysisResult {
  * @param {DocumentUploadProps} props - The props for the component.
  * @returns {JSX.Element} - The rendered DocumentUpload component.
  */
-export default function DocumentUpload({ shareableId: propShareableId, onUploadSuccess }: DocumentUploadProps) {
+export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
-  const [shareableId, setShareableId] = useState(propShareableId || "");
-  const [selectedPatientName, setSelectedPatientName] = useState("");
+  const [patientId, setPatientId] = useState<string | null>(null);
+  const [patientName, setPatientName] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [showAnalyzer, setShowAnalyzer] = useState(false);
   const [showOCR, setShowOCR] = useState(false);
@@ -91,14 +88,38 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
   const [isAnalyzingWithAI, setIsAnalyzingWithAI] = useState(false);
   const { toast } = useToast();
 
-  // Keep input in sync if parent provides/updates shareableId
   useEffect(() => {
-    setShareableId(propShareableId || "");
-  }, [propShareableId]);
+    fetchUserPatient();
+  }, []);
 
-  const handleProfileChange = (newShareableId: string, patientName: string) => {
-    setShareableId(newShareableId);
-    setSelectedPatientName(patientName);
+  const fetchUserPatient = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to upload documents",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const { data: patients, error } = await supabase
+      .from('patients')
+      .select('id, name')
+      .eq('created_by', user.id)
+      .limit(1);
+      
+    if (error || !patients || patients.length === 0) {
+      toast({ 
+        title: "No Patient Record", 
+        description: "Please contact support to set up your patient profile.",
+        variant: "destructive" 
+      });
+      return;
+    }
+    
+    setPatientId(patients[0].id);
+    setPatientName(patients[0].name);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -423,7 +444,7 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!file || !documentType || !shareableId) {
+    if (!file || !documentType || !patientId) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields and select a file",
@@ -462,19 +483,6 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
       return;
     }
 
-    // Normalize and validate shareable ID (accept MED-XXXXXXXX or USER-XXXXXXXX)
-    const normalizedId = shareableId.trim().toUpperCase();
-    const isValidMedId = /^MED-[A-Z0-9]{8}$/.test(normalizedId);
-    const isValidUserId = /^USER-[A-Z0-9]{8}$/.test(normalizedId);
-    if (!isValidMedId && !isValidUserId) {
-      toast({
-        title: "Invalid shareable ID",
-        description: "Enter a valid MED-XXXXXXXX or USER-XXXXXXXX ID.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setUploading(true);
     try {
       // Get current user session for authenticated request
@@ -493,7 +501,6 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
 
       // Enhanced upload payload with OCR and AI analysis results
       const uploadPayload = {
-        shareableId: normalizedId,
         file: {
           name: file.name,
           content: fileContent,
@@ -555,7 +562,6 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     setDocumentType("");
     setDescription("");
     setTags("");
-    if (!propShareableId) setShareableId("");
     setOcrResult(null);
     setAiAnalysisResult(null);
     setRequiresUserVerification(false);
@@ -597,50 +603,33 @@ export default function DocumentUpload({ shareableId: propShareableId, onUploadS
     }
   };
 
-  return (
-    <div className="w-full max-w-2xl mx-auto space-y-6">
-      {/* Profile Selector for family members */}
-      {!propShareableId && (
-        <ProfileSelector 
-          onProfileChange={handleProfileChange}
-          selectedShareableId={shareableId}
-        />
-      )}
+  if (!patientId) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Upload Medical Document</CardTitle>
+          <CardDescription>Loading your patient profile...</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
 
+  return (
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
             Upload Medical Document
-            {selectedPatientName && (
-              <span className="text-sm font-normal text-muted-foreground ml-2">
-                → {selectedPatientName}
-              </span>
-            )}
           </CardTitle>
-          <CardDescription>
-            Upload documents using a patient's shareable ID
+          <CardDescription className="flex items-center gap-2 mt-2">
+            <User className="h-4 w-4" />
+            Uploading as: <span className="font-medium text-foreground">{patientName}</span>
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleUpload} className="space-y-4">
-            {!propShareableId && !shareableId && (
-              <div className="space-y-2">
-                <Label htmlFor="shareable-id">Patient Shareable ID *</Label>
-                <Input
-                  id="shareable-id"
-                  placeholder="e.g., MED-ABC12345 or USER-ABC12345"
-                  value={shareableId}
-                  onChange={(e) => setShareableId(e.target.value.toUpperCase())}
-                  required
-                />
-                <p className="text-sm text-gray-600">
-                  Tip: You can use MED-XXXXXXXX or your USER-XXXXXXXX ID.
-                </p>
-              </div>
-            )}
-
-          <div className="space-y-4">
+          <form onSubmit={handleUpload} className="space-y-6">
+            <div className="space-y-4">
             <Label>Document File *</Label>
             
             {/* File Upload Options */}

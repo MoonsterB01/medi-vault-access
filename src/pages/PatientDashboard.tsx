@@ -447,10 +447,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
               <AppointmentBooking user={user} />
             </TabsContent>
             <TabsContent value="upload" className="mt-6" id="tab-content-upload">
-              <DocumentUpload
-                shareableId={patientData?.shareable_id}
-                onUploadSuccess={onUploadSuccess}
-              />
+              <DocumentUpload onUploadSuccess={onUploadSuccess} />
             </TabsContent>
           </Tabs>
         </div>
