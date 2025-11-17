@@ -40,7 +40,6 @@ interface PatientDashboardProps {
  */
 export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   const [patientData, setPatientData] = useState<any>(null);
-  const [availablePatients, setAvailablePatients] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -108,33 +107,25 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
 
   const fetchPatientData = async (userId: string) => {
     try {
-      const { data: patients, error: patientsErr } = await supabase
+      const { data: patient, error: patientsErr } = await supabase
         .from('patients')
         .select('*')
-        .eq('created_by', userId);
+        .eq('created_by', userId)
+        .single();
 
       if (patientsErr) throw patientsErr;
 
-      if (!patients || patients.length === 0) {
+      if (!patient) {
         toast({
           title: "No Patient Record",
-          description: "No patient record found for your account.",
+          description: "No patient record found for your account. Please contact support.",
           variant: "destructive",
         });
         return;
       }
 
-      setAvailablePatients(patients);
-
-      if (patients.length === 1) {
-        setPatientData(patients[0]);
-        await fetchDocuments(patients[0].id);
-      } else if (patients.length > 1) {
-        toast({
-          title: "Multiple Patient Records",
-          description: `You have ${patients.length} patient records. Please select one to view.`,
-        });
-      }
+      setPatientData(patient);
+      await fetchDocuments(patient.id);
     } catch (error: any) {
       toast({
         title: "Error Loading Data",
@@ -142,15 +133,6 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
         variant: "destructive",
       });
     }
-  };
-
-  const handlePatientSelect = async (patient: any) => {
-    setPatientData(patient);
-    await fetchDocuments(patient.id);
-    toast({
-      title: "Patient Selected",
-      description: `Now viewing records for ${patient.name}`,
-    });
   };
 
   const fetchDocuments = async (patientId: string) => {
@@ -283,33 +265,6 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
               </div>
             </CardContent>
           </Card>
-
-          {availablePatients.length > 1 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Select Patient Profile
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Select
-                  value={patientData?.id || ""}
-                  onValueChange={(patientId) => {
-                    const patient = availablePatients.find(p => p.id === patientId);
-                    if (patient) handlePatientSelect(patient);
-                  }}
-                >
-                  <SelectTrigger><SelectValue placeholder="Select a patient" /></SelectTrigger>
-                  <SelectContent>
-                    {availablePatients.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
-          )}
 
           {patientData && (
             <>
