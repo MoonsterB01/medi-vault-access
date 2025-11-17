@@ -171,9 +171,12 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
     return type ? type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Document';
   };
 
-  const onUploadSuccess = () => {
+  const onUploadSuccess = async () => {
     if (patientData?.id) {
-      fetchDocuments(patientData.id);
+      await fetchDocuments(patientData.id);
+      // Trigger summary regeneration after upload
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      refreshSummary();
     }
   };
 
@@ -184,7 +187,12 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
       const { error } = await supabase.from('documents').delete().eq('id', documentId);
       if (error) throw error;
       toast({ title: "Document Deleted", description: `${filename} has been deleted.` });
-      if (patientData?.id) fetchDocuments(patientData.id);
+      if (patientData?.id) {
+        await fetchDocuments(patientData.id);
+        // Trigger summary regeneration after deletion
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        refreshSummary();
+      }
     } catch (error: any) {
       toast({ title: "Delete Failed", description: error.message, variant: "destructive" });
     }
