@@ -1,10 +1,15 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import {
+  createRequestId,
+  logRequest,
+  logResponse,
+  logAuthDiagnostics,
+  corsHeaders,
+  logDbQuery,
+  logStorageOperation,
+  createErrorResponse
+} from "../_shared/diagnostics.ts";
 
 /**
  * @function serve
@@ -13,12 +18,21 @@ const corsHeaders = {
  * @returns {Promise<Response>} - A promise that resolves with a JSON response indicating the success or failure of the upload.
  */
 serve(async (req) => {
-  // Handle CORS preflight requests
+  const requestId = createRequestId();
+  const origin = req.headers.get('origin');
+  
+  logRequest(requestId, req);
+  
+  // Handle CORS preflight - respond BEFORE auth
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      status: 204, 
+      headers: corsHeaders(origin) 
+    });
   }
 
   try {
+    logAuthDiagnostics(requestId, req);
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -36,10 +50,7 @@ serve(async (req) => {
     // Get current user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return createErrorResponse(requestId, 401, 'unauthorized', authError?.message, origin);
     }
 
     const formData = await req.formData();
@@ -51,10 +62,7 @@ serve(async (req) => {
     const recordDate = formData.get('recordDate') as string;
 
     if (!file || !patientId || !recordType || !recordDate) {
-      return new Response(JSON.stringify({ error: 'Missing required fields' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return createErrorResponse(requestId, 400, 'missing_required_fields', 'file, patientId, recordType, and recordDate are required', origin);
     }
 
     // Get user info to check hospital
@@ -64,11 +72,10 @@ serve(async (req) => {
       .eq('id', user.id)
       .single();
 
+    logDbQuery(requestId, 'users', 'select', userError, userData ? 1 : 0);
+
     if (userError || !userData) {
-      return new Response(JSON.stringify({ error: 'User not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return createErrorResponse(requestId, 404, 'user_not_found', userError?.message, origin);
     }
 
     // Verify patient exists and belongs to user's hospital
@@ -78,18 +85,14 @@ serve(async (req) => {
       .eq('id', patientId)
       .single();
 
+    logDbQuery(requestId, 'patients', 'select', patientError, patient ? 1 : 0);
+
     if (patientError || !patient) {
-      return new Response(JSON.stringify({ error: 'Patient not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return createErrorResponse(requestId, 404, 'patient_not_found', patientError?.message, origin);
     }
 
     if (userData.role === 'hospital_staff' && patient.hospital_id !== userData.hospital_id) {
-      return new Response(JSON.stringify({ error: 'Access denied: Patient not in your hospital' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return createErrorResponse(requestId, 403, 'access_denied', 'Patient not in your hospital - RLS mismatch', origin);
     }
 
     // Generate unique filename
@@ -105,18 +108,17 @@ serve(async (req) => {
         upsert: false,
       });
 
+    logStorageOperation(requestId, 'medical_records', 'upload', fileName, uploadError, !uploadError);
+
     if (uploadError) {
       console.error('Upload error:', uploadError);
-      return new Response(JSON.stringify({ error: 'File upload failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return createErrorResponse(requestId, 500, 'file_upload_failed', uploadError.message, origin);
     }
 
     // Save record metadata
     const { data: recordData, error: recordError } = await supabase
       .from('medical_records')
-      .insert({
+      .insert([{
         id: recordId,
         patient_id: patientId,
         uploaded_by: user.id,
@@ -125,18 +127,18 @@ serve(async (req) => {
         severity: severity || 'low',
         record_date: recordDate,
         file_url: uploadData.path,
-      })
+      }])
       .select()
       .single();
+
+    logDbQuery(requestId, 'medical_records', 'insert', recordError, recordData ? 1 : 0);
 
     if (recordError) {
       console.error('Record creation error:', recordError);
       // Clean up uploaded file if record creation fails
       await supabase.storage.from('medical_records').remove([fileName]);
-      return new Response(JSON.stringify({ error: 'Record creation failed' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      logStorageOperation(requestId, 'medical_records', 'cleanup_delete', fileName, null, true);
+      return createErrorResponse(requestId, 500, 'record_creation_failed', recordError.message, origin);
     }
 
     // Trigger notification (call other edge function)
@@ -154,18 +156,20 @@ serve(async (req) => {
       // Don't fail the upload if notification fails
     }
 
-    return new Response(JSON.stringify({
+    const response = {
       success: true,
       record: recordData,
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      requestId
+    };
+    
+    logResponse(requestId, 200, response);
+    
+    return new Response(JSON.stringify(response), {
+      headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' },
     });
 
-  } catch (error) {
-    console.error('Error in upload-record function:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+  } catch (error: any) {
+    console.error(JSON.stringify({ requestId, uncaughtError: error.message, stack: error.stack }));
+    return createErrorResponse(requestId, 500, 'internal_server_error', error.message, origin);
   }
 });
