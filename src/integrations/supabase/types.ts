@@ -804,6 +804,55 @@ export type Database = {
           },
         ]
       }
+      family_access: {
+        Row: {
+          can_view: boolean
+          created_at: string
+          granted_by: string
+          id: string
+          patient_id: string
+          user_id: string
+        }
+        Insert: {
+          can_view?: boolean
+          created_at?: string
+          granted_by: string
+          id?: string
+          patient_id: string
+          user_id: string
+        }
+        Update: {
+          can_view?: boolean
+          created_at?: string
+          granted_by?: string
+          id?: string
+          patient_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_access_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_access_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_access_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       file_hashes: {
         Row: {
           content_type: string | null

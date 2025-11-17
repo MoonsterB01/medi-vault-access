@@ -59,12 +59,12 @@ const hospitalStaffMenuItems = [
  * @description Defines the props for the AppSidebar component.
  * @property {any} user - The user object.
  * @property {any} patientData - The patient data object.
- * @property {'patient' | 'hospital_staff' | 'admin' | 'doctor'} userRole - The role of the current user.
+ * @property {'patient' | 'hospital_staff' | 'admin' | 'doctor' | 'family_member'} userRole - The role of the current user.
  */
 interface AppSidebarProps {
   user: any;
   patientData: any;
-  userRole: 'patient' | 'hospital_staff' | 'admin' | 'doctor';
+  userRole: 'patient' | 'hospital_staff' | 'admin' | 'doctor' | 'family_member';
 }
 
 /**

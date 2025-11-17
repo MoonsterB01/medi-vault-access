@@ -51,7 +51,7 @@ export default function Index() {
   };
 
   const handlePatientPortal = () => {
-    if (user && user.role === 'patient') {
+    if (user && (user.role === 'patient' || user.role === 'family_member')) {
       navigate('/patient-dashboard');
     } else {
       navigate('/auth');
