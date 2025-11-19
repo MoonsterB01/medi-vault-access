@@ -131,11 +131,17 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
     }
   };
 
-  const filteredDoctors = doctors.filter(doctor =>
-    doctorSearch === "" || 
-    doctor.users?.name?.toLowerCase().includes(doctorSearch.toLowerCase()) ||
-    doctor.specialization.toLowerCase().includes(doctorSearch.toLowerCase())
-  );
+  const filteredDoctors = doctors.filter(doctor => {
+    if (!doctor) return false;
+    if (doctorSearch === "") return true;
+    
+    const doctorName = doctor.users?.name || "";
+    const specialization = doctor.specialization || "";
+    const searchLower = doctorSearch.toLowerCase();
+    
+    return doctorName.toLowerCase().includes(searchLower) ||
+           specialization.toLowerCase().includes(searchLower);
+  });
 
   const todayAppointments = appointments
     .filter(apt => {
@@ -183,7 +189,10 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
               </div>
             </div>
             {filteredDoctors.map((doctor) => {
+              if (!doctor) return null;
               const doctorAppointments = appointments.filter(a => a.doctor?.id === doctor.id);
+              const displayName = (doctor.users && doctor.users.name) ? doctor.users.name : (doctor.doctor_id || 'Unknown Doctor');
+              
               return (
                 <div
                   key={doctor.id}
@@ -195,7 +204,7 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
                 >
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-blue-500" />
-                    <span>{doctor.users?.name || doctor.doctor_id} ({doctorAppointments.length})</span>
+                    <span>{displayName} ({doctorAppointments.length})</span>
                   </div>
                 </div>
               );
@@ -315,7 +324,7 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
 
               {timeSlots.map((time) => {
                 const timeAppointments = appointments.filter(apt => 
-                  apt.appointment_time.substring(0, 5) === time
+                  apt && apt.appointment_time && apt.appointment_time.substring(0, 5) === time
                 );
 
                 return (
@@ -324,24 +333,29 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
                       {time}
                     </div>
                     <div key={`slot-${time}`} className="p-1 min-h-16 relative">
-                      {timeAppointments.map((apt) => (
-                        <div
-                          key={apt.id}
-                          className={cn(
-                            "absolute left-1 right-1 p-2 rounded text-white text-xs",
-                            getStatusColor(apt.status)
-                          )}
-                          style={{
-                            top: '4px',
-                            height: 'calc(100% - 8px)',
-                          }}
-                        >
-                          <div className="font-medium truncate">
-                            {apt.appointment_time} - {format(new Date(`2000-01-01 ${apt.appointment_time}`).getTime() + 30*60000, 'HH:mm')}
+                      {timeAppointments.map((apt) => {
+                        if (!apt) return null;
+                        const patientName = (apt.patient && apt.patient.name) ? apt.patient.name : 'Unknown Patient';
+                        
+                        return (
+                          <div
+                            key={apt.id}
+                            className={cn(
+                              "absolute left-1 right-1 p-2 rounded text-white text-xs",
+                              getStatusColor(apt.status)
+                            )}
+                            style={{
+                              top: '4px',
+                              height: 'calc(100% - 8px)',
+                            }}
+                          >
+                            <div className="font-medium truncate">
+                              {apt.appointment_time} - {format(new Date(`2000-01-01 ${apt.appointment_time}`).getTime() + 30*60000, 'HH:mm')}
+                            </div>
+                            <div className="truncate">{patientName}</div>
                           </div>
-                          <div className="truncate">{apt.patient?.name || 'Unknown Patient'}</div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </>
                 );
@@ -375,33 +389,38 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
           </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-auto space-y-3">
-          {todayAppointments.map((apt) => (
-            <div key={apt.id} className="flex items-start justify-between gap-2 p-2 rounded-lg hover:bg-muted/50">
-              <div className="flex items-start gap-2 flex-1">
-                <div className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{apt.patient?.name || 'Unknown Patient'}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {apt.appointment_time}
+          {todayAppointments.map((apt) => {
+            if (!apt) return null;
+            const patientName = (apt.patient && apt.patient.name) ? apt.patient.name : 'Unknown Patient';
+            
+            return (
+              <div key={apt.id} className="flex items-start justify-between gap-2 p-2 rounded-lg hover:bg-muted/50">
+                <div className="flex items-start gap-2 flex-1">
+                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{patientName}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {apt.appointment_time}
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className={cn(
+                    "text-xs",
+                    apt.status === 'confirmed' && "text-yellow-600 border-yellow-600",
+                    apt.status === 'pending' && "text-green-600 border-green-600",
+                    apt.status === 'in-progress' && "text-cyan-600 border-cyan-600",
+                    apt.status === 'completed' && "text-gray-400 border-gray-400"
+                  )}>
+                    {getStatusLabel(apt.status)}
+                  </Badge>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Star className="h-3 w-3" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className={cn(
-                  "text-xs",
-                  apt.status === 'confirmed' && "text-yellow-600 border-yellow-600",
-                  apt.status === 'pending' && "text-green-600 border-green-600",
-                  apt.status === 'in-progress' && "text-cyan-600 border-cyan-600",
-                  apt.status === 'completed' && "text-gray-400 border-gray-400"
-                )}>
-                  {getStatusLabel(apt.status)}
-                </Badge>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <Star className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {todayAppointments.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               No appointments scheduled for today
