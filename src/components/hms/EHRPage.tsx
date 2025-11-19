@@ -14,7 +14,7 @@ interface Doctor {
   user_id: string;
   users: {
     name: string;
-  };
+  } | null;
 }
 
 interface Patient {
@@ -31,7 +31,7 @@ interface Appointment {
   status: string;
   chief_complaint: string;
   patient_id: string;
-  patients: Patient;
+  patients: Patient | null;
 }
 
 export default function EHRPage({ hospitalData }: { hospitalData: any }) {
@@ -154,7 +154,7 @@ export default function EHRPage({ hospitalData }: { hospitalData: any }) {
             <SelectContent>
               {doctors.map((doctor) => (
                 <SelectItem key={doctor.id} value={doctor.id}>
-                  {doctor.users.name}
+                  {doctor.users?.name || doctor.doctor_id || 'Unknown Doctor'}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -211,9 +211,9 @@ export default function EHRPage({ hospitalData }: { hospitalData: any }) {
                       <TableRow key={appointment.id}>
                         <TableCell>{index + 1}</TableCell>
                         <TableCell>{appointment.appointment_time}</TableCell>
-                        <TableCell className="font-medium">{appointment.patients.name}</TableCell>
-                        <TableCell>{appointment.patients.primary_contact}</TableCell>
-                        <TableCell className="capitalize">{appointment.patients.gender}</TableCell>
+                        <TableCell className="font-medium">{appointment.patients?.name || 'Unknown Patient'}</TableCell>
+                        <TableCell>{appointment.patients?.primary_contact || 'N/A'}</TableCell>
+                        <TableCell className="capitalize">{appointment.patients?.gender || 'N/A'}</TableCell>
                         <TableCell>{calculateWaitingTime(appointment.appointment_time)}</TableCell>
                         <TableCell className="capitalize">{appointment.appointment_type || "Consultation"}</TableCell>
                         <TableCell>{getStatusBadge(appointment.status)}</TableCell>
