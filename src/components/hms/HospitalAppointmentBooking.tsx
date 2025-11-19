@@ -26,6 +26,8 @@ interface Patient {
   name: string;
   shareable_id: string;
   primary_contact: string;
+  hospital_id: string | null;
+  hospitals: { name: string } | null;
 }
 
 interface TimeSlot {
@@ -109,9 +111,9 @@ export default function HospitalAppointmentBooking({ hospitalData }: { hospitalD
     try {
       const { data, error } = await supabase
         .from('patients')
-        .select('id, name, shareable_id, primary_contact')
+        .select('id, name, shareable_id, primary_contact, hospital_id, hospitals(name)')
         .or(`name.ilike.%${patientSearchTerm}%,shareable_id.ilike.%${patientSearchTerm}%,primary_contact.ilike.%${patientSearchTerm}%`)
-        .limit(5);
+        .limit(10);
 
       if (error) throw error;
       setSearchResults(data || []);
@@ -204,14 +206,21 @@ export default function HospitalAppointmentBooking({ hospitalData }: { hospitalD
                   {searchResults.map((patient) => (
                     <div
                       key={patient.id}
-                      className="p-3 hover:bg-muted cursor-pointer"
+                      className="p-3 hover:bg-accent cursor-pointer rounded-md border-b last:border-0"
                       onClick={() => {
                         setSelectedPatient(patient);
                         setSearchResults([]);
                         setPatientSearchTerm(patient.name);
                       }}
                     >
-                      <div className="font-medium">{patient.name}</div>
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium">{patient.name}</div>
+                        {patient.hospital_id !== hospitalData.id && (
+                          <Badge variant="outline" className="text-xs">
+                            {patient.hospitals?.name || 'External'}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="text-sm text-muted-foreground">
                         ID: {patient.shareable_id} • {patient.primary_contact}
                       </div>
@@ -223,14 +232,18 @@ export default function HospitalAppointmentBooking({ hospitalData }: { hospitalD
 
             {selectedPatient && (
               <div className="p-4 border rounded-md bg-muted/50">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-2">
                   <div>
                     <div className="font-medium">{selectedPatient.name}</div>
                     <div className="text-sm text-muted-foreground">
-                      {selectedPatient.shareable_id}
+                      {selectedPatient.shareable_id} • {selectedPatient.primary_contact}
                     </div>
                   </div>
-                  <CheckCircle className="h-5 w-5 text-primary" />
+                  {selectedPatient.hospital_id !== hospitalData.id && (
+                    <Badge variant="secondary" className="text-xs">
+                      {selectedPatient.hospitals?.name || 'External Patient'}
+                    </Badge>
+                  )}
                 </div>
               </div>
             )}

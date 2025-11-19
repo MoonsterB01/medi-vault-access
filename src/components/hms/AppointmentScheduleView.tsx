@@ -16,7 +16,7 @@ interface Appointment {
   appointment_date: string;
   appointment_time: string;
   status: string;
-  patient: { name: string; id: string } | null;
+  patient: { name: string; id: string; shareable_id: string } | null;
   doctor: { id: string; users: { name: string } | null } | null;
   chief_complaint: string | null;
 }
@@ -97,7 +97,7 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
         appointment_time,
         status,
         chief_complaint,
-        patient:patients(id, name),
+        patient:patients(id, name, shareable_id),
         doctor:doctors(id, users(name))
       `)
       .gte('appointment_date', format(startDate, 'yyyy-MM-dd'))
@@ -352,7 +352,10 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
                             <div className="font-medium truncate">
                               {apt.appointment_time} - {format(new Date(`2000-01-01 ${apt.appointment_time}`).getTime() + 30*60000, 'HH:mm')}
                             </div>
-                            <div className="truncate">{patientName}</div>
+                            <div className="text-xs truncate">{patientName}</div>
+                            {apt.patient?.shareable_id && (
+                              <div className="text-xs opacity-90">{apt.patient.shareable_id}</div>
+                            )}
                           </div>
                         );
                       })}
@@ -400,6 +403,7 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{patientName}</div>
                     <div className="text-xs text-muted-foreground">
+                      {apt.patient?.shareable_id && `${apt.patient.shareable_id} • `}
                       {apt.appointment_time}
                     </div>
                   </div>
