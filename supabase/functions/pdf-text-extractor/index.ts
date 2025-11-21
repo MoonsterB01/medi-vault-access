@@ -7,9 +7,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Disable PDF.js worker for Deno/Edge Function environment
-// Workers are not supported in Supabase Edge Runtime
-pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+// Configure PDF.js worker for Deno/Edge Function environment
+// Set workerSrc to satisfy PDF.js requirements (even though we disable workers)
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.js';
 
 // Validate if extracted text is readable (not garbage)
 function isTextReadable(text: string): boolean {
