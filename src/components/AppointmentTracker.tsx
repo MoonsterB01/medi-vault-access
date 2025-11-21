@@ -86,7 +86,9 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
     };
   }, [user.id]);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = async (retryCount = 0) => {
+    const maxRetries = 2;
+    
     try {
       console.log('Fetching appointments for user:', user.id);
       
@@ -98,6 +100,18 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
 
       if (patientsError) {
         console.error('Error fetching patients:', patientsError);
+        
+        // Retry on recursion or specific errors
+        if (retryCount < maxRetries && (
+          patientsError.message?.includes('recursion') || 
+          patientsError.code === 'PGRST301'
+        )) {
+          console.log(`Retrying patients fetch (${retryCount + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+          setLoading(false);
+          return fetchAppointments(retryCount + 1);
+        }
+        
         throw patientsError;
       }
 
@@ -107,6 +121,7 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
       if (patientIds.length === 0) {
         console.log('No patients found for user');
         setAppointments([]);
+        setLoading(false);
         return;
       }
 
@@ -122,6 +137,18 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
 
       if (appointmentsError) {
         console.error('Error fetching appointments:', appointmentsError);
+        
+        // Retry on recursion or specific errors
+        if (retryCount < maxRetries && (
+          appointmentsError.message?.includes('recursion') || 
+          appointmentsError.code === 'PGRST301'
+        )) {
+          console.log(`Retrying appointments fetch (${retryCount + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+          setLoading(false);
+          return fetchAppointments(retryCount + 1);
+        }
+        
         throw appointmentsError;
       }
 
@@ -130,6 +157,7 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
       if (!appointmentsData || appointmentsData.length === 0) {
         console.log('No appointments found');
         setAppointments([]);
+        setLoading(false);
         return;
       }
 
@@ -170,11 +198,20 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
 
       console.log('Enriched appointments:', enrichedAppointments);
       setAppointments(enrichedAppointments);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching appointments:', error);
+      
+      // Retry on network errors
+      if (retryCount < maxRetries && error.message?.toLowerCase().includes('network')) {
+        console.log(`Retrying due to network error (${retryCount + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        setLoading(false);
+        return fetchAppointments(retryCount + 1);
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to load appointments",
+        description: "Failed to load appointments. Please refresh the page.",
         variant: "destructive",
       });
     } finally {

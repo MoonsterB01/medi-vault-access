@@ -155,21 +155,45 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
     }
   };
 
-  const fetchPatients = async () => {
+  const fetchPatients = async (retryCount = 0) => {
+    const maxRetries = 2;
+    
     try {
       const { data, error } = await supabase
         .from('patients')
         .select('id, name, shareable_id')
         .eq('created_by', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching patients:', error);
+        
+        // Retry on recursion or specific errors
+        if (retryCount < maxRetries && (
+          error.message?.includes('recursion') || 
+          error.code === 'PGRST301'
+        )) {
+          console.log(`Retrying patients fetch (${retryCount + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+          return fetchPatients(retryCount + 1);
+        }
+        
+        throw error;
+      }
 
       setPatients(data || []);
-    } catch (error) {
-      console.error('Error fetching patients:', error);
+    } catch (error: any) {
+      console.error('Error in fetchPatients:', error);
+      
+      // Retry on network errors
+      if (retryCount < maxRetries && error.message?.toLowerCase().includes('network')) {
+        console.log(`Retrying due to network error (${retryCount + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return fetchPatients(retryCount + 1);
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to load your patients.",
+        description: "Failed to load patients. Please refresh the page.",
         variant: "destructive",
       });
     }
