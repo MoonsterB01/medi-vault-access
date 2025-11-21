@@ -106,7 +106,9 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
     }
   }, [user]);
 
-  const fetchPatientData = async (userId: string) => {
+  const fetchPatientData = async (userId: string, retryCount = 0) => {
+    const maxRetries = 2;
+    
     try {
       const { data: patient, error: patientsErr } = await supabase
         .from('patients')
@@ -114,7 +116,21 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
         .eq('created_by', userId)
         .maybeSingle();
 
-      if (patientsErr) throw patientsErr;
+      if (patientsErr) {
+        console.error('Error fetching patient data:', patientsErr);
+        
+        // Retry on recursion or specific errors
+        if (retryCount < maxRetries && (
+          patientsErr.message?.includes('recursion') || 
+          patientsErr.code === 'PGRST301'
+        )) {
+          console.log(`Retrying patient data fetch (${retryCount + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+          return fetchPatientData(userId, retryCount + 1);
+        }
+        
+        throw patientsErr;
+      }
 
       if (!patient) {
         // Try to create patient record if it doesn't exist
@@ -133,9 +149,17 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
             .single();
 
           if (createErr) {
+            console.error('Error creating patient:', createErr);
+            
+            if (retryCount < maxRetries) {
+              console.log(`Retrying patient creation (${retryCount + 1}/${maxRetries})...`);
+              await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+              return fetchPatientData(userId, retryCount + 1);
+            }
+            
             toast({
               title: "Patient Record Creation Failed",
-              description: "Unable to create your patient profile. Please contact support.",
+              description: "Unable to create your patient profile. Please refresh or contact support.",
               variant: "destructive",
             });
             return;
@@ -164,15 +188,26 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
       await fetchDocuments(patient.id);
     } catch (error: any) {
       console.error('Error fetching patient data:', error);
+      
+      // Retry on network errors
+      if (retryCount < maxRetries && error.message?.toLowerCase().includes('network')) {
+        console.log(`Retrying due to network error (${retryCount + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return fetchPatientData(userId, retryCount + 1);
+      }
+      
       toast({
         title: "Error Loading Data",
-        description: "Could not load patient data. " + error.message,
+        description: "Could not load patient data. Please refresh the page or contact support if the issue persists.",
         variant: "destructive",
       });
     }
   };
 
-  const fetchDocuments = async (patientId: string) => {
+  const fetchDocuments = async (patientId: string, retryCount = 0) => {
+    const maxRetries = 2;
+    setLoading(true);
+    
     try {
       const { data: docs, error: docsError } = await supabase
         .from('documents')
@@ -180,15 +215,42 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
         .eq('patient_id', patientId)
         .order('uploaded_at', { ascending: false });
 
-      if (docsError) throw docsError;
+      if (docsError) {
+        console.error('Error fetching documents:', docsError);
+        
+        // Retry on recursion or specific errors
+        if (retryCount < maxRetries && (
+          docsError.message?.includes('recursion') || 
+          docsError.code === 'PGRST301'
+        )) {
+          console.log(`Retrying documents fetch (${retryCount + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+          setLoading(false);
+          return fetchDocuments(patientId, retryCount + 1);
+        }
+        
+        throw docsError;
+      }
 
       setDocuments(docs || []);
     } catch (error: any) {
+      console.error('Error in fetchDocuments:', error);
+      
+      // Retry on network errors
+      if (retryCount < maxRetries && error.message?.toLowerCase().includes('network')) {
+        console.log(`Retrying due to network error (${retryCount + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        setLoading(false);
+        return fetchDocuments(patientId, retryCount + 1);
+      }
+      
       toast({
         title: "Documents Error",
-        description: `Failed to load documents: ${error.message}`,
+        description: `Failed to load documents. Please refresh the page.`,
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 

@@ -1717,7 +1717,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_appointment: {
+        Args: { appointment_id_param: string }
+        Returns: boolean
+      }
       can_user_manage_patient: {
+        Args: { patient_id_param: string }
+        Returns: boolean
+      }
+      can_view_patient_via_appointments: {
         Args: { patient_id_param: string }
         Returns: boolean
       }
@@ -1763,6 +1771,12 @@ export type Database = {
           start_time: string
         }[]
       }
+      get_user_patient_ids: {
+        Args: never
+        Returns: {
+          patient_id: string
+        }[]
+      }
       get_user_primary_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
@@ -1772,6 +1786,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["user_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      hospital_staff_can_view_patient: {
+        Args: { patient_id_param: string }
         Returns: boolean
       }
       increment_slot_booking: {
@@ -1790,6 +1808,10 @@ export type Database = {
       }
       user_can_access_patient_files: {
         Args: { patient_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
+      user_owns_patient: {
+        Args: { patient_id_param: string }
         Returns: boolean
       }
     }
