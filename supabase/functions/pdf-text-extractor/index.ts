@@ -7,8 +7,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Don't set GlobalWorkerOptions.workerSrc when using disableWorker: true
-// This prevents PDF.js from trying to load the worker file in Deno environment
+// Set workerSrc to a dummy data URL - PDF.js requires this even with disableWorker: true
+// Using a data URL prevents actual network requests while satisfying PDF.js validation
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'data:text/javascript;base64,Ly8gRHVtbXkgd29ya2VyIGZvciBEZW5v';
 
 // Validate if extracted text is readable (not garbage)
 function isTextReadable(text: string): boolean {
