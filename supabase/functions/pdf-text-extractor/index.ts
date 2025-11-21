@@ -7,9 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Configure PDF.js worker for Deno/Edge Function environment
-// Set workerSrc to satisfy PDF.js requirements (even though we disable workers)
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.js';
+// Don't set GlobalWorkerOptions.workerSrc when using disableWorker: true
+// This prevents PDF.js from trying to load the worker file in Deno environment
 
 // Validate if extracted text is readable (not garbage)
 function isTextReadable(text: string): boolean {
