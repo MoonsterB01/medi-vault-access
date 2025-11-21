@@ -1792,10 +1792,6 @@ export type Database = {
         Args: { patient_id_param: string; user_id_param: string }
         Returns: boolean
       }
-      user_has_patient_access: {
-        Args: { patient_id_param: string; user_id_param: string }
-        Returns: boolean
-      }
     }
     Enums: {
       record_type:
