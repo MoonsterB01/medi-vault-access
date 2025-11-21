@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Search, Calendar as CalendarIcon, Clock, Star, MapPin, Stethoscope } from "lucide-react";
 import { format, addDays, startOfDay } from "date-fns";
+import { withErrorBoundary } from "@/components/ErrorBoundary";
 
 /**
  * @interface Doctor
@@ -581,4 +582,7 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
   );
 };
 
-export default AppointmentBooking;
+export default withErrorBoundary(AppointmentBooking, {
+  fallbackTitle: "Appointment Booking Error",
+  fallbackMessage: "Unable to load the appointment booking system. This may be due to a database access issue. Please try refreshing the page.",
+});

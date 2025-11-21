@@ -8,6 +8,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import NotificationCenter from "@/components/NotificationCenter";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 /**
  * @interface AppLayoutProps
@@ -86,37 +87,47 @@ export default function AppLayout({ children, userRole }: AppLayoutProps) {
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar user={user} patientData={patientData} userRole={userRole} />
+    <ErrorBoundary
+      fallbackTitle="Application Error"
+      fallbackMessage="An unexpected error occurred in the application layout. Please try refreshing the page."
+    >
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full">
+          <AppSidebar user={user} patientData={patientData} userRole={userRole} />
 
-        <div className="flex-1 flex flex-col">
-          <header className="h-16 flex items-center justify-between px-6 bg-card border-b shadow-sm">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              <div className="flex items-center gap-3">
-                <User className="h-6 w-6 text-primary" />
-                <div>
-                  <h1 className="text-xl font-semibold">MediVault</h1>
-                  <p className="text-sm text-muted-foreground">Welcome, {user?.name}</p>
+          <div className="flex-1 flex flex-col">
+            <header className="h-16 flex items-center justify-between px-6 bg-card border-b shadow-sm">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger />
+                <div className="flex items-center gap-3">
+                  <User className="h-6 w-6 text-primary" />
+                  <div>
+                    <h1 className="text-xl font-semibold">MediVault</h1>
+                    <p className="text-sm text-muted-foreground">Welcome, {user?.name}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <NotificationCenter user={user} />
-              <ThemeToggle />
-              <Button onClick={handleSignOut} variant="outline" size="sm">
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
-          </header>
+              <div className="flex items-center gap-4">
+                <NotificationCenter user={user} />
+                <ThemeToggle />
+                <Button onClick={handleSignOut} variant="outline" size="sm">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
+              </div>
+            </header>
 
-          <main className="flex-1 overflow-y-auto">
-            {React.cloneElement(children, { user })}
-          </main>
+            <main className="flex-1 overflow-y-auto">
+              <ErrorBoundary
+                fallbackTitle="Page Error"
+                fallbackMessage="An error occurred on this page. The issue has been logged."
+              >
+                {React.cloneElement(children, { user })}
+              </ErrorBoundary>
+            </main>
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </ErrorBoundary>
   );
 }
