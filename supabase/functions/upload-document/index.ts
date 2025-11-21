@@ -116,7 +116,22 @@ const handler = async (req: Request): Promise<Response> => {
     if (extractedText && extractedText.length > 50) {
       try {
         const analysisResponse = await supabase.functions.invoke('enhanced-document-analyze', {
-          body: { documentText: extractedText, documentType, patientId: patient.id }
+          body: { 
+            documentId: 'temp-analysis',
+            contentType: file.type,
+            filename: file.name,
+            ocrResult: {
+              text: extractedText,
+              confidence: 0.8,
+              textDensityScore: extractedText.split(/\s+/).length,
+              medicalKeywordCount: 0,
+              detectedKeywords: [],
+              verificationStatus: 'pending',
+              formatSupported: true,
+              processingNotes: 'Extracted from upload',
+              structuralCues: {}
+            }
+          }
         });
         if (analysisResponse.data) {
           analysisResult = analysisResponse.data;
@@ -197,6 +212,13 @@ const handler = async (req: Request): Promise<Response> => {
       return createErrorResponse(requestId, 500, 'document_creation_failed', docError.message, origin);
     }
 
+    // Auto-generate document summary if we have extracted text
+    if (extractedText && extractedText.length > 50) {
+      supabase.functions.invoke('generate-document-summary', { body: { documentId: document.id } }).catch((err) => {
+        console.error('Failed to auto-generate summary:', err);
+      });
+    }
+    
     supabase.functions.invoke('generate-patient-summary', { body: { patientId: patient.id } }).catch(() => {});
     supabase.functions.invoke('notify-patient-upload', { body: { documentId: document.id, patientId: patient.id, uploadedBy: user.id } }).catch(() => {});
 
