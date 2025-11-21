@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -111,14 +112,49 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
         .from('patients')
         .select('*')
         .eq('created_by', userId)
-        .single();
+        .maybeSingle();
 
       if (patientsErr) throw patientsErr;
 
       if (!patient) {
+        // Try to create patient record if it doesn't exist
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData.user) {
+          const { data: newPatient, error: createErr } = await supabase
+            .from('patients')
+            .insert({
+              name: user?.name || 'New Patient',
+              dob: new Date(Date.now() - 30 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              gender: 'Not Specified',
+              primary_contact: userData.user.email || '',
+              created_by: userId,
+            })
+            .select()
+            .single();
+
+          if (createErr) {
+            toast({
+              title: "Patient Record Creation Failed",
+              description: "Unable to create your patient profile. Please contact support.",
+              variant: "destructive",
+            });
+            return;
+          }
+
+          if (newPatient) {
+            setPatientData(newPatient);
+            await fetchDocuments(newPatient.id);
+            toast({
+              title: "Profile Created",
+              description: "Your patient profile has been created. Please update your information.",
+            });
+            return;
+          }
+        }
+        
         toast({
           title: "No Patient Record",
-          description: "No patient record found for your account. Please contact support.",
+          description: "No patient record found. Please contact support.",
           variant: "destructive",
         });
         return;
@@ -127,6 +163,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
       setPatientData(patient);
       await fetchDocuments(patient.id);
     } catch (error: any) {
+      console.error('Error fetching patient data:', error);
       toast({
         title: "Error Loading Data",
         description: "Could not load patient data. " + error.message,
@@ -236,8 +273,13 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   };
 
   return (
-    <div className={cn("container mx-auto px-4 py-8", isMobile && "pb-24")}>
-      {patientData && missingFields.length > 0 && (
+    <ErrorBoundary 
+      fallbackTitle="Dashboard Error" 
+      fallbackMessage="There was an issue loading your patient dashboard. This may be due to a database configuration issue."
+      onReset={() => user && fetchPatientData(user.id)}
+    >
+      <div className={cn("container mx-auto px-4 py-8", isMobile && "pb-24")}>
+        {patientData && missingFields.length > 0 && (
         <MissingInfoDialog
           patientId={patientData.id}
           missingFields={missingFields}
@@ -416,9 +458,10 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
         </div>
       </div>
       
-      {isMobile && <MobileBottomNav activeTab={activeTab} onTabChange={handleTabChange} />}
-      
-      {patientData?.id && <MediBot patientId={patientData.id} />}
-    </div>
+        {isMobile && <MobileBottomNav activeTab={activeTab} onTabChange={handleTabChange} />}
+        
+        {patientData?.id && <MediBot patientId={patientData.id} />}
+      </div>
+    </ErrorBoundary>
   );
 }

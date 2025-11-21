@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Calendar, Clock, User, Stethoscope, CheckCircle, XCircle, RotateCcw, AlertCircle, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
+import { withErrorBoundary } from "@/components/ErrorBoundary";
 
 /**
  * @interface Appointment
@@ -619,4 +620,7 @@ const AppointmentCard = ({
   </Card>
 );
 
-export default AppointmentTracker;
+export default withErrorBoundary(AppointmentTracker, {
+  fallbackTitle: "Appointment Tracker Error",
+  fallbackMessage: "Unable to load your appointments. This may be due to a database access issue. Please try refreshing the page.",
+});
