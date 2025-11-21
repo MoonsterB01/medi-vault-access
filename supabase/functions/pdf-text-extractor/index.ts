@@ -7,9 +7,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Set workerSrc to a dummy data URL - PDF.js requires this even with disableWorker: true
-// Using a data URL prevents actual network requests while satisfying PDF.js validation
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'data:text/javascript;base64,Ly8gRHVtbXkgd29ya2VyIGZvciBEZW5v';
+// CRITICAL: Do NOT set GlobalWorkerOptions.workerSrc when using disableWorker: true
+// Setting workerSrc causes PDF.js to attempt worker initialization even with disableWorker: true
+// In Deno environment, this fails with "Cannot read properties of undefined (reading 'setup')"
+// With disableWorker: true, PDF.js runs synchronously without any worker configuration needed
 
 // Validate if extracted text is readable (not garbage)
 function isTextReadable(text: string): boolean {
@@ -42,18 +43,22 @@ async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<{
   confidence: number;
 }> {
   try {
-    console.log('Attempting PDF text extraction with PDF.js...');
+    console.log('Attempting PDF text extraction with PDF.js in Deno environment...');
     
-    // Load the PDF document with worker disabled for Edge Function environment
+    // Load the PDF document with worker completely disabled for Edge Function environment
+    // CRITICAL: disableWorker: true makes PDF.js run synchronously without any worker
     const loadingTask = pdfjsLib.getDocument({ 
       data: pdfBuffer,
       isEvalSupported: false,
       useSystemFonts: true,
-      disableWorker: true, // CRITICAL: Must disable worker in Deno
-      useWorkerFetch: false,
-      verbosity: 0
+      disableWorker: true, // Run synchronously without worker threads
+      useWorkerFetch: false, // Don't fetch worker from network
+      verbosity: 0, // Suppress console warnings
+      standardFontDataUrl: null, // Prevent font loading attempts
     });
+    
     const pdf = await loadingTask.promise;
+    console.log(`✅ PDF loaded successfully: ${pdf.numPages} pages`);
     
     const pageCount = pdf.numPages;
     console.log(`PDF has ${pageCount} pages`);
@@ -128,8 +133,21 @@ async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<{
     };
     
   } catch (error) {
-    console.error('PDF.js extraction error:', error);
-    throw error;
+    console.error('❌ PDF.js extraction error:', error);
+    console.error('Error details:', {
+      name: error?.name,
+      message: error?.message,
+      stack: error?.stack?.substring(0, 500)
+    });
+    
+    // Return graceful fallback instead of throwing
+    return {
+      text: '',
+      hasEmbeddedText: false,
+      requiresOCR: true,
+      pageCount: 0,
+      confidence: 0
+    };
   }
 }
 
