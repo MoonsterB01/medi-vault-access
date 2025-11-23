@@ -4,6 +4,7 @@ import MedicineDispensing from "./pharmacy/MedicineDispensing";
 import MedicineBilling from "./pharmacy/MedicineBilling";
 import BillingHistory from "./pharmacy/BillingHistory";
 import RefundHistory from "./pharmacy/RefundHistory";
+import PurchaseList from "./pharmacy/PurchaseList";
 import InventoryView from "./pharmacy/InventoryView";
 import PlaceholderPage from "./pharmacy/PlaceholderPage";
 
@@ -25,7 +26,7 @@ export default function PharmacyPage({ hospitalData }: { hospitalData: any }) {
         return <RefundHistory hospitalData={hospitalData} />;
       
       case "purchase-list":
-        return <PlaceholderPage title="Purchase List" description="Manage medicine purchases from suppliers" />;
+        return <PurchaseList hospitalData={hospitalData} />;
       
       case "inventory":
         return <InventoryView hospitalData={hospitalData} />;
