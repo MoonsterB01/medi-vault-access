@@ -1609,6 +1609,109 @@ export type Database = {
           },
         ]
       }
+      pharmacy_purchases: {
+        Row: {
+          bill_status: string
+          cgst_amount: number | null
+          created_at: string | null
+          created_by: string | null
+          discount_amount: number | null
+          hospital_id: string
+          id: string
+          igst_amount: number | null
+          invoice_date: string
+          invoice_file_url: string | null
+          invoice_number: string
+          items: Json | null
+          net_amount: number
+          notes: string | null
+          paid_amount: number | null
+          payment_mode: string | null
+          payment_status: string
+          purchase_date: string
+          purchase_number: string
+          refund_status: string | null
+          sgst_amount: number | null
+          subtotal: number
+          supplier_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          bill_status?: string
+          cgst_amount?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          discount_amount?: number | null
+          hospital_id: string
+          id?: string
+          igst_amount?: number | null
+          invoice_date: string
+          invoice_file_url?: string | null
+          invoice_number: string
+          items?: Json | null
+          net_amount?: number
+          notes?: string | null
+          paid_amount?: number | null
+          payment_mode?: string | null
+          payment_status?: string
+          purchase_date?: string
+          purchase_number: string
+          refund_status?: string | null
+          sgst_amount?: number | null
+          subtotal?: number
+          supplier_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          bill_status?: string
+          cgst_amount?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          discount_amount?: number | null
+          hospital_id?: string
+          id?: string
+          igst_amount?: number | null
+          invoice_date?: string
+          invoice_file_url?: string | null
+          invoice_number?: string
+          items?: Json | null
+          net_amount?: number
+          notes?: string | null
+          paid_amount?: number | null
+          payment_mode?: string | null
+          payment_status?: string
+          purchase_date?: string
+          purchase_number?: string
+          refund_status?: string | null
+          sgst_amount?: number | null
+          subtotal?: number
+          supplier_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_purchases_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_purchases_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pharmacy_refunds: {
         Row: {
           approved_at: string | null
@@ -1688,6 +1791,65 @@ export type Database = {
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_suppliers: {
+        Row: {
+          address: string | null
+          city: string | null
+          contact_person: string | null
+          created_at: string | null
+          email: string | null
+          gstin: string | null
+          hospital_id: string
+          id: string
+          is_active: boolean | null
+          phone: string | null
+          pincode: string | null
+          state: string | null
+          supplier_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          gstin?: string | null
+          hospital_id: string
+          id?: string
+          is_active?: boolean | null
+          phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          supplier_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          gstin?: string | null
+          hospital_id?: string
+          id?: string
+          is_active?: boolean | null
+          phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          supplier_name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_suppliers_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
             referencedColumns: ["id"]
           },
         ]
@@ -1841,6 +2003,7 @@ export type Database = {
       }
       generate_appointment_id: { Args: never; Returns: string }
       generate_doctor_id: { Args: never; Returns: string }
+      generate_purchase_number: { Args: never; Returns: string }
       generate_shareable_id: { Args: never; Returns: string }
       generate_user_shareable_id: { Args: never; Returns: string }
       get_available_time_slots: {
