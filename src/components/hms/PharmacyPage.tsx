@@ -3,6 +3,7 @@ import PharmacyNavigation, { PharmacySection } from "./pharmacy/PharmacyNavigati
 import MedicineDispensing from "./pharmacy/MedicineDispensing";
 import MedicineBilling from "./pharmacy/MedicineBilling";
 import BillingHistory from "./pharmacy/BillingHistory";
+import RefundHistory from "./pharmacy/RefundHistory";
 import InventoryView from "./pharmacy/InventoryView";
 import PlaceholderPage from "./pharmacy/PlaceholderPage";
 
@@ -21,7 +22,7 @@ export default function PharmacyPage({ hospitalData }: { hospitalData: any }) {
         return <BillingHistory hospitalData={hospitalData} />;
       
       case "refund-history":
-        return <PlaceholderPage title="Refund History" description="Track medicine refunds and returns" />;
+        return <RefundHistory hospitalData={hospitalData} />;
       
       case "purchase-list":
         return <PlaceholderPage title="Purchase List" description="Manage medicine purchases from suppliers" />;
