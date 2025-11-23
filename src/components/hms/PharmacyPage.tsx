@@ -1,6 +1,7 @@
 import { useState } from "react";
 import PharmacyNavigation, { PharmacySection } from "./pharmacy/PharmacyNavigation";
 import MedicineDispensing from "./pharmacy/MedicineDispensing";
+import MedicineBilling from "./pharmacy/MedicineBilling";
 import InventoryView from "./pharmacy/InventoryView";
 import PlaceholderPage from "./pharmacy/PlaceholderPage";
 
@@ -13,7 +14,7 @@ export default function PharmacyPage({ hospitalData }: { hospitalData: any }) {
         return <MedicineDispensing hospitalData={hospitalData} />;
       
       case "billing":
-        return <PlaceholderPage title="Medicine Billing" description="Create and manage medicine bills" />;
+        return <MedicineBilling hospitalData={hospitalData} />;
       
       case "billing-history":
         return <PlaceholderPage title="Billing History" description="View past billing records" />;
