@@ -2,6 +2,7 @@ import { useState } from "react";
 import PharmacyNavigation, { PharmacySection } from "./pharmacy/PharmacyNavigation";
 import MedicineDispensing from "./pharmacy/MedicineDispensing";
 import MedicineBilling from "./pharmacy/MedicineBilling";
+import BillingHistory from "./pharmacy/BillingHistory";
 import InventoryView from "./pharmacy/InventoryView";
 import PlaceholderPage from "./pharmacy/PlaceholderPage";
 
@@ -17,7 +18,7 @@ export default function PharmacyPage({ hospitalData }: { hospitalData: any }) {
         return <MedicineBilling hospitalData={hospitalData} />;
       
       case "billing-history":
-        return <PlaceholderPage title="Billing History" description="View past billing records" />;
+        return <BillingHistory hospitalData={hospitalData} />;
       
       case "refund-history":
         return <PlaceholderPage title="Refund History" description="Track medicine refunds and returns" />;
