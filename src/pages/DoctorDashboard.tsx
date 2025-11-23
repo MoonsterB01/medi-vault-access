@@ -72,6 +72,8 @@ const DoctorDashboard = ({ user }: DoctorDashboardProps = {}) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<string>('appointments');
+  const [appointmentFilter, setAppointmentFilter] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -155,7 +157,13 @@ const DoctorDashboard = ({ user }: DoctorDashboardProps = {}) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
+        <Card 
+          className="cursor-pointer transition-all hover:shadow-md"
+          onClick={() => {
+            setActiveTab('appointments');
+            setAppointmentFilter('pending');
+          }}
+        >
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
               <Calendar className="w-5 h-5 text-primary" />
@@ -166,7 +174,13 @@ const DoctorDashboard = ({ user }: DoctorDashboardProps = {}) => {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card 
+          className="cursor-pointer transition-all hover:shadow-md"
+          onClick={() => {
+            setActiveTab('appointments');
+            setAppointmentFilter('upcoming');
+          }}
+        >
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
@@ -177,7 +191,10 @@ const DoctorDashboard = ({ user }: DoctorDashboardProps = {}) => {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card 
+          className="cursor-pointer transition-all hover:shadow-md"
+          onClick={() => setActiveTab('patients')}
+        >
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
               <Users className="w-5 h-5 text-blue-600" />
@@ -188,7 +205,13 @@ const DoctorDashboard = ({ user }: DoctorDashboardProps = {}) => {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card 
+          className="cursor-pointer transition-all hover:shadow-md"
+          onClick={() => {
+            setActiveTab('appointments');
+            setAppointmentFilter('completed');
+          }}
+        >
           <CardContent className="p-6">
             <div className="flex items-center space-x-2">
               <FileText className="w-5 h-5 text-purple-600" />
@@ -201,7 +224,7 @@ const DoctorDashboard = ({ user }: DoctorDashboardProps = {}) => {
         </Card>
       </div>
 
-      <Tabs defaultValue="appointments" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="appointments">Appointments</TabsTrigger>
           <TabsTrigger value="patients">Patients</TabsTrigger>
@@ -209,7 +232,14 @@ const DoctorDashboard = ({ user }: DoctorDashboardProps = {}) => {
         </TabsList>
 
         <TabsContent value="appointments" className="space-y-6">
-          {doctor && user && <AppointmentManagement doctorId={doctor.id} userId={user.id} />}
+          {doctor && user && (
+            <AppointmentManagement 
+              doctorId={doctor.id} 
+              userId={user.id}
+              initialFilter={appointmentFilter}
+              onFilterChange={setAppointmentFilter}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="patients" className="space-y-6">

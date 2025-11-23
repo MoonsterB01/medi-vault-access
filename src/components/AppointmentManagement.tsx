@@ -35,10 +35,14 @@ interface Appointment {
  * @description Defines the props for the AppointmentManagement component.
  * @property {string} doctorId - The ID of the doctor.
  * @property {string} userId - The ID of the current user.
+ * @property {string | null} [initialFilter] - Initial filter status for appointments.
+ * @property {(filter: string | null) => void} [onFilterChange] - Callback when filter changes.
  */
 interface AppointmentManagementProps {
   doctorId: string;
   userId: string;
+  initialFilter?: string | null;
+  onFilterChange?: (filter: string | null) => void;
 }
 
 /**
@@ -47,11 +51,25 @@ interface AppointmentManagementProps {
  * @param {AppointmentManagementProps} props - The props for the component.
  * @returns {JSX.Element} - The rendered AppointmentManagement component.
  */
-const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps) => {
+const AppointmentManagement = ({ doctorId, userId, initialFilter, onFilterChange }: AppointmentManagementProps) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancellingIds, setCancellingIds] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<string | null>(initialFilter || null);
   const { toast } = useToast();
+
+  // Update internal filter when initialFilter prop changes
+  useEffect(() => {
+    if (initialFilter !== undefined) {
+      setStatusFilter(initialFilter);
+    }
+  }, [initialFilter]);
+
+  // Notify parent component when filter changes
+  const handleFilterChange = (newFilter: string | null) => {
+    setStatusFilter(newFilter);
+    onFilterChange?.(newFilter);
+  };
 
   useEffect(() => {
     fetchAppointments();
@@ -78,9 +96,20 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
     try {
       console.log('Fetching appointments for doctor:', doctorId);
       
+      // Fetch appointments with patient data in a single query using the join
+      // This works because doctors can view patient data through appointments
       const { data: appointmentsData, error: appointmentsError } = await supabase
         .from('appointments')
-        .select('*')
+        .select(`
+          *,
+          patients!inner (
+            id,
+            name,
+            dob,
+            gender,
+            primary_contact
+          )
+        `)
         .eq('doctor_id', doctorId)
         .order('appointment_date', { ascending: true })
         .order('appointment_time', { ascending: true });
@@ -90,7 +119,7 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
         throw appointmentsError;
       }
 
-      console.log('Raw appointments data:', appointmentsData);
+      console.log('Appointments with patient data:', appointmentsData);
 
       if (!appointmentsData || appointmentsData.length === 0) {
         console.log('No appointments found for doctor');
@@ -98,30 +127,7 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
         return;
       }
 
-      // Get patient details separately to avoid join issues
-      const patientIds = [...new Set(appointmentsData.map(apt => apt.patient_id))];
-      const { data: patientsData, error: patientsError } = await supabase
-        .from('patients')
-        .select('id, name, dob, gender, primary_contact')
-        .in('id', patientIds);
-
-      if (patientsError) {
-        console.error('Error fetching patients:', patientsError);
-      }
-
-      // Combine the data
-      const enrichedAppointments = appointmentsData.map(appointment => ({
-        ...appointment,
-        patients: patientsData?.find(patient => patient.id === appointment.patient_id) || {
-          name: 'Unknown Patient',
-          dob: '',
-          gender: 'Unknown',
-          primary_contact: ''
-        }
-      }));
-
-      console.log('Enriched appointments:', enrichedAppointments);
-      setAppointments(enrichedAppointments);
+      setAppointments(appointmentsData);
     } catch (error) {
       console.error('Error fetching appointments:', error);
       toast({
@@ -251,11 +257,36 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
     new Date(apt.appointment_date) >= new Date()
   );
 
+  // Filter appointments based on selected status
+  const getFilteredAppointments = () => {
+    if (!statusFilter) {
+      return appointments.filter(apt => apt.status !== 'cancelled');
+    }
+    
+    switch (statusFilter) {
+      case 'pending':
+        return pendingAppointments;
+      case 'upcoming':
+        return upcomingAppointments;
+      case 'completed':
+        return getAppointmentsByStatus('completed');
+      case 'all':
+        return appointments.filter(apt => apt.status !== 'cancelled');
+      default:
+        return appointments.filter(apt => apt.status !== 'cancelled');
+    }
+  };
+
+  const filteredAppointments = getFilteredAppointments();
+
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
+      {/* Summary Cards - Now Clickable */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card 
+          className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === 'pending' ? 'ring-2 ring-primary' : ''}`}
+          onClick={() => handleFilterChange(statusFilter === 'pending' ? null : 'pending')}
+        >
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <Clock className="w-5 h-5 text-yellow-600" />
@@ -267,7 +298,10 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === 'upcoming' ? 'ring-2 ring-primary' : ''}`}
+          onClick={() => handleFilterChange(statusFilter === 'upcoming' ? null : 'upcoming')}
+        >
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
@@ -279,7 +313,10 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === 'completed' ? 'ring-2 ring-primary' : ''}`}
+          onClick={() => handleFilterChange(statusFilter === 'completed' ? null : 'completed')}
+        >
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <Calendar className="w-5 h-5 text-blue-600" />
@@ -291,7 +328,10 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
           </CardContent>
         </Card>
 
-        <Card>
+        <Card 
+          className={`cursor-pointer transition-all hover:shadow-md ${statusFilter === 'all' ? 'ring-2 ring-primary' : ''}`}
+          onClick={() => handleFilterChange(statusFilter === 'all' ? null : 'all')}
+        >
           <CardContent className="p-4">
             <div className="flex items-center space-x-2">
               <User className="w-5 h-5 text-purple-600" />
@@ -304,21 +344,44 @@ const AppointmentManagement = ({ doctorId, userId }: AppointmentManagementProps)
         </Card>
       </div>
 
-      {/* Appointments List - Filter out cancelled appointments */}
+      {/* Appointments List - Filtered */}
       <Card>
         <CardHeader>
-          <CardTitle>Your Appointments</CardTitle>
-          <CardDescription>Manage your patient appointments</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Your Appointments</CardTitle>
+              <CardDescription>
+                {statusFilter 
+                  ? `Showing ${statusFilter} appointments${statusFilter !== 'all' ? ` (${filteredAppointments.length})` : ''}`
+                  : 'Manage your patient appointments'
+                }
+              </CardDescription>
+            </div>
+            {statusFilter && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handleFilterChange(null)}
+              >
+                Clear Filter
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
-          {appointments.filter(apt => apt.status !== 'cancelled').length === 0 ? (
+          {filteredAppointments.length === 0 ? (
             <div className="text-center py-8">
               <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No appointments scheduled</p>
+              <p className="text-muted-foreground">
+                {statusFilter 
+                  ? `No ${statusFilter} appointments found`
+                  : 'No appointments scheduled'
+                }
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {appointments.filter(apt => apt.status !== 'cancelled').map((appointment) => (
+              {filteredAppointments.map((appointment) => (
                 <div 
                   key={appointment.id} 
                   className={`border rounded-lg p-4 space-y-3 transition-all duration-500 ${
