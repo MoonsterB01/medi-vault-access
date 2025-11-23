@@ -1609,6 +1609,89 @@ export type Database = {
           },
         ]
       }
+      pharmacy_refunds: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          billing_id: string
+          created_at: string | null
+          hospital_id: string
+          id: string
+          notes: string | null
+          patient_id: string
+          refund_amount: number
+          refund_date: string | null
+          refund_reason: string | null
+          refunded_items: Json | null
+          rejection_reason: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          billing_id: string
+          created_at?: string | null
+          hospital_id: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          refund_amount?: number
+          refund_date?: string | null
+          refund_reason?: string | null
+          refunded_items?: Json | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          billing_id?: string
+          created_at?: string | null
+          hospital_id?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          refund_amount?: number
+          refund_date?: string | null
+          refund_reason?: string | null
+          refunded_items?: Json | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_refunds_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_refunds_billing_id_fkey"
+            columns: ["billing_id"]
+            isOneToOne: false
+            referencedRelation: "billing"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_refunds_hospital_id_fkey"
+            columns: ["hospital_id"]
+            isOneToOne: false
+            referencedRelation: "hospitals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_refunds_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           assigned_at: string | null
