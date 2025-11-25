@@ -160,32 +160,32 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
   };
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex gap-4">
+    <div className="h-[calc(100vh-8rem)] flex gap-3">
       {/* Left Sidebar - Consultants & Filters */}
-      <Card className="w-80 flex flex-col">
-        <CardHeader className="flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle>Consultants</CardTitle>
-          <Button variant="ghost" size="sm" className="text-primary">More</Button>
+      <Card className="w-72 flex flex-col">
+        <CardHeader className="flex-row items-center justify-between space-y-0 pb-2 pt-4">
+          <CardTitle className="text-base">Consultants</CardTitle>
+          <Button variant="ghost" size="sm" className="text-primary h-7 text-xs">More</Button>
         </CardHeader>
-        <CardContent className="flex-1 overflow-auto space-y-6">
+        <CardContent className="flex-1 overflow-auto space-y-3 pt-3">
           <Input
             placeholder="Search Doctor"
             value={doctorSearch}
             onChange={(e) => setDoctorSearch(e.target.value)}
-            className="bg-muted/50"
+            className="bg-muted/50 h-8 text-sm"
           />
 
-          <div className="space-y-2">
+          <div className="space-y-1">
             <div
               className={cn(
-                "flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-muted/50",
+                "flex items-center justify-between p-1.5 rounded-lg cursor-pointer hover:bg-muted/50",
                 selectedDoctor === "all" && "bg-muted"
               )}
               onClick={() => setSelectedDoctor("all")}
             >
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-blue-500" />
-                <span>All Doctors ({appointments.length})</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <span className="text-sm">All Doctors ({appointments.length})</span>
               </div>
             </div>
             {filteredDoctors.map((doctor) => {
@@ -197,14 +197,14 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
                 <div
                   key={doctor.id}
                   className={cn(
-                    "flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-muted/50",
+                    "flex items-center justify-between p-1.5 rounded-lg cursor-pointer hover:bg-muted/50",
                     selectedDoctor === doctor.id && "bg-muted"
                   )}
                   onClick={() => setSelectedDoctor(doctor.id)}
                 >
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-blue-500" />
-                    <span>{displayName} ({doctorAppointments.length})</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    <span className="text-sm">{displayName} ({doctorAppointments.length})</span>
                   </div>
                 </div>
               );
@@ -212,8 +212,8 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
           </div>
 
           <div>
-            <h3 className="font-semibold mb-3">Filters</h3>
-            <div className="space-y-2">
+            <h3 className="font-semibold mb-1.5 text-sm">Filters</h3>
+            <div className="space-y-1">
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="show-events"
@@ -222,7 +222,7 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
                     setFilters(prev => ({ ...prev, showEvents: checked as boolean }))
                   }
                 />
-                <Label htmlFor="show-events" className="cursor-pointer">Show Events</Label>
+                <Label htmlFor="show-events" className="cursor-pointer text-sm">Show Events</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -232,7 +232,7 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
                     setFilters(prev => ({ ...prev, cancelled: checked as boolean }))
                   }
                 />
-                <Label htmlFor="cancelled" className="cursor-pointer">Cancelled Appointments</Label>
+                <Label htmlFor="cancelled" className="cursor-pointer text-sm">Cancelled Appointments</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -242,7 +242,7 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
                     setFilters(prev => ({ ...prev, missed: checked as boolean }))
                   }
                 />
-                <Label htmlFor="missed" className="cursor-pointer">Missed Appointments</Label>
+                <Label htmlFor="missed" className="cursor-pointer text-sm">Missed Appointments</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -252,17 +252,17 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
                     setFilters(prev => ({ ...prev, normal: checked as boolean }))
                   }
                 />
-                <Label htmlFor="normal" className="cursor-pointer">Normal Appointments</Label>
+                <Label htmlFor="normal" className="cursor-pointer text-sm">Normal Appointments</Label>
               </div>
             </div>
           </div>
 
           <div>
-            <h3 className="font-semibold mb-3">Settings</h3>
-            <div className="space-y-2">
-              <Label>Slot Duration</Label>
+            <h3 className="font-semibold mb-1.5 text-sm">Settings</h3>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Slot Duration</Label>
               <Select value={String(slotDuration)} onValueChange={(v) => setSlotDuration(Number(v))}>
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -369,59 +369,54 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
       </Card>
 
       {/* Right Sidebar - Today's Schedule */}
-      <Card className="w-80 flex flex-col">
-        <CardHeader className="pb-4">
-          <CardTitle>Today's Schedule</CardTitle>
-          <div className="flex gap-2 mt-4">
+      <Card className="w-72 flex flex-col">
+        <CardHeader className="pb-2 pt-4">
+          <CardTitle className="text-base">Today's Schedule</CardTitle>
+          <div className="grid grid-cols-4 gap-1 mt-2">
             <div className="text-center">
-              <div className="text-3xl font-bold text-yellow-600">{statusCounts.scheduled}</div>
-              <div className="text-xs text-muted-foreground">Schedule</div>
+              <div className="text-xl font-bold text-yellow-600">{statusCounts.scheduled}</div>
+              <div className="text-[10px] text-muted-foreground">Schedule</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-green-600">{statusCounts.waiting}</div>
-              <div className="text-xs text-muted-foreground">Waiting</div>
+              <div className="text-xl font-bold text-green-600">{statusCounts.waiting}</div>
+              <div className="text-[10px] text-muted-foreground">Waiting</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-cyan-600">{statusCounts.engaged}</div>
-              <div className="text-xs text-muted-foreground">Engaged</div>
+              <div className="text-xl font-bold text-cyan-600">{statusCounts.engaged}</div>
+              <div className="text-[10px] text-muted-foreground">Engaged</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-gray-400">{statusCounts.done}</div>
-              <div className="text-xs text-muted-foreground">Done</div>
+              <div className="text-xl font-bold text-gray-400">{statusCounts.done}</div>
+              <div className="text-[10px] text-muted-foreground">Done</div>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 overflow-auto space-y-3">
+        <CardContent className="flex-1 overflow-auto space-y-2 pt-3">
           {todayAppointments.map((apt) => {
             if (!apt) return null;
             const patientName = (apt.patient && apt.patient.name) ? apt.patient.name : 'Unknown Patient';
             
             return (
-              <div key={apt.id} className="flex items-start justify-between gap-2 p-2 rounded-lg hover:bg-muted/50">
-                <div className="flex items-start gap-2 flex-1">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
+              <div key={apt.id} className="flex items-start justify-between gap-2 p-1.5 rounded-lg hover:bg-muted/50">
+                <div className="flex items-start gap-1.5 flex-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5" />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{patientName}</div>
+                    <div className="font-medium truncate text-sm">{patientName}</div>
                     <div className="text-xs text-muted-foreground">
                       {apt.patient?.shareable_id && `${apt.patient.shareable_id} • `}
                       {apt.appointment_time}
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className={cn(
-                    "text-xs",
-                    apt.status === 'confirmed' && "text-yellow-600 border-yellow-600",
-                    apt.status === 'pending' && "text-green-600 border-green-600",
-                    apt.status === 'in-progress' && "text-cyan-600 border-cyan-600",
-                    apt.status === 'completed' && "text-gray-400 border-gray-400"
-                  )}>
-                    {getStatusLabel(apt.status)}
-                  </Badge>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
-                    <Star className="h-3 w-3" />
-                  </Button>
-                </div>
+                <Badge variant="outline" className={cn(
+                  "text-[10px] h-5",
+                  apt.status === 'confirmed' && "text-yellow-600 border-yellow-600",
+                  apt.status === 'pending' && "text-green-600 border-green-600",
+                  apt.status === 'in-progress' && "text-cyan-600 border-cyan-600",
+                  apt.status === 'completed' && "text-gray-400 border-gray-400"
+                )}>
+                  {getStatusLabel(apt.status)}
+                </Badge>
               </div>
             );
           })}

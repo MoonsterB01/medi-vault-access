@@ -205,7 +205,7 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div>
         <h2 className="text-3xl font-bold">Billing Management</h2>
         <p className="text-muted-foreground">Create and manage patient bills</p>
@@ -217,83 +217,72 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
           <TabsTrigger value="all">All Bills</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="new" className="space-y-4">
+        <TabsContent value="new" className="space-y-3">
           {/* Patient Info Section */}
           <Card>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <CardContent className="pt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 {/* Photo Upload */}
                 <div className="lg:col-span-1">
-                  <div className="w-24 h-24 border-2 border-primary rounded-lg flex items-center justify-center bg-muted">
-                    <Camera className="h-8 w-8 text-primary" />
+                  <div className="w-16 h-16 border-2 border-primary rounded-lg flex items-center justify-center bg-muted">
+                    <Camera className="h-6 w-6 text-primary" />
                   </div>
                 </div>
 
                 {/* Left Column - Patient Details */}
-                <div className="lg:col-span-5 space-y-4">
-                  <div className="grid grid-cols-2 gap-2 items-center">
-                    <Label className="font-semibold">Patient Name</Label>
-                    <span className="text-muted-foreground">:</span>
-                    <div className="col-span-2">
-                      <Input 
-                        value={selectedPatient?.name || ''}
-                        placeholder="Select patient first"
-                        disabled
-                      />
-                    </div>
+                <div className="lg:col-span-5 space-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Patient Name</Label>
+                    <Input 
+                      value={selectedPatient?.name || ''}
+                      placeholder="Select patient first"
+                      disabled
+                      className="h-8"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-2 items-center">
-                    <Label className="font-semibold">Gender</Label>
-                    <span className="text-muted-foreground">:</span>
-                    <div className="col-span-2">
-                      <Input 
-                        value={selectedPatient?.gender || ''}
-                        disabled
-                      />
-                    </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Gender</Label>
+                    <Input 
+                      value={selectedPatient?.gender || ''}
+                      disabled
+                      className="h-8"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-2 items-center">
-                    <Label className="font-semibold">Billing Date</Label>
-                    <span className="text-muted-foreground">:</span>
-                    <div className="col-span-2 relative">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Billing Date</Label>
+                    <div className="relative">
                       <Input 
                         type="date"
                         value={billingDate}
                         onChange={(e) => setBillingDate(e.target.value)}
+                        className="h-8"
                       />
-                      <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                      <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
                     </div>
                   </div>
                 </div>
 
                 {/* Right Column - Patient Details */}
-                <div className="lg:col-span-4 space-y-4">
-                  <div className="grid grid-cols-2 gap-2 items-center">
-                    <Label className="font-semibold">Patient ID</Label>
-                    <span className="text-muted-foreground">:</span>
-                    <div className="col-span-2">
-                      <Input 
-                        value={selectedPatient?.shareable_id || ''}
-                        disabled
-                      />
-                    </div>
+                <div className="lg:col-span-4 space-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Patient ID</Label>
+                    <Input 
+                      value={selectedPatient?.shareable_id || ''}
+                      disabled
+                      className="h-8"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-2 items-center">
-                    <Label className="font-semibold">Mobile No</Label>
-                    <span className="text-muted-foreground">:</span>
-                    <div className="col-span-2">
-                      <Input 
-                        value={selectedPatient?.primary_contact || ''}
-                        disabled
-                      />
-                    </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Mobile No</Label>
+                    <Input 
+                      value={selectedPatient?.primary_contact || ''}
+                      disabled
+                      className="h-8"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-2 items-center">
-                    <Label className="font-semibold">Visits</Label>
-                    <span className="text-muted-foreground">:</span>
-                    <div className="col-span-2">
-                      <Input value="0" disabled />
-                    </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Visits</Label>
+                    <Input value="0" disabled className="h-8" />
                   </div>
                 </div>
 
@@ -303,7 +292,7 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
                     const patient = patients.find(p => p.id === value);
                     setSelectedPatient(patient);
                   }}>
-                    <SelectTrigger className="bg-primary text-primary-foreground hover:bg-primary/90">
+                    <SelectTrigger className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 text-xs">
                       <SelectValue placeholder="SEARCH PATIENT" />
                     </SelectTrigger>
                     <SelectContent>
@@ -312,7 +301,7 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
                           placeholder="Search by name or ID..."
                           value={patientSearch}
                           onChange={(e) => setPatientSearch(e.target.value)}
-                          className="mb-2"
+                          className="mb-2 h-8"
                         />
                       </div>
                       {filteredPatients.map((patient) => (
@@ -329,12 +318,12 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
 
           {/* Billing Configuration */}
           <Card className="border-2 border-primary">
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <CardContent className="pt-3 pb-3">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
-                  <Label className="font-semibold mb-2 block">Billing Head</Label>
+                  <Label className="text-xs font-semibold mb-1 block">Billing Head</Label>
                   <Select value={billingHead} onValueChange={setBillingHead}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -345,9 +334,9 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
                   </Select>
                 </div>
                 <div>
-                  <Label className="font-semibold mb-2 block">Select Package</Label>
+                  <Label className="text-xs font-semibold mb-1 block">Select Package</Label>
                   <Select value={billingPackage} onValueChange={setBillingPackage}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8">
                       <SelectValue placeholder="Select Billing Package" />
                     </SelectTrigger>
                     <SelectContent>
@@ -357,9 +346,9 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
                   </Select>
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="font-semibold mb-2 block">Select Category</Label>
+                  <Label className="text-xs font-semibold mb-1 block">Select Category</Label>
                   <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -375,117 +364,123 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
 
           {/* Items Table */}
           <Card>
-            <CardHeader className="pb-3">
-              <div className="text-right text-primary font-semibold">
+            <CardHeader className="pb-2 pt-3">
+              <div className="text-right text-primary font-semibold text-xs">
                 All Amount in ( INR )
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-primary hover:bg-primary">
-                    <TableHead className="text-primary-foreground">Particulars</TableHead>
-                    <TableHead className="text-primary-foreground">Qty</TableHead>
-                    <TableHead className="text-primary-foreground">Cost</TableHead>
-                    <TableHead className="text-primary-foreground">Discount</TableHead>
-                    <TableHead className="text-primary-foreground">Tax</TableHead>
-                    <TableHead className="text-primary-foreground">Total Amount</TableHead>
-                    <TableHead className="text-primary-foreground">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {billItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <Select value={item.particular} onValueChange={(value) => updateBillItem(item.id, 'particular', value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Billable Item" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="consultation">Consultation</SelectItem>
-                            <SelectItem value="medicine">Medicine</SelectItem>
-                            <SelectItem value="lab_test">Lab Test</SelectItem>
-                            <SelectItem value="procedure">Procedure</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" 
-                          value={item.quantity}
-                          onChange={(e) => updateBillItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                          className="w-20"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" 
-                          value={item.cost}
-                          onChange={(e) => updateBillItem(item.id, 'cost', parseFloat(e.target.value) || 0)}
-                          placeholder="00"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Input 
-                            type="number" 
-                            value={item.discount}
-                            onChange={(e) => updateBillItem(item.id, 'discount', parseFloat(e.target.value) || 0)}
-                            placeholder="00.0"
-                            className="w-20"
-                          />
-                          <Select value={item.discountType} onValueChange={(value: 'percent' | 'amount') => updateBillItem(item.id, 'discountType', value)}>
-                            <SelectTrigger className="w-16">
-                              <SelectValue />
+              <div className="overflow-x-auto max-h-[280px] overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-primary hover:bg-primary">
+                      <TableHead className="text-primary-foreground h-9 text-xs">Particulars</TableHead>
+                      <TableHead className="text-primary-foreground h-9 text-xs">Qty</TableHead>
+                      <TableHead className="text-primary-foreground h-9 text-xs">Cost</TableHead>
+                      <TableHead className="text-primary-foreground h-9 text-xs">Discount</TableHead>
+                      <TableHead className="text-primary-foreground h-9 text-xs">Tax</TableHead>
+                      <TableHead className="text-primary-foreground h-9 text-xs">Total Amount</TableHead>
+                      <TableHead className="text-primary-foreground h-9 text-xs">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {billItems.map((item) => (
+                      <TableRow key={item.id} className="h-12">
+                        <TableCell className="py-1">
+                          <Select value={item.particular} onValueChange={(value) => updateBillItem(item.id, 'particular', value)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Select Billable Item" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="percent">%</SelectItem>
-                              <SelectItem value="amount">₹</SelectItem>
+                              <SelectItem value="consultation">Consultation</SelectItem>
+                              <SelectItem value="medicine">Medicine</SelectItem>
+                              <SelectItem value="lab_test">Lab Test</SelectItem>
+                              <SelectItem value="procedure">Procedure</SelectItem>
                             </SelectContent>
                           </Select>
-                          <span className="self-center">{item.discountType === 'percent' ? `${((item.quantity * item.cost * item.discount) / 100).toFixed(2)}` : item.discount.toFixed(2)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Select value={item.tax.toString()} onValueChange={(value) => updateBillItem(item.id, 'tax', parseFloat(value))}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Tax" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0">0%</SelectItem>
-                            <SelectItem value="5">5%</SelectItem>
-                            <SelectItem value="12">12%</SelectItem>
-                            <SelectItem value="18">18%</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="font-semibold">
-                        {item.totalAmount.toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => removeItem(item.id)}
-                          disabled={billItems.length === 1}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        </TableCell>
+                        <TableCell className="py-1">
+                          <Input 
+                            type="number" 
+                            value={item.quantity}
+                            onChange={(e) => updateBillItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                            className="w-16 h-8 text-xs"
+                          />
+                        </TableCell>
+                        <TableCell className="py-1">
+                          <Input 
+                            type="number" 
+                            value={item.cost}
+                            onChange={(e) => updateBillItem(item.id, 'cost', parseFloat(e.target.value) || 0)}
+                            placeholder="00"
+                            className="h-8 text-xs"
+                          />
+                        </TableCell>
+                        <TableCell className="py-1">
+                          <div className="flex gap-1">
+                            <Input 
+                              type="number" 
+                              value={item.discount}
+                              onChange={(e) => updateBillItem(item.id, 'discount', parseFloat(e.target.value) || 0)}
+                              placeholder="00.0"
+                              className="w-16 h-8 text-xs"
+                            />
+                            <Select value={item.discountType} onValueChange={(value: 'percent' | 'amount') => updateBillItem(item.id, 'discountType', value)}>
+                              <SelectTrigger className="w-12 h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="percent">%</SelectItem>
+                                <SelectItem value="amount">₹</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {item.discountType === 'percent' ? `${((item.quantity * item.cost * item.discount) / 100).toFixed(2)}` : item.discount.toFixed(2)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-1">
+                          <Select value={item.tax.toString()} onValueChange={(value) => updateBillItem(item.id, 'tax', parseFloat(value))}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Select Tax" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0">0%</SelectItem>
+                              <SelectItem value="5">5%</SelectItem>
+                              <SelectItem value="12">12%</SelectItem>
+                              <SelectItem value="18">18%</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="font-semibold text-xs py-1">
+                          {item.totalAmount.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="py-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => removeItem(item.id)}
+                            disabled={billItems.length === 1}
+                            className="h-7 w-7"
+                          >
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
               
-              <div className="p-4">
-                <Button onClick={addMoreItems} className="bg-primary text-primary-foreground">
+              <div className="p-3">
+                <Button onClick={addMoreItems} className="bg-primary text-primary-foreground h-8 text-xs">
                   ADD MORE ITEMS
                 </Button>
               </div>
 
               {/* Total Amount Row */}
               <div className="border-t">
-                <div className="grid grid-cols-7 gap-4 p-4 bg-muted/30">
+                <div className="grid grid-cols-7 gap-2 p-3 bg-muted/30 text-xs">
                   <div className="col-span-2 text-right font-semibold">Total Amount</div>
                   <div className="text-center font-semibold">{totals.subtotal.toFixed(2)}</div>
                   <div className="text-center font-semibold">{totals.totalDiscountAmt.toFixed(2)}</div>
@@ -499,15 +494,15 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
 
           {/* Payment Details */}
           <Card>
-            <CardHeader>
-              <h3 className="text-xl font-semibold text-primary">Payment Details</h3>
+            <CardHeader className="pb-3 pt-4">
+              <h3 className="text-base font-semibold text-primary">Payment Details</h3>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <CardContent className="space-y-3 pb-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <Label className="font-semibold mb-2 block">Select Payment Mode</Label>
+                  <Label className="text-xs font-semibold mb-1 block">Select Payment Mode</Label>
                   <Select value={paymentMode} onValueChange={setPaymentMode}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -519,48 +514,50 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
                   </Select>
                 </div>
                 <div>
-                  <Label className="font-semibold mb-2 block">Total Discount</Label>
+                  <Label className="text-xs font-semibold mb-1 block">Total Discount</Label>
                   <Input 
                     type="number" 
                     value={totalDiscount}
                     onChange={(e) => setTotalDiscount(parseFloat(e.target.value) || 0)}
                     placeholder="00.0"
+                    className="h-8"
                   />
                 </div>
                 <div>
-                  <Label className="font-semibold mb-2 block">Payable Amount</Label>
+                  <Label className="text-xs font-semibold mb-1 block">Payable Amount</Label>
                   <Input 
                     type="number" 
                     value={payableAmount}
                     onChange={(e) => setPayableAmount(parseFloat(e.target.value) || 0)}
                     placeholder="00"
+                    className="h-8"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-xs">
                 <Label className="font-semibold">Remaining Amount</Label>
-                <span className="font-semibold">/-</span>
-                <div className="flex items-center gap-2">
+                <span className="font-semibold">{(totals.grandTotal - payableAmount).toFixed(2)} /-</span>
+                <div className="flex items-center gap-2 ml-auto">
                   <Checkbox 
                     id="waived" 
                     checked={waivedOff}
                     onCheckedChange={(checked) => setWaivedOff(checked as boolean)}
                   />
-                  <Label htmlFor="waived" className="cursor-pointer">
-                    Mark As Waived Off
+                  <Label htmlFor="waived" className="cursor-pointer text-xs">
+                    Waived Off
                   </Label>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={resetForm}>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={resetForm} className="h-8 text-xs">
                   CANCEL
                 </Button>
-                <Button onClick={handleSaveBill} className="bg-primary text-primary-foreground">
+                <Button onClick={handleSaveBill} className="bg-primary text-primary-foreground h-8 text-xs">
                   SAVE BILL
                 </Button>
-                <Button onClick={handleSaveBill} className="bg-primary text-primary-foreground">
+                <Button onClick={handleSaveBill} className="bg-primary text-primary-foreground h-8 text-xs">
                   COLLECT PAYMENT
                 </Button>
               </div>
