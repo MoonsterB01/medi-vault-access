@@ -1997,6 +1997,10 @@ export type Database = {
         Args: { p_doctor_id: string; p_slot_date: string; p_start_time: string }
         Returns: boolean
       }
+      doctor_can_view_patient: {
+        Args: { patient_id_param: string }
+        Returns: boolean
+      }
       extract_patient_id_from_path: {
         Args: { file_path: string }
         Returns: string
