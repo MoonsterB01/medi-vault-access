@@ -217,83 +217,69 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
           <TabsTrigger value="all">All Bills</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="new" className="space-y-4">
+        <TabsContent value="new" className="space-y-3">
           {/* Patient Info Section */}
           <Card>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <CardContent className="pt-4">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 {/* Photo Upload */}
                 <div className="lg:col-span-1">
-                  <div className="w-24 h-24 border-2 border-primary rounded-lg flex items-center justify-center bg-muted">
-                    <Camera className="h-8 w-8 text-primary" />
+                  <div className="w-16 h-16 border-2 border-primary rounded-lg flex items-center justify-center bg-muted">
+                    <Camera className="h-6 w-6 text-primary" />
                   </div>
                 </div>
 
                 {/* Left Column - Patient Details */}
-                <div className="lg:col-span-5 space-y-4">
-                  <div className="grid grid-cols-2 gap-2 items-center">
-                    <Label className="font-semibold">Patient Name</Label>
-                    <span className="text-muted-foreground">:</span>
-                    <div className="col-span-2">
-                      <Input 
-                        value={selectedPatient?.name || ''}
-                        placeholder="Select patient first"
-                        disabled
-                      />
-                    </div>
+                <div className="lg:col-span-5 space-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Patient Name</Label>
+                    <Input 
+                      value={selectedPatient?.name || ''}
+                      placeholder="Select patient first"
+                      disabled
+                      className="h-8"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-2 items-center">
-                    <Label className="font-semibold">Gender</Label>
-                    <span className="text-muted-foreground">:</span>
-                    <div className="col-span-2">
-                      <Input 
-                        value={selectedPatient?.gender || ''}
-                        disabled
-                      />
-                    </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Gender</Label>
+                    <Input 
+                      value={selectedPatient?.gender || ''}
+                      disabled
+                      className="h-8"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-2 items-center">
-                    <Label className="font-semibold">Billing Date</Label>
-                    <span className="text-muted-foreground">:</span>
-                    <div className="col-span-2 relative">
-                      <Input 
-                        type="date"
-                        value={billingDate}
-                        onChange={(e) => setBillingDate(e.target.value)}
-                      />
-                      <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                    </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Billing Date</Label>
+                    <Input 
+                      type="date"
+                      value={billingDate}
+                      onChange={(e) => setBillingDate(e.target.value)}
+                      className="h-8"
+                    />
                   </div>
                 </div>
 
                 {/* Right Column - Patient Details */}
-                <div className="lg:col-span-4 space-y-4">
-                  <div className="grid grid-cols-2 gap-2 items-center">
-                    <Label className="font-semibold">Patient ID</Label>
-                    <span className="text-muted-foreground">:</span>
-                    <div className="col-span-2">
-                      <Input 
-                        value={selectedPatient?.shareable_id || ''}
-                        disabled
-                      />
-                    </div>
+                <div className="lg:col-span-4 space-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Patient ID</Label>
+                    <Input 
+                      value={selectedPatient?.shareable_id || ''}
+                      disabled
+                      className="h-8"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-2 items-center">
-                    <Label className="font-semibold">Mobile No</Label>
-                    <span className="text-muted-foreground">:</span>
-                    <div className="col-span-2">
-                      <Input 
-                        value={selectedPatient?.primary_contact || ''}
-                        disabled
-                      />
-                    </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Mobile No</Label>
+                    <Input 
+                      value={selectedPatient?.primary_contact || ''}
+                      disabled
+                      className="h-8"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-2 items-center">
-                    <Label className="font-semibold">Visits</Label>
-                    <span className="text-muted-foreground">:</span>
-                    <div className="col-span-2">
-                      <Input value="0" disabled />
-                    </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Visits</Label>
+                    <Input value="0" disabled className="h-8" />
                   </div>
                 </div>
 
@@ -303,8 +289,8 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
                     const patient = patients.find(p => p.id === value);
                     setSelectedPatient(patient);
                   }}>
-                    <SelectTrigger className="bg-primary text-primary-foreground hover:bg-primary/90">
-                      <SelectValue placeholder="SEARCH PATIENT" />
+                    <SelectTrigger className="bg-primary text-primary-foreground hover:bg-primary/90 h-8">
+                      <SelectValue placeholder="SEARCH" />
                     </SelectTrigger>
                     <SelectContent>
                       <div className="p-2">
@@ -312,7 +298,7 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
                           placeholder="Search by name or ID..."
                           value={patientSearch}
                           onChange={(e) => setPatientSearch(e.target.value)}
-                          className="mb-2"
+                          className="mb-2 h-8"
                         />
                       </div>
                       {filteredPatients.map((patient) => (
@@ -329,12 +315,12 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
 
           {/* Billing Configuration */}
           <Card className="border-2 border-primary">
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <CardContent className="pt-3 pb-3">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
-                  <Label className="font-semibold mb-2 block">Billing Head</Label>
+                  <Label className="text-xs mb-1 block">Billing Head</Label>
                   <Select value={billingHead} onValueChange={setBillingHead}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -345,21 +331,21 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
                   </Select>
                 </div>
                 <div>
-                  <Label className="font-semibold mb-2 block">Select Package</Label>
+                  <Label className="text-xs mb-1 block">Package</Label>
                   <Select value={billingPackage} onValueChange={setBillingPackage}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Billing Package" />
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Select Package" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="basic">Basic Package</SelectItem>
-                      <SelectItem value="premium">Premium Package</SelectItem>
+                      <SelectItem value="basic">Basic</SelectItem>
+                      <SelectItem value="premium">Premium</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="md:col-span-2">
-                  <Label className="font-semibold mb-2 block">Select Category</Label>
+                  <Label className="text-xs mb-1 block">Category</Label>
                   <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
