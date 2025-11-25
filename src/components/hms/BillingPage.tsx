@@ -361,32 +361,33 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
 
           {/* Items Table */}
           <Card>
-            <CardHeader className="pb-3">
-              <div className="text-right text-primary font-semibold">
+            <CardHeader className="pb-2 pt-3">
+              <div className="text-right text-primary text-xs font-semibold">
                 All Amount in ( INR )
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-primary hover:bg-primary">
-                    <TableHead className="text-primary-foreground">Particulars</TableHead>
-                    <TableHead className="text-primary-foreground">Qty</TableHead>
-                    <TableHead className="text-primary-foreground">Cost</TableHead>
-                    <TableHead className="text-primary-foreground">Discount</TableHead>
-                    <TableHead className="text-primary-foreground">Tax</TableHead>
-                    <TableHead className="text-primary-foreground">Total Amount</TableHead>
-                    <TableHead className="text-primary-foreground">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {billItems.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <Select value={item.particular} onValueChange={(value) => updateBillItem(item.id, 'particular', value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Billable Item" />
-                          </SelectTrigger>
+              <div className="overflow-x-auto max-h-[280px] overflow-y-auto">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow className="bg-primary hover:bg-primary">
+                      <TableHead className="text-primary-foreground text-xs h-9">Particulars</TableHead>
+                      <TableHead className="text-primary-foreground text-xs h-9">Qty</TableHead>
+                      <TableHead className="text-primary-foreground text-xs h-9">Cost</TableHead>
+                      <TableHead className="text-primary-foreground text-xs h-9">Discount</TableHead>
+                      <TableHead className="text-primary-foreground text-xs h-9">Tax</TableHead>
+                      <TableHead className="text-primary-foreground text-xs h-9">Total</TableHead>
+                      <TableHead className="text-primary-foreground text-xs h-9">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {billItems.map((item) => (
+                      <TableRow key={item.id} className="h-12">
+                        <TableCell className="py-1">
+                          <Select value={item.particular} onValueChange={(value) => updateBillItem(item.id, 'particular', value)}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Select Item" />
+                            </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="consultation">Consultation</SelectItem>
                             <SelectItem value="medicine">Medicine</SelectItem>
@@ -394,89 +395,91 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
                             <SelectItem value="procedure">Procedure</SelectItem>
                           </SelectContent>
                         </Select>
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" 
-                          value={item.quantity}
-                          onChange={(e) => updateBillItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                          className="w-20"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input 
-                          type="number" 
-                          value={item.cost}
-                          onChange={(e) => updateBillItem(item.id, 'cost', parseFloat(e.target.value) || 0)}
-                          placeholder="00"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
+                        </TableCell>
+                        <TableCell className="py-1">
                           <Input 
                             type="number" 
-                            value={item.discount}
-                            onChange={(e) => updateBillItem(item.id, 'discount', parseFloat(e.target.value) || 0)}
-                            placeholder="00.0"
-                            className="w-20"
+                            value={item.quantity}
+                            onChange={(e) => updateBillItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                            className="w-16 h-8 text-xs"
                           />
-                          <Select value={item.discountType} onValueChange={(value: 'percent' | 'amount') => updateBillItem(item.id, 'discountType', value)}>
-                            <SelectTrigger className="w-16">
-                              <SelectValue />
+                        </TableCell>
+                        <TableCell className="py-1">
+                          <Input 
+                            type="number" 
+                            value={item.cost}
+                            onChange={(e) => updateBillItem(item.id, 'cost', parseFloat(e.target.value) || 0)}
+                            placeholder="00"
+                            className="w-20 h-8 text-xs"
+                          />
+                        </TableCell>
+                        <TableCell className="py-1">
+                          <div className="flex gap-1 items-center">
+                            <Input 
+                              type="number" 
+                              value={item.discount}
+                              onChange={(e) => updateBillItem(item.id, 'discount', parseFloat(e.target.value) || 0)}
+                              placeholder="00"
+                              className="w-14 h-8 text-xs"
+                            />
+                            <Select value={item.discountType} onValueChange={(value: 'percent' | 'amount') => updateBillItem(item.id, 'discountType', value)}>
+                              <SelectTrigger className="w-12 h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="percent">%</SelectItem>
+                                <SelectItem value="amount">₹</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-1">
+                          <Select value={item.tax.toString()} onValueChange={(value) => updateBillItem(item.id, 'tax', parseFloat(value))}>
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Tax" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="percent">%</SelectItem>
-                              <SelectItem value="amount">₹</SelectItem>
+                              <SelectItem value="0">0%</SelectItem>
+                              <SelectItem value="5">5%</SelectItem>
+                              <SelectItem value="12">12%</SelectItem>
+                              <SelectItem value="18">18%</SelectItem>
                             </SelectContent>
                           </Select>
-                          <span className="self-center">{item.discountType === 'percent' ? `${((item.quantity * item.cost * item.discount) / 100).toFixed(2)}` : item.discount.toFixed(2)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Select value={item.tax.toString()} onValueChange={(value) => updateBillItem(item.id, 'tax', parseFloat(value))}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Tax" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0">0%</SelectItem>
-                            <SelectItem value="5">5%</SelectItem>
-                            <SelectItem value="12">12%</SelectItem>
-                            <SelectItem value="18">18%</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="font-semibold">
-                        {item.totalAmount.toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => removeItem(item.id)}
-                          disabled={billItems.length === 1}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
+                        </TableCell>
+                        <TableCell className="py-1 font-semibold text-xs">
+                          ₹{item.totalAmount.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="py-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => removeItem(item.id)}
+                            disabled={billItems.length === 1}
+                          >
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </TableCell>
                     </TableRow>
                   ))}
-                </TableBody>
-              </Table>
+                  </TableBody>
+                </Table>
+              </div>
               
-              <div className="p-4">
-                <Button onClick={addMoreItems} className="bg-primary text-primary-foreground">
+              <div className="p-3 border-t">
+                <Button onClick={addMoreItems} className="bg-primary text-primary-foreground h-8 text-xs">
                   ADD MORE ITEMS
                 </Button>
               </div>
 
               {/* Total Amount Row */}
               <div className="border-t">
-                <div className="grid grid-cols-7 gap-4 p-4 bg-muted/30">
-                  <div className="col-span-2 text-right font-semibold">Total Amount</div>
-                  <div className="text-center font-semibold">{totals.subtotal.toFixed(2)}</div>
-                  <div className="text-center font-semibold">{totals.totalDiscountAmt.toFixed(2)}</div>
-                  <div className="text-center font-semibold">{totals.totalTax.toFixed(2)}</div>
-                  <div className="text-center font-semibold">{totals.grandTotal.toFixed(2)}</div>
+                <div className="grid grid-cols-7 gap-2 p-3 bg-muted/30">
+                  <div className="col-span-2 text-right font-semibold text-xs">Total Amount</div>
+                  <div className="text-center font-semibold text-xs">₹{totals.subtotal.toFixed(2)}</div>
+                  <div className="text-center font-semibold text-xs">₹{totals.totalDiscountAmt.toFixed(2)}</div>
+                  <div className="text-center font-semibold text-xs">₹{totals.totalTax.toFixed(2)}</div>
+                  <div className="text-center font-semibold text-xs">₹{totals.grandTotal.toFixed(2)}</div>
                   <div></div>
                 </div>
               </div>
@@ -485,15 +488,15 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
 
           {/* Payment Details */}
           <Card>
-            <CardHeader>
-              <h3 className="text-xl font-semibold text-primary">Payment Details</h3>
+            <CardHeader className="pb-3 pt-4">
+              <h3 className="text-base font-semibold text-primary">Payment Details</h3>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <CardContent className="space-y-3 pb-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <Label className="font-semibold mb-2 block">Select Payment Mode</Label>
+                  <Label className="text-xs mb-1 block">Payment Mode</Label>
                   <Select value={paymentMode} onValueChange={setPaymentMode}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-8">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -505,48 +508,50 @@ export default function BillingPage({ hospitalData }: { hospitalData: any }) {
                   </Select>
                 </div>
                 <div>
-                  <Label className="font-semibold mb-2 block">Total Discount</Label>
+                  <Label className="text-xs mb-1 block">Total Discount</Label>
                   <Input 
                     type="number" 
                     value={totalDiscount}
                     onChange={(e) => setTotalDiscount(parseFloat(e.target.value) || 0)}
                     placeholder="00.0"
+                    className="h-8"
                   />
                 </div>
                 <div>
-                  <Label className="font-semibold mb-2 block">Payable Amount</Label>
+                  <Label className="text-xs mb-1 block">Payable Amount</Label>
                   <Input 
                     type="number" 
                     value={payableAmount}
                     onChange={(e) => setPayableAmount(parseFloat(e.target.value) || 0)}
                     placeholder="00"
+                    className="h-8"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <Label className="font-semibold">Remaining Amount</Label>
-                <span className="font-semibold">/-</span>
-                <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3 text-sm">
+                <Label className="text-xs">Remaining</Label>
+                <span className="font-semibold">₹{(totals.grandTotal - payableAmount).toFixed(2)}</span>
+                <div className="flex items-center gap-2 ml-auto">
                   <Checkbox 
                     id="waived" 
                     checked={waivedOff}
                     onCheckedChange={(checked) => setWaivedOff(checked as boolean)}
                   />
-                  <Label htmlFor="waived" className="cursor-pointer">
-                    Mark As Waived Off
+                  <Label htmlFor="waived" className="cursor-pointer text-xs">
+                    Waived Off
                   </Label>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={resetForm}>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={resetForm} className="h-8 text-xs">
                   CANCEL
                 </Button>
-                <Button onClick={handleSaveBill} className="bg-primary text-primary-foreground">
+                <Button onClick={handleSaveBill} className="bg-primary text-primary-foreground h-8 text-xs">
                   SAVE BILL
                 </Button>
-                <Button onClick={handleSaveBill} className="bg-primary text-primary-foreground">
+                <Button onClick={handleSaveBill} className="bg-primary text-primary-foreground h-8 text-xs">
                   COLLECT PAYMENT
                 </Button>
               </div>
