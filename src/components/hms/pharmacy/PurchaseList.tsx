@@ -83,7 +83,7 @@ export default function PurchaseList({ hospitalData }: { hospitalData: any }) {
   const [filters, setFilters] = useState({
     fromDate: "",
     toDate: "",
-    supplierId: "",
+    supplierId: "all",
     purchaseNumber: "",
   });
 
@@ -165,7 +165,7 @@ export default function PurchaseList({ hospitalData }: { hospitalData: any }) {
       );
     }
 
-    if (filters.supplierId) {
+    if (filters.supplierId && filters.supplierId !== "all") {
       filtered = filtered.filter(
         (purchase) => purchase.supplier.id === filters.supplierId
       );
@@ -195,7 +195,7 @@ export default function PurchaseList({ hospitalData }: { hospitalData: any }) {
     setFilters({
       fromDate: "",
       toDate: "",
-      supplierId: "",
+      supplierId: "all",
       purchaseNumber: "",
     });
     setFilteredPurchases(purchases);
@@ -302,7 +302,7 @@ export default function PurchaseList({ hospitalData }: { hospitalData: any }) {
                   <SelectValue placeholder="Select supplier" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Suppliers</SelectItem>
+                  <SelectItem value="all">All Suppliers</SelectItem>
                   {suppliers.map((supplier) => (
                     <SelectItem key={supplier.id} value={supplier.id}>
                       {supplier.supplier_name}
