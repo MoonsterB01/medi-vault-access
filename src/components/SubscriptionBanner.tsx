@@ -1,3 +1,4 @@
+import React from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Crown } from "lucide-react";
 import { Card } from "@/components/ui/card";
