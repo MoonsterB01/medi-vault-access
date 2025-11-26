@@ -13,6 +13,8 @@ import { DocumentScanner } from "@/components/DocumentScanner";
 import { ContentAnalyzer } from "@/components/ContentAnalyzer";
 import OCRProcessor from "@/components/OCRProcessor";
 import { generateFileHash, getFileHashInfo } from "@/lib/fileHash";
+import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
+import { useSubscription } from "@/hooks/use-subscription";
 
 /**
  * @interface DocumentUploadProps
@@ -86,7 +88,11 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
   const [isFileBlocked, setIsFileBlocked] = useState(false);
   const [blockReason, setBlockReason] = useState<string | null>(null);
   const [isAnalyzingWithAI, setIsAnalyzingWithAI] = useState(false);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  const subscription = useSubscription(userId || undefined, patientId || undefined);
 
   useEffect(() => {
     fetchUserPatient();
@@ -102,6 +108,8 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
       });
       return;
     }
+    
+    setUserId(user.id);
     
     const { data: patients, error } = await supabase
       .from('patients')
@@ -125,6 +133,13 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
+    
+    // Check upload limit before proceeding
+    if (!subscription.canUpload && !subscription.isLoading) {
+      setShowUpgradeDialog(true);
+      e.target.value = ''; // Reset file input
+      return;
+    }
 
     // Check file size (10MB limit)
     if (selectedFile.size > 10 * 1024 * 1024) {
@@ -911,6 +926,17 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
           contentType={file.type}
           fileContent={fileContent}
           onAnalysisComplete={handleAnalysisComplete}
+        />
+      )}
+      
+      {/* Upgrade Plan Dialog */}
+      {subscription.currentPlan && (
+        <UpgradePlanDialog
+          open={showUpgradeDialog}
+          onOpenChange={setShowUpgradeDialog}
+          currentPlan={subscription.currentPlan.display_name}
+          uploadsUsed={subscription.uploadsUsed}
+          uploadLimit={subscription.currentPlan.upload_limit}
         />
       )}
     </div>

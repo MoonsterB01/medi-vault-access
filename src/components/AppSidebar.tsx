@@ -11,6 +11,7 @@ import {
   FilePlus,
   Stethoscope,
   Phone,
+  CreditCard,
 } from "lucide-react";
 import {
   Sidebar,
@@ -32,6 +33,7 @@ const patientMenuItems = [
   { title: "Book Appointment", url: "/patient-dashboard#book-appointment", icon: CalendarPlus, tab: "book-appointment" },
   { title: "Upload Documents", url: "/patient-dashboard#upload", icon: Upload, tab: "upload" },
   { title: "Family Access", url: "/patient-dashboard#family", icon: Users, tab: "family" },
+  { title: "Plans & Pricing", url: "/pricing", icon: CreditCard, tab: "pricing" },
   { title: "Contact Us", url: "/contact-us", icon: Phone, tab: "contact-us" },
 ];
 

@@ -1498,6 +1498,57 @@ export type Database = {
           },
         ]
       }
+      payment_history: {
+        Row: {
+          amount: number
+          created_at: string | null
+          currency: string | null
+          id: string
+          payment_intent_id: string | null
+          payment_method: string | null
+          status: string | null
+          subscription_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          payment_intent_id?: string | null
+          payment_method?: string | null
+          status?: string | null
+          subscription_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          payment_intent_id?: string | null
+          payment_method?: string | null
+          status?: string | null
+          subscription_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_history_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "user_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pharmacy_dispensations: {
         Row: {
           created_at: string | null
@@ -1854,6 +1905,42 @@ export type Database = {
           },
         ]
       }
+      subscription_plans: {
+        Row: {
+          created_at: string | null
+          display_name: string
+          features: Json | null
+          id: string
+          is_active: boolean | null
+          monthly_price: number
+          name: string
+          upload_limit: number
+          yearly_price: number
+        }
+        Insert: {
+          created_at?: string | null
+          display_name: string
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          monthly_price?: number
+          name: string
+          upload_limit: number
+          yearly_price?: number
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          monthly_price?: number
+          name?: string
+          upload_limit?: number
+          yearly_price?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           assigned_at: string | null
@@ -1880,6 +1967,57 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          billing_cycle: string
+          created_at: string | null
+          current_period_end: string
+          current_period_start: string
+          id: string
+          plan_id: string
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          billing_cycle?: string
+          created_at?: string | null
+          current_period_end?: string
+          current_period_start?: string
+          id?: string
+          plan_id: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          billing_cycle?: string
+          created_at?: string | null
+          current_period_end?: string
+          current_period_start?: string
+          id?: string
+          plan_id?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {
@@ -2031,6 +2169,7 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      get_user_upload_limit: { Args: { p_user_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["user_role"]
