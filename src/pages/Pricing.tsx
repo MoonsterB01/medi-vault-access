@@ -81,7 +81,7 @@ export default function Pricing() {
 
   const handlePlanSelect = (planName: string) => {
     if (planName === 'free') {
-      navigate('/patient');
+      navigate('/patient-dashboard');
       return;
     }
 
