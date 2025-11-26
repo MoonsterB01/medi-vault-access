@@ -41,6 +41,7 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
     normal: true,
   });
   const [slotDuration, setSlotDuration] = useState(15);
+  const [viewMode, setViewMode] = useState<"day" | "4days" | "week">("day");
 
   const timeSlots = Array.from({ length: 24 }, (_, i) => {
     const hour = Math.floor(i / 2);
@@ -53,7 +54,7 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
       fetchDoctors();
       fetchAppointments();
     }
-  }, [hospitalData, currentDate]);
+  }, [hospitalData, currentDate, viewMode]);
 
   useEffect(() => {
     if (hospitalData?.id) {
@@ -87,7 +88,18 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
 
   const fetchAppointments = async () => {
     const startDate = startOfDay(currentDate);
-    const endDate = endOfDay(currentDate);
+    let endDate;
+
+    switch (viewMode) {
+      case "4days":
+        endDate = endOfDay(addDays(currentDate, 3));
+        break;
+      case "week":
+        endDate = endOfDay(addDays(currentDate, 6));
+        break;
+      default:
+        endDate = endOfDay(currentDate);
+    }
 
     let query = supabase
       .from('appointments')
@@ -302,67 +314,67 @@ export default function AppointmentScheduleView({ hospitalData }: { hospitalData
           </h2>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm">Chairs</Button>
-            <Button variant="default" size="sm">Day</Button>
-            <Button variant="ghost" size="sm">4 Days</Button>
-            <Button variant="ghost" size="sm">Week</Button>
-            <Button variant="ghost" size="icon">
-              <Settings className="h-4 w-4" />
-            </Button>
+            <Button variant={viewMode === 'day' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('day')}>Day</Button>
+            <Button variant={viewMode === '4days' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('4days')}>4 Days</Button>
+            <Button variant={viewMode === 'week' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('week')}>Week</Button>
           </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-auto">
           <div className="border rounded-lg">
-            <div className="grid grid-cols-[80px_1fr] divide-y">
-              <div className="p-2 text-center font-medium border-b">Time</div>
-              <div className="p-2 text-center font-medium border-b">
-                {format(currentDate, 'EEE dd/MM')}
-              </div>
+            <div className={cn(
+              "grid divide-y divide-x",
+              viewMode === 'day' ? "grid-cols-[80px_1fr]" :
+              viewMode === '4days' ? "grid-cols-[80px_repeat(4,1fr)]" :
+              "grid-cols-[80px_repeat(7,1fr)]"
+            )}>
+              {/* Header Row */}
+              <div className="p-2 text-center font-medium">Time</div>
+              {Array.from({ length: viewMode === 'day' ? 1 : viewMode === '4days' ? 4 : 7 }).map((_, i) => (
+                <div key={i} className="p-2 text-center font-medium">
+                  {format(addDays(currentDate, i), 'EEE dd/MM')}
+                </div>
+              ))}
               
-              <div className="p-2 text-sm text-muted-foreground">All-Day</div>
-              <div className="p-4 min-h-16"></div>
+              {/* Time Slot Rows */}
+              {timeSlots.map((time) => (
+                <>
+                  <div className="p-2 text-sm text-muted-foreground">{time}</div>
+                  {Array.from({ length: viewMode === 'day' ? 1 : viewMode === '4days' ? 4 : 7 }).map((_, i) => {
+                    const day = addDays(currentDate, i);
+                    const timeAppointments = appointments.filter(apt =>
+                      apt &&
+                      apt.appointment_date &&
+                      isSameDay(new Date(apt.appointment_date), day) &&
+                      apt.appointment_time &&
+                      apt.appointment_time.substring(0, 5) === time
+                    );
 
-              {timeSlots.map((time) => {
-                const timeAppointments = appointments.filter(apt => 
-                  apt && apt.appointment_time && apt.appointment_time.substring(0, 5) === time
-                );
+                    return (
+                      <div key={day.toString()} className="p-1 min-h-16 relative">
+                        {timeAppointments.map((apt) => {
+                          if (!apt) return null;
+                          const patientName = apt.patient?.name || 'Unknown Patient';
 
-                return (
-                  <>
-                    <div key={`time-${time}`} className="p-2 text-sm text-muted-foreground">
-                      {time}
-                    </div>
-                    <div key={`slot-${time}`} className="p-1 min-h-16 relative">
-                      {timeAppointments.map((apt) => {
-                        if (!apt) return null;
-                        const patientName = (apt.patient && apt.patient.name) ? apt.patient.name : 'Unknown Patient';
-                        
-                        return (
-                          <div
-                            key={apt.id}
-                            className={cn(
-                              "absolute left-1 right-1 p-2 rounded text-white text-xs",
-                              getStatusColor(apt.status)
-                            )}
-                            style={{
-                              top: '4px',
-                              height: 'calc(100% - 8px)',
-                            }}
-                          >
-                            <div className="font-medium truncate">
-                              {apt.appointment_time} - {format(new Date(`2000-01-01 ${apt.appointment_time}`).getTime() + 30*60000, 'HH:mm')}
+                          return (
+                            <div
+                              key={apt.id}
+                              className={cn(
+                                "absolute inset-1 p-2 rounded text-white text-xs",
+                                getStatusColor(apt.status)
+                              )}
+                            >
+                              <div className="font-medium truncate">
+                                {apt.appointment_time.substring(0,5)}
+                              </div>
+                              <div className="text-xs truncate">{patientName}</div>
                             </div>
-                            <div className="text-xs truncate">{patientName}</div>
-                            {apt.patient?.shareable_id && (
-                              <div className="text-xs opacity-90">{apt.patient.shareable_id}</div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                );
-              })}
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </>
+              ))}
             </div>
           </div>
         </CardContent>
