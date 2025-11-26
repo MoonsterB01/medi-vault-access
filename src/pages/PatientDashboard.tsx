@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { usePatientSummary } from "@/hooks/use-patient-summary";
+import { useSubscription } from "@/hooks/use-subscription";
 import { User, FileText, Share2, Copy, Upload, Download, Calendar, Clock, Trash2, Users, Search, Bot } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +23,7 @@ import { MissingInfoDialog } from "@/components/MissingInfoDialog";
 import { DocumentSummaryDialog } from "@/components/DocumentSummaryDialog";
 import { MediBot } from "@/components/MediBot";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { cn } from "@/lib/utils";
 
 /**
@@ -51,6 +53,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   const { summary, isLoading: isSummaryLoading, error: summaryError, refresh: refreshSummary } = usePatientSummary(patientData?.id);
   const [isMissingInfoDialogOpen, setMissingInfoDialogOpen] = useState(false);
   const [missingFields, setMissingFields] = useState<any[]>([]);
+  const subscription = useSubscription(user?.id, patientData?.id);
 
   useEffect(() => {
     if (patientData) {
@@ -412,6 +415,16 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
                   </div>
                 </CardContent>
               </Card>
+              
+              {/* Subscription Status Banner */}
+              {subscription.currentPlan && !subscription.isLoading && (
+                <SubscriptionBanner
+                  planName={subscription.currentPlan.display_name}
+                  uploadsUsed={subscription.uploadsUsed}
+                  uploadLimit={subscription.currentPlan.upload_limit}
+                  className="mt-4"
+                />
+              )}
             </>
           )}
         </div>
