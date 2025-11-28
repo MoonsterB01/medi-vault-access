@@ -78,7 +78,8 @@ serve(async (req) => {
     if (planError) throw planError;
 
     const amount = billingCycle === 'yearly' ? plan.yearly_price : plan.monthly_price;
-    const amountInPaise = amount * 100; // Razorpay expects amount in paise
+    // Amount is already stored in paise in the database, no need to multiply
+    const amountInPaise = amount;
 
     // Create Razorpay order
     const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID');
