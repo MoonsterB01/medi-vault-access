@@ -86,6 +86,11 @@ serve(async (req) => {
     
     const basicAuth = btoa(`${razorpayKeyId}:${razorpayKeySecret}`);
     
+    // Generate a short receipt ID (max 40 chars)
+    const timestamp = Date.now().toString().slice(-10); // Last 10 digits of timestamp
+    const userShort = user.id.slice(0, 8); // First 8 chars of user ID
+    const receipt = `ord_${userShort}_${timestamp}`; // Format: ord_12345678_1234567890 (30 chars)
+    
     const orderResponse = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
       headers: {
@@ -95,7 +100,7 @@ serve(async (req) => {
       body: JSON.stringify({
         amount: amountInPaise,
         currency: 'INR',
-        receipt: `order_${user.id}_${Date.now()}`,
+        receipt: receipt,
         notes: {
           user_id: user.id,
           plan_id: planId,
