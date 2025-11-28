@@ -15,7 +15,16 @@ serve(async (req) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planId, billingCycle } = await req.json();
     
-    const authHeader = req.headers.get('Authorization')!;
+    const authHeader = req.headers.get('Authorization');
+    
+    if (!authHeader) {
+      console.error('No authorization header found');
+      return new Response(
+        JSON.stringify({ error: 'No authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -23,8 +32,13 @@ serve(async (req) => {
     );
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
     if (userError || !user) {
-      throw new Error('User not authenticated');
+      console.error('Auth error:', userError);
+      return new Response(
+        JSON.stringify({ error: 'User not authenticated', details: userError?.message }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Verify signature
