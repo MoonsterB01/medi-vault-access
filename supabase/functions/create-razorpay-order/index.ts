@@ -26,13 +26,23 @@ serve(async (req) => {
       );
     }
 
-    const supabase = createClient(
+    // Extract the JWT token
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Create supabase client with service role key for server-side operations
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Verify the JWT token and get user
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
     
     if (userError) {
       console.error('Auth error:', userError);
@@ -51,6 +61,12 @@ serve(async (req) => {
     }
     
     console.log('User authenticated:', user.id);
+    
+    // Create client for database operations
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
     // Get plan details
     const { data: plan, error: planError } = await supabase
