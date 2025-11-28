@@ -25,13 +25,23 @@ serve(async (req) => {
       );
     }
 
-    const supabase = createClient(
+    // Extract the JWT token
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Create supabase client with service role key
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Verify the JWT token and get user
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
     
     if (userError || !user) {
       console.error('Auth error:', userError);
@@ -40,6 +50,12 @@ serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    // Create client for database operations
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
 
     // Verify signature
     const razorpayKeySecret = Deno.env.get('RAZORPAY_KEY_SECRET');
