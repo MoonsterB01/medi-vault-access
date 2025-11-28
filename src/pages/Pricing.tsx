@@ -6,6 +6,12 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 interface Plan {
   id: string;
   name: string;
@@ -79,16 +85,108 @@ export default function Pricing() {
     }
   };
 
-  const handlePlanSelect = (planName: string) => {
+  const handlePlanSelect = async (planName: string, planId: string) => {
     if (planName === 'free') {
       navigate('/patient-dashboard');
       return;
     }
 
-    toast({
-      title: "Coming Soon",
-      description: "Payment integration will be available soon. Please contact support to upgrade your plan.",
-    });
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please login to subscribe",
+          variant: "destructive",
+        });
+        navigate('/auth');
+        return;
+      }
+
+      // Create Razorpay order
+      const { data: orderData, error: orderError } = await supabase.functions.invoke(
+        'create-razorpay-order',
+        {
+          body: { planId, billingCycle }
+        }
+      );
+
+      if (orderError) throw orderError;
+
+      // Load Razorpay script if not already loaded
+      if (!window.Razorpay) {
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        document.body.appendChild(script);
+        await new Promise((resolve) => { script.onload = resolve; });
+      }
+
+      // Initialize Razorpay payment
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Medical Records',
+        description: `${planName} Plan - ${billingCycle}`,
+        order_id: orderData.orderId,
+        handler: async function (response: any) {
+          try {
+            // Verify payment
+            const { error: verifyError } = await supabase.functions.invoke(
+              'verify-razorpay-payment',
+              {
+                body: {
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  planId,
+                  billingCycle,
+                }
+              }
+            );
+
+            if (verifyError) throw verifyError;
+
+            toast({
+              title: "Payment Successful!",
+              description: "Your subscription has been activated.",
+            });
+            navigate('/patient-dashboard');
+          } catch (error: any) {
+            console.error('Payment verification error:', error);
+            toast({
+              title: "Payment Verification Failed",
+              description: error.message,
+              variant: "destructive",
+            });
+          }
+        },
+        prefill: {
+          email: user.email,
+        },
+        theme: {
+          color: '#3b82f6',
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response: any) {
+        toast({
+          title: "Payment Failed",
+          description: response.error.description,
+          variant: "destructive",
+        });
+      });
+      rzp.open();
+    } catch (error: any) {
+      console.error('Error initiating payment:', error);
+      toast({
+        title: "Payment Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {
@@ -152,7 +250,7 @@ export default function Pricing() {
               billingCycle={billingCycle}
               isCurrentPlan={plan.name === currentPlanName}
               isPopular={plan.name === 'standard'}
-              onSelect={() => handlePlanSelect(plan.name)}
+              onSelect={() => handlePlanSelect(plan.name, plan.id)}
             />
           ))}
         </div>
