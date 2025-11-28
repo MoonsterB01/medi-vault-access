@@ -1,90 +1,53 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import { useState } from "react";
+import LaboratoryNavigation, { LabSection } from "./laboratory/LaboratoryNavigation";
+import LabBilling from "./laboratory/LabBilling";
+import LabWorkOrder from "./laboratory/LabWorkOrder";
+import LabBillingHistory from "./laboratory/LabBillingHistory";
+import LabHistory from "./laboratory/LabHistory";
+import OrderLabTests from "./laboratory/OrderLabTests";
+import LabComponent from "./laboratory/LabComponent";
+import LabTrashOrders from "./laboratory/LabTrashOrders";
 
 export default function LaboratoryPage({ hospitalData }: { hospitalData: any }) {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [activeSection, setActiveSection] = useState<LabSection>("billing");
 
-  useEffect(() => {
-    fetchOrders();
-  }, [hospitalData]);
-
-  const fetchOrders = async () => {
-    if (!hospitalData?.id) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('lab_orders')
-        .select('*, patients(name), doctors(users(name))')
-        .eq('hospital_id', hospitalData.id)
-        .order('order_date', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-      setOrders(data || []);
-    } catch (error: any) {
-      toast.error('Failed to load lab orders');
+  const renderSection = () => {
+    switch (activeSection) {
+      case "billing":
+        return <LabBilling hospitalData={hospitalData} />;
+      
+      case "work-order":
+        return <LabWorkOrder hospitalData={hospitalData} />;
+      
+      case "billing-history":
+        return <LabBillingHistory hospitalData={hospitalData} />;
+      
+      case "lab-history":
+        return <LabHistory hospitalData={hospitalData} />;
+      
+      case "order-tests":
+        return <OrderLabTests hospitalData={hospitalData} />;
+      
+      case "component":
+        return <LabComponent hospitalData={hospitalData} />;
+      
+      case "trash-orders":
+        return <LabTrashOrders hospitalData={hospitalData} />;
+      
+      default:
+        return <LabBilling hospitalData={hospitalData} />;
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold">Laboratory Management</h2>
-          <p className="text-muted-foreground">Manage lab tests and orders</p>
-        </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          New Order
-        </Button>
+    <div className="flex h-full">
+      <LaboratoryNavigation 
+        activeSection={activeSection} 
+        onSectionChange={setActiveSection} 
+      />
+      <div className="flex-1 overflow-auto p-6">
+        {renderSection()}
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Lab Orders</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Patient</TableHead>
-                <TableHead>Order Date</TableHead>
-                <TableHead>Doctor</TableHead>
-                <TableHead>Tests</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orders.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.patients?.name}</TableCell>
-                  <TableCell>{new Date(order.order_date).toLocaleString()}</TableCell>
-                  <TableCell>{order.doctors?.users?.name || 'N/A'}</TableCell>
-                  <TableCell>{Array.isArray(order.tests) ? order.tests.length : 0} tests</TableCell>
-                  <TableCell>
-                    <Badge variant={
-                      order.status === 'completed' ? 'default' :
-                      order.status === 'pending' ? 'secondary' : 'outline'
-                    }>
-                      {order.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm">View</Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
     </div>
   );
 }
