@@ -2,6 +2,12 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/+esm';
 
+// Configure PDF.js for Deno Edge Runtime environment
+// CRITICAL: Must be set before any PDF operations
+if (typeof pdfjsLib.GlobalWorkerOptions !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = null;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -163,19 +169,27 @@ serve(async (req) => {
   }
 
   try {
-    const { fileContent, filename } = await req.json();
+    const { fileContent, fileName } = await req.json();
     
     if (!fileContent) {
       throw new Error('No file content provided');
     }
     
+    const filename = fileName || 'document.pdf';
     console.log(`Extracting text from PDF: ${filename}`);
     
-    // Convert base64 to Uint8Array
-    const binaryData = atob(fileContent);
-    const bytes = new Uint8Array(binaryData.length);
-    for (let i = 0; i < binaryData.length; i++) {
-      bytes[i] = binaryData.charCodeAt(i);
+    // Convert base64 to Uint8Array with error handling
+    let bytes: Uint8Array;
+    try {
+      const binaryData = atob(fileContent);
+      bytes = new Uint8Array(binaryData.length);
+      for (let i = 0; i < binaryData.length; i++) {
+        bytes[i] = binaryData.charCodeAt(i);
+      }
+      console.log(`Converted ${bytes.length} bytes for processing`);
+    } catch (decodeError) {
+      console.error('Failed to decode base64 content:', decodeError);
+      throw new Error('Invalid file content encoding');
     }
     
     const result = await extractTextFromPDF(bytes);
