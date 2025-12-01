@@ -23,7 +23,7 @@ interface UploadRequest {
   description?: string;
   tags?: string[];
   ocrResult?: any;
-  aiAnalysisResult?: any;
+  aiVisionResult?: any;
   fileHash?: string;
 }
 
@@ -63,7 +63,7 @@ const handler = async (req: Request): Promise<Response> => {
       return createErrorResponse(requestId, 400, 'invalid_request_body', err.message, origin);
     }
 
-    const { file, documentType, description, tags, ocrResult, aiAnalysisResult, fileHash } = uploadData;
+    const { file, documentType, description, tags, ocrResult, aiVisionResult, fileHash } = uploadData;
 
     console.log(JSON.stringify({ requestId, userId: user.id, step: 'fetching_patient_record' }));
 
@@ -99,27 +99,27 @@ const handler = async (req: Request): Promise<Response> => {
     let analysisResult: any = null;
 
     // Check if AI Vision result was provided (new flow)
-    if (aiAnalysisResult) {
+    if (aiVisionResult) {
       console.log(JSON.stringify({ requestId, step: 'using_ai_vision_result' }));
-      extractedText = aiAnalysisResult.extractedText || '';
+      extractedText = aiVisionResult.extractedText || '';
       
       // Transform AI Vision result to analysis format
       analysisResult = {
-        confidence: aiAnalysisResult.confidence || 0.8,
+        confidence: aiVisionResult.confidence || 0.8,
         keywords: [],
-        categories: aiAnalysisResult.categories || [],
-        entities: aiAnalysisResult.medicalEntities || {},
-        summary: `AI analyzed document with ${aiAnalysisResult.categories?.length || 0} categories detected`,
+        categories: aiVisionResult.categories || [],
+        entities: aiVisionResult.medicalEntities || {},
+        summary: `AI analyzed document with ${aiVisionResult.categories?.length || 0} categories detected`,
         specialties: [],
         medicalKeywordCount: 0,
-        patientInfo: aiAnalysisResult.patientInfo || {},
-        criticalAlerts: aiAnalysisResult.criticalAlerts || []
+        patientInfo: aiVisionResult.patientInfo || {},
+        criticalAlerts: aiVisionResult.criticalAlerts || []
       };
       
       // Extract keywords from medical entities
-      if (aiAnalysisResult.medicalEntities) {
+      if (aiVisionResult.medicalEntities) {
         const keywords = new Set<string>();
-        Object.values(aiAnalysisResult.medicalEntities).forEach((entityArray: any) => {
+        Object.values(aiVisionResult.medicalEntities).forEach((entityArray: any) => {
           if (Array.isArray(entityArray)) {
             entityArray.forEach((item: any) => {
               if (typeof item === 'string') {
@@ -357,18 +357,40 @@ const handler = async (req: Request): Promise<Response> => {
           }))
         ];
 
-        // Handle entities object structure (doctors, conditions, medications, etc.)
+        // Handle entities object structure properly (strings and objects)
         if (analysisResult.entities && typeof analysisResult.entities === 'object') {
           Object.entries(analysisResult.entities).forEach(([entityType, values]: [string, any]) => {
             if (Array.isArray(values)) {
-              values.forEach((value: string) => {
-                if (value) {
+              values.forEach((value: any) => {
+                // Handle string entities
+                if (typeof value === 'string' && value) {
                   keywords.push({
                     document_id: document.id,
                     keyword: value,
                     entity_type: entityType,
                     keyword_type: 'entity'
                   });
+                }
+                // Handle object entities (medications, labResults)
+                else if (typeof value === 'object' && value !== null) {
+                  // Extract name for medications
+                  if (value.name) {
+                    keywords.push({
+                      document_id: document.id,
+                      keyword: value.name,
+                      entity_type: entityType,
+                      keyword_type: 'entity'
+                    });
+                  }
+                  // Extract test name for lab results
+                  if (value.test) {
+                    keywords.push({
+                      document_id: document.id,
+                      keyword: value.test,
+                      entity_type: entityType,
+                      keyword_type: 'entity'
+                    });
+                  }
                 }
               });
             }
@@ -398,6 +420,7 @@ const handler = async (req: Request): Promise<Response> => {
       filePath: uploadResult.path,
       extractedText: extractedText ? `${extractedText.substring(0, 200)}...` : null,
       analysisCompleted: !!analysisResult,
+      skipAnalysis: !!aiVisionResult,
       requestId
     };
 
