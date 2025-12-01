@@ -7,67 +7,50 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileText, Camera, CheckCircle, AlertTriangle, Eye, Shield, User } from "lucide-react";
+import { Upload, FileText, Camera, CheckCircle, AlertTriangle, User, Loader2, Shield, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { DocumentScanner } from "@/components/DocumentScanner";
 import { ContentAnalyzer } from "@/components/ContentAnalyzer";
-import OCRProcessor from "@/components/OCRProcessor";
-import { generateFileHash, getFileHashInfo } from "@/lib/fileHash";
+import { generateFileHash } from "@/lib/fileHash";
 import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
 import { useSubscription } from "@/hooks/use-subscription";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
-/**
- * @interface DocumentUploadProps
- * @description Defines the props for the DocumentUpload component.
- * @property {() => void} [onUploadSuccess] - An optional callback function to be called when the upload is successful.
- */
 interface DocumentUploadProps {
   onUploadSuccess?: () => void;
 }
 
-/**
- * @interface OCRResult
- * @description Defines the structure of the OCR result object.
- */
-interface OCRResult {
-  text: string;
-  confidence: number;
-  textDensityScore: number;
-  medicalKeywordCount: number;
-  detectedKeywords: string[];
-  verificationStatus: 'verified_medical' | 'user_verified_medical' | 'unverified' | 'miscellaneous';
-  formatSupported: boolean;
-  processingNotes: string;
-  structuralCues: {
-    hasDates: boolean;
-    hasUnits: boolean;
-    hasNumbers: boolean;
-    hasTableStructure: boolean;
+interface AIVisionResult {
+  success: boolean;
+  extractedText: string;
+  patientInfo?: {
+    name?: string;
+    dob?: string;
+    gender?: string;
+    contact?: string;
   };
-}
-
-/**
- * @interface AIAnalysisResult
- * @description Defines the structure of the AI analysis result object.
- */
-interface AIAnalysisResult {
-  keywords: string[];
+  medicalEntities: {
+    doctors?: string[];
+    conditions?: string[];
+    medications?: Array<{
+      name: string;
+      dose?: string;
+      frequency?: string;
+    }>;
+    labResults?: Array<{
+      test: string;
+      value: string;
+      unit?: string;
+      normalRange?: string;
+      isAbnormal?: boolean;
+    }>;
+  };
   categories: string[];
   confidence: number;
-  entities: any;
-  verificationStatus: string;
-  textDensityScore: number;
-  medicalKeywordCount: number;
-  processingNotes: string;
-  requiresUserVerification: boolean;
+  criticalAlerts?: string[];
+  error?: string;
 }
 
-/**
- * @function DocumentUpload
- * @description A component for uploading medical documents. It includes features for file selection, document scanning, OCR processing, AI analysis, and user verification.
- * @param {DocumentUploadProps} props - The props for the component.
- * @returns {JSX.Element} - The rendered DocumentUpload component.
- */
 export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -78,16 +61,13 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
   const [patientName, setPatientName] = useState("");
   const [showScanner, setShowScanner] = useState(false);
   const [showAnalyzer, setShowAnalyzer] = useState(false);
-  const [showOCR, setShowOCR] = useState(false);
-  const [ocrResult, setOcrResult] = useState<OCRResult | null>(null);
-  const [aiAnalysisResult, setAiAnalysisResult] = useState<AIAnalysisResult | null>(null);
+  const [aiVisionResult, setAiVisionResult] = useState<AIVisionResult | null>(null);
+  const [isAnalyzingWithAI, setIsAnalyzingWithAI] = useState(false);
   const [uploadedDocumentId, setUploadedDocumentId] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>("");
-  const [requiresUserVerification, setRequiresUserVerification] = useState(false);
   const [fileHash, setFileHash] = useState<string | null>(null);
   const [isFileBlocked, setIsFileBlocked] = useState(false);
   const [blockReason, setBlockReason] = useState<string | null>(null);
-  const [isAnalyzingWithAI, setIsAnalyzingWithAI] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -143,11 +123,11 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
 
     // Generate file hash and check if blocked
     try {
-      const hashInfo = await getFileHashInfo(selectedFile);
-      setFileHash(hashInfo.hash);
+      const hash = await generateFileHash(selectedFile);
+      setFileHash(hash);
       
       // Check if file is blocked
-      const { data: isBlocked } = await supabase.rpc('is_file_blocked', { hash_input: hashInfo.hash });
+      const { data: isBlocked } = await supabase.rpc('is_file_blocked', { hash_input: hash });
       
       if (isBlocked) {
         setIsFileBlocked(true);
@@ -162,10 +142,10 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
       
       // Register file hash
       await supabase.rpc('register_file_hash', {
-        hash_input: hashInfo.hash,
-        filename_input: hashInfo.filename,
-        size_input: hashInfo.size,
-        content_type_input: hashInfo.contentType
+        hash_input: hash,
+        filename_input: selectedFile.name,
+        size_input: selectedFile.size,
+        content_type_input: selectedFile.type
       });
       
     } catch (error) {
@@ -181,52 +161,20 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
     setFile(selectedFile);
     setIsFileBlocked(false);
     setBlockReason(null);
-    setOcrResult(null);
-    setRequiresUserVerification(false);
+    setAiVisionResult(null);
     
-    // Auto-start OCR for supported formats
-    if (selectedFile.type.startsWith('image/') || selectedFile.type === 'application/pdf') {
-      setShowOCR(true);
-    }
+    // Automatically run AI Vision analysis
+    await runAIVisionAnalysis(selectedFile);
   };
 
-  const handleScanComplete = (scannedFile: File) => {
+  const handleScanComplete = async (scannedFile: File) => {
     setFile(scannedFile);
-    setDocumentType("other"); // Default type for scanned documents
-    setShowOCR(true); // Auto-start OCR for scanned documents
+    setDocumentType("other");
     toast({
       title: "Document Scanned",
-      description: "Starting OCR analysis of scanned document...",
+      description: "Starting AI Vision analysis...",
     });
-  };
-
-  const handleImagesComplete = async (imageFiles: File[]) => {
-    if (imageFiles.length === 0) return;
-
-    // If only one image, treat like single file
-    if (imageFiles.length === 1) {
-      handleScanComplete(imageFiles[0]);
-      return;
-    }
-
-    // For multiple images, upload them sequentially
-    toast({
-      title: "Multiple Images Captured",
-      description: `Processing ${imageFiles.length} images...`,
-    });
-
-    // Handle the first image in the UI
-    setFile(imageFiles[0]);
-    setDocumentType("other");
-    
-    // TODO: In a more advanced implementation, we could upload all images
-    // For now, we'll use the first image and show a message about the others
-    toast({
-      title: "Images Ready",
-      description: `${imageFiles.length} images captured. Processing first image for OCR.`,
-    });
-    
-    setShowOCR(true);
+    await runAIVisionAnalysis(scannedFile);
   };
 
   const convertFileToBase64 = (file: File): Promise<string> => {
@@ -241,208 +189,82 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
     });
   };
 
-  const handleOCRComplete = async (result: OCRResult) => {
-    setOcrResult(result);
-    setShowOCR(false);
-    
-    // Run AI analysis immediately after OCR
-    if (file) {
-      await runAIAnalysis(result);
-    }
-  };
-
-  const runAIAnalysis = async (ocrResult: OCRResult) => {
+  const runAIVisionAnalysis = async (fileToAnalyze: File) => {
     setIsAnalyzingWithAI(true);
     
     try {
-      const fileContent = await convertFileToBase64(file!);
-      
-      const { data, error } = await supabase.functions.invoke('enhanced-document-analyze', {
+      toast({
+        title: "Analyzing Document",
+        description: "AI is reading and extracting information from your document...",
+      });
+
+      const base64Content = await convertFileToBase64(fileToAnalyze);
+      setFileContent(base64Content);
+
+      const { data, error } = await supabase.functions.invoke('ai-document-vision', {
         body: {
-          documentId: 'temp-analysis', // Temporary ID for pre-upload analysis
-          fileContent,
-          contentType: file!.type,
-          filename: file!.name,
-          ocrResult
+          fileContent: base64Content,
+          mimeType: fileToAnalyze.type,
+          filename: fileToAnalyze.name,
         }
       });
 
       if (error) {
-        throw new Error(error.message);
+        throw error;
       }
 
-      const aiResult: AIAnalysisResult = {
-        keywords: data.keywords || [],
-        categories: data.categories || [],
-        confidence: data.confidence || 0,
-        entities: data.entities || {},
-        verificationStatus: data.verificationStatus || 'unverified',
-        textDensityScore: data.textDensityScore || 0,
-        medicalKeywordCount: data.medicalKeywordCount || 0,
-        processingNotes: data.processingNotes || '',
-        requiresUserVerification: data.requiresUserVerification || false
-      };
-
-      setAiAnalysisResult(aiResult);
-
-      // Determine if user verification is needed based on AI confidence
-      if (aiResult.confidence >= 0.8 && aiResult.medicalKeywordCount >= 2) {
-        // High confidence medical document - auto approve
-        toast({
-          title: "Document Verified",
-          description: "Document automatically verified as medical content",
-        });
-      } else if (aiResult.confidence >= 0.3 || aiResult.medicalKeywordCount >= 1) {
-        // Medium confidence - ask user
-        setRequiresUserVerification(true);
-        toast({
-          title: "Verification Required",
-          description: "Please confirm if this document contains medical content",
-          variant: "default",
-        });
-      } else {
-        // Low confidence - likely not medical
-        setRequiresUserVerification(true);
-        toast({
-          title: "Document Analysis",
-          description: "Please verify if this is a medical document",
-          variant: "default",
-        });
+      if (data.error) {
+        throw new Error(data.error);
       }
 
-    } catch (error: any) {
-      console.error('AI analysis error:', error);
+      setAiVisionResult(data);
       
-      // Set a fallback AI result to allow user verification to work
-      const fallbackAiResult: AIAnalysisResult = {
-        keywords: [],
-        categories: [],
-        confidence: 0,
-        entities: {},
-        verificationStatus: 'unverified',
-        textDensityScore: ocrResult.textDensityScore || 0,
-        medicalKeywordCount: ocrResult.medicalKeywordCount || 0,
-        processingNotes: 'AI analysis failed - user verification required',
-        requiresUserVerification: true
-      };
-      setAiAnalysisResult(fallbackAiResult);
+      // Auto-suggest document type based on categories
+      if (data.categories && data.categories.length > 0) {
+        const category = data.categories[0].toLowerCase();
+        if (category.includes('lab')) {
+          setDocumentType('lab_report');
+        } else if (category.includes('prescription')) {
+          setDocumentType('prescription');
+        } else if (category.includes('x-ray') || category.includes('xray')) {
+          setDocumentType('x_ray');
+        } else if (category.includes('mri')) {
+          setDocumentType('mri_scan');
+        } else if (category.includes('ct')) {
+          setDocumentType('ct_scan');
+        } else if (category.includes('ultrasound')) {
+          setDocumentType('ultrasound');
+        } else if (category.includes('discharge')) {
+          setDocumentType('discharge_summary');
+        } else if (category.includes('consultation') || category.includes('note')) {
+          setDocumentType('consultation_notes');
+        }
+      }
       
       toast({
-        title: "AI Analysis Failed",
-        description: "Could not analyze document automatically. Please verify manually.",
-        variant: "destructive",
+        title: "Analysis Complete!",
+        description: `Found ${data.categories?.length || 0} categories, ${data.medicalEntities?.medications?.length || 0} medications, ${data.medicalEntities?.labResults?.length || 0} lab results`,
       });
-      setRequiresUserVerification(true);
-    } finally {
-      setIsAnalyzingWithAI(false);
-    }
-  };
 
-  const handleOCRError = (error: string) => {
-    setShowOCR(false);
-    toast({
-      title: "OCR Processing Failed",
-      description: error,
-      variant: "destructive",
-    });
-  };
-
-  const handleUserVerification = async (isConfirmed: boolean, userCategory?: string) => {
-    if (!isConfirmed && fileHash) {
-      // User marked as NOT medical - block the file and stop all processing
-      try {
-        const { data: user } = await supabase.auth.getUser();
-        if (user.user) {
-          await supabase.from('blocked_files').insert({
-            file_hash: fileHash,
-            blocked_by: user.user.id,
-            reason: 'not_medical',
-            user_feedback: 'User explicitly marked as non-medical document'
-          });
-          
-          toast({
-            title: "File Blocked",
-            description: "File marked as non-medical and blocked permanently. Please select a different file.",
-          });
-          
-          // Completely reset form and stop all processing
-          resetForm();
-          return;
-        }
-      } catch (error) {
-        console.error('Error blocking file:', error);
+      // Show critical alerts if any
+      if (data.criticalAlerts && data.criticalAlerts.length > 0) {
         toast({
-          title: "Error",
-          description: "Error blocking file",
+          title: "⚠️ Critical Alerts",
+          description: data.criticalAlerts.join(', '),
           variant: "destructive",
         });
-        return;
-      }
-    }
-
-    // User confirmed it's medical - proceed with verification
-    if (isConfirmed) {
-      // Create default OCR result if missing
-      if (!ocrResult) {
-        const defaultOcrResult: OCRResult = {
-          text: `Document: ${file?.name || 'Unknown'}`,
-          confidence: 0.5,
-          textDensityScore: 0.5,
-          medicalKeywordCount: 1,
-          detectedKeywords: ['document'],
-          verificationStatus: 'user_verified_medical',
-          formatSupported: true,
-          processingNotes: `User verified as medical document${userCategory ? ` - ${userCategory}` : ''}`,
-          structuralCues: {
-            hasDates: false,
-            hasUnits: false,
-            hasNumbers: false,
-            hasTableStructure: false,
-          }
-        };
-        setOcrResult(defaultOcrResult);
-      } else {
-        const updatedOcrResult = {
-          ...ocrResult,
-          verificationStatus: 'user_verified_medical' as const,
-          processingNotes: `User verified as medical document${userCategory ? ` - ${userCategory}` : ''}`
-        };
-        setOcrResult(updatedOcrResult);
       }
       
-      // Create default AI result if missing
-      if (!aiAnalysisResult) {
-        const defaultAiResult: AIAnalysisResult = {
-          keywords: ['medical', 'document'],
-          categories: ['general'],
-          confidence: 0.7,
-          entities: {},
-          verificationStatus: 'user_verified_medical',
-          textDensityScore: 0.5,
-          medicalKeywordCount: 1,
-          processingNotes: `User verified as medical document${userCategory ? ` - ${userCategory}` : ''}`,
-          requiresUserVerification: false
-        };
-        setAiAnalysisResult(defaultAiResult);
-      } else {
-        const updatedAiResult = {
-          ...aiAnalysisResult,
-          verificationStatus: 'user_verified_medical',
-          processingNotes: `User verified as medical document${userCategory ? ` - ${userCategory}` : ''}`
-        };
-        setAiAnalysisResult(updatedAiResult);
-      }
-      
-      setRequiresUserVerification(false);
-      
-      if (userCategory) {
-        setDocumentType(userCategory);
-      }
-
+    } catch (error) {
+      console.error('AI Vision Analysis error:', error);
       toast({
-        title: "Document Verified",
-        description: "Document verified as medical. Ready to upload.",
+        title: "Analysis Failed",
+        description: error instanceof Error ? error.message : "Failed to analyze document",
+        variant: "destructive",
       });
+      setAiVisionResult(null);
+    } finally {
+      setIsAnalyzingWithAI(false);
     }
   };
 
@@ -458,31 +280,11 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
       return;
     }
 
-    // Check if user verification is required but not completed
-    if (requiresUserVerification) {
-      toast({
-        title: "Verification Required",
-        description: "Please verify if this document is medical or not",
-        variant: "destructive",
-      });
-      return;
-    }
-
     // Prevent upload of blocked files
     if (isFileBlocked) {
       toast({
         title: "Upload Blocked",
         description: "This file has been blocked and cannot be uploaded",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Ensure we have AI analysis results for medical documents
-    if (!aiAnalysisResult && ocrResult) {
-      toast({
-        title: "Analysis Required",
-        description: "Document analysis is still in progress. Please wait.",
         variant: "destructive",
       });
       return;
@@ -519,22 +321,21 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
         });
       }
 
-      const fileContent = await convertFileToBase64(file);
+      const content = fileContent || await convertFileToBase64(file);
       const tagsArray = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
 
-      // Enhanced upload payload with OCR and AI analysis results
+      // Enhanced upload payload with AI Vision results
       const uploadPayload = {
         file: {
           name: file.name,
-          content: fileContent,
+          content: content,
           type: file.type,
           size: file.size,
         },
         documentType,
         description: description || undefined,
         tags: tagsArray.length > 0 ? tagsArray : undefined,
-        ocrResult: ocrResult || undefined,
-        aiAnalysisResult: aiAnalysisResult || undefined,
+        aiVisionResult: aiVisionResult || undefined,
         fileHash: fileHash || undefined,
       };
 
@@ -564,7 +365,6 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
       // Check if analysis is needed based on upload response
       if (data?.documentId) {
         setUploadedDocumentId(data.documentId);
-        setFileContent(fileContent);
         
         // Only show ContentAnalyzer if additional analysis is needed
         if (!data.skipAnalysis) {
@@ -608,10 +408,7 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
     setDocumentType("");
     setDescription("");
     setTags("");
-    setOcrResult(null);
-    setAiAnalysisResult(null);
-    setRequiresUserVerification(false);
-    setShowOCR(false);
+    setAiVisionResult(null);
     setFileHash(null);
     setIsFileBlocked(false);
     setBlockReason(null);
@@ -627,26 +424,6 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
     setShowAnalyzer(false);
     setUploadedDocumentId(null);
     setFileContent("");
-  };
-
-  const getVerificationStatusColor = (status: string) => {
-    switch (status) {
-      case 'verified_medical': return 'bg-green-100 text-green-800 border-green-200';
-      case 'user_verified_medical': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'unverified': return 'bg-red-100 text-red-800 border-red-200';
-      case 'miscellaneous': return 'bg-gray-100 text-gray-800 border-gray-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'verified_medical': return <CheckCircle className="h-4 w-4" />;
-      case 'user_verified_medical': return <Eye className="h-4 w-4" />;
-      case 'unverified': return <AlertTriangle className="h-4 w-4" />;
-      case 'miscellaneous': return <FileText className="h-4 w-4" />;
-      default: return <FileText className="h-4 w-4" />;
-    }
   };
 
   if (!patientId) {
@@ -676,298 +453,284 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
         <CardContent>
           <form onSubmit={handleUpload} className="space-y-6">
             <div className="space-y-4">
-            <Label>Document File *</Label>
-            
-            {/* File Upload Options */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="file-input" className="text-sm font-medium">
-                  Upload from Device
-                </Label>
-                <Input
-                  id="file-input"
-                  type="file"
-                  onChange={handleFileChange}
-                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                />
-              </div>
+              <Label>Document File *</Label>
               
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">
-                  Scan Document
-                </Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowScanner(true)}
-                  className="w-full"
-                >
-                  <Camera className="mr-2 h-4 w-4" />
-                  Open Camera
-                </Button>
-              </div>
-            </div>
-            
-            {isFileBlocked && (
-              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <Shield className="h-4 w-4 text-destructive" />
-                  <span className="font-medium text-destructive">File Blocked</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {blockReason || "This file has been blocked from medical processing."}
-                </p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-2"
-                  onClick={() => {
-                    setFile(null);
-                    setIsFileBlocked(false);
-                    setBlockReason(null);
-                    const fileInput = document.getElementById('file-input') as HTMLInputElement;
-                    if (fileInput) fileInput.value = '';
-                  }}
-                >
-                  Select Different File
-                </Button>
-              </div>
-            )}
-            
-            {file && !isFileBlocked && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 bg-muted rounded-md">
-                  <FileText className="h-4 w-4" />
-                  <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+              {/* File Upload Options */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="file-input" className="text-sm font-medium">
+                    Upload from Device
+                  </Label>
+                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                    <Input
+                      id="file-input"
+                      type="file"
+                      onChange={handleFileChange}
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      className="cursor-pointer"
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Drag & drop or click to select
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      PDF, JPG, PNG, DOC, DOCX (Max 20MB)
+                    </p>
+                  </div>
                 </div>
                 
-                {/* Processing States */}
-                {isAnalyzingWithAI && (
-                  <Card className="border-2 border-blue-200 bg-blue-50">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                        <span className="text-sm font-medium text-blue-800">Analyzing document with AI...</span>
-                      </div>
-                      <p className="text-xs text-blue-600 mt-1">
-                        Detecting medical content and analyzing document structure.
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Combined OCR and AI Analysis Results */}
-                {ocrResult && (
-                  <Card className="border-2">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        {getStatusIcon(ocrResult.verificationStatus)}
-                        Document Analysis Results
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <Badge className={`${getVerificationStatusColor(ocrResult.verificationStatus)} font-medium`}>
-                        {ocrResult.verificationStatus.replace('_', ' ').toUpperCase()}
-                      </Badge>
-                      
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="font-medium">Text Density:</span> {ocrResult.textDensityScore} words
-                        </div>
-                        <div>
-                          <span className="font-medium">Medical Keywords:</span> {ocrResult.medicalKeywordCount}
-                        </div>
-                        <div>
-                          <span className="font-medium">Format:</span> {ocrResult.formatSupported ? 'Supported' : 'Unsupported'}
-                        </div>
-                      </div>
-                      
-                      {/* AI Analysis Categories */}
-                      {aiAnalysisResult && aiAnalysisResult.categories.length > 0 && (
-                        <div>
-                          <span className="text-xs font-medium text-muted-foreground">AI Detected Categories:</span>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {aiAnalysisResult.categories.slice(0, 3).map((category, idx) => (
-                              <Badge key={idx} variant="secondary" className="text-xs">
-                                {category}
-                              </Badge>
-                            ))}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    Scan Document
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowScanner(true)}
+                    className="w-full h-full min-h-[120px]"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <Camera className="h-8 w-8" />
+                      <span>Open Camera Scanner</span>
+                    </div>
+                  </Button>
+                </div>
+              </div>
+              
+              {isFileBlocked && (
+                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="h-4 w-4 text-destructive" />
+                    <span className="font-medium text-destructive">File Blocked</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {blockReason || "This file has been blocked from medical processing."}
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-2"
+                    onClick={() => {
+                      setFile(null);
+                      setIsFileBlocked(false);
+                      setBlockReason(null);
+                      const fileInput = document.getElementById('file-input') as HTMLInputElement;
+                      if (fileInput) fileInput.value = '';
+                    }}
+                  >
+                    Select Different File
+                  </Button>
+                </div>
+              )}
+              
+              {file && !isFileBlocked && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 bg-muted rounded-md">
+                    <FileText className="h-4 w-4" />
+                    <span>{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                  </div>
+                  
+                  {/* AI Vision Analysis Progress */}
+                  {isAnalyzingWithAI && (
+                    <Card className="border-2 border-primary/50 bg-primary/5">
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            <span className="text-sm font-medium">AI Vision Analysis in Progress</span>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <CheckCircle className="h-3 w-3" />
+                              <span>Reading document with AI vision...</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <span>Extracting medical information, decimals, units...</span>
+                            </div>
                           </div>
                         </div>
-                      )}
-                      
-                      {/* Combined Keywords */}
-                      {(ocrResult.detectedKeywords.length > 0 || (aiAnalysisResult && aiAnalysisResult.keywords.length > 0)) && (
-                        <div>
-                          <span className="text-xs font-medium text-muted-foreground">Detected Medical Terms:</span>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {/* OCR Keywords */}
-                            {ocrResult.detectedKeywords.slice(0, 4).map((keyword, idx) => (
-                              <Badge key={`ocr-${idx}`} variant="outline" className="text-xs border-blue-200">
-                                {keyword}
-                              </Badge>
-                            ))}
-                            {/* AI Keywords (filtered to avoid duplicates) */}
-                            {aiAnalysisResult && aiAnalysisResult.keywords
-                              .filter(keyword => !ocrResult.detectedKeywords.includes(keyword))
-                              .slice(0, 4)
-                              .map((keyword, idx) => (
-                                <Badge key={`ai-${idx}`} variant="outline" className="text-xs border-green-200">
-                                  {keyword}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* AI Vision Results */}
+                  {aiVisionResult && (
+                    <Card className="border-2 border-green-200 bg-green-50 dark:bg-green-900/20">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          AI Analysis Complete!
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                          <div className="flex items-center gap-1">
+                            <span className="text-muted-foreground">Categories:</span>
+                            <Badge variant="secondary" className="ml-1">
+                              {aiVisionResult.categories?.length || 0}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-muted-foreground">Confidence:</span>
+                            <Badge variant={aiVisionResult.confidence > 0.8 ? "default" : "secondary"} className="ml-1">
+                              {Math.round(aiVisionResult.confidence * 100)}%
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-muted-foreground">Medications:</span>
+                            <Badge variant="outline" className="ml-1">
+                              {aiVisionResult.medicalEntities?.medications?.length || 0}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-muted-foreground">Lab Results:</span>
+                            <Badge variant="outline" className="ml-1">
+                              {aiVisionResult.medicalEntities?.labResults?.length || 0}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Categories */}
+                        {aiVisionResult.categories && aiVisionResult.categories.length > 0 && (
+                          <div>
+                            <span className="text-xs font-medium text-muted-foreground">Detected Categories:</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {aiVisionResult.categories.map((cat, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {cat}
                                 </Badge>
                               ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
-                        {aiAnalysisResult ? aiAnalysisResult.processingNotes : ocrResult.processingNotes}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* User Verification Required */}
-                {requiresUserVerification && (ocrResult || file) && (
-                  <Card className="border-2 border-yellow-200 bg-yellow-50">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm text-yellow-800">
-                        <AlertTriangle className="h-4 w-4 inline mr-2" />
-                        Verification Required
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="text-sm text-yellow-700 space-y-2">
-                        <p>Is this document medical-related? This helps us organize your records properly.</p>
-                        {aiAnalysisResult && (
-                          <div className="bg-yellow-100 p-2 rounded text-xs">
-                            <strong>AI Analysis Summary:</strong>
-                            <br />• Medical terms found: {aiAnalysisResult.medicalKeywordCount}
-                            {aiAnalysisResult.categories.length > 0 && (
-                              <>
-                                <br />• Suggested categories: {aiAnalysisResult.categories.slice(0, 2).join(', ')}
-                              </>
-                            )}
+                            </div>
                           </div>
                         )}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleUserVerification(true)}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          Yes, Medical Document
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleUserVerification(false)}
-                        >
-                          No, Not Medical
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="document-type">Document Type *</Label>
-            <Select value={documentType} onValueChange={setDocumentType} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select document type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="lab_report">Lab Report</SelectItem>
-                <SelectItem value="prescription">Prescription</SelectItem>
-                <SelectItem value="x_ray">X-Ray</SelectItem>
-                <SelectItem value="mri_scan">MRI Scan</SelectItem>
-                <SelectItem value="ct_scan">CT Scan</SelectItem>
-                <SelectItem value="ultrasound">Ultrasound</SelectItem>
-                <SelectItem value="discharge_summary">Discharge Summary</SelectItem>
-                <SelectItem value="consultation_notes">Consultation Notes</SelectItem>
-                <SelectItem value="insurance_document">Insurance Document</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+                        {/* Critical Alerts */}
+                        {aiVisionResult.criticalAlerts && aiVisionResult.criticalAlerts.length > 0 && (
+                          <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded">
+                            <div className="flex items-center gap-1 mb-1">
+                              <AlertCircle className="h-3 w-3 text-red-600" />
+                              <span className="text-xs font-medium text-red-700 dark:text-red-400">Critical Alerts:</span>
+                            </div>
+                            <ul className="text-xs text-red-600 dark:text-red-300 space-y-0.5">
+                              {aiVisionResult.criticalAlerts.map((alert, idx) => (
+                                <li key={idx}>• {alert}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              )}
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              placeholder="Brief description of the document..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="document-type">Document Type *</Label>
+              <Select value={documentType} onValueChange={setDocumentType} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select document type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lab_report">Lab Report</SelectItem>
+                  <SelectItem value="prescription">Prescription</SelectItem>
+                  <SelectItem value="x_ray">X-Ray</SelectItem>
+                  <SelectItem value="mri_scan">MRI Scan</SelectItem>
+                  <SelectItem value="ct_scan">CT Scan</SelectItem>
+                  <SelectItem value="ultrasound">Ultrasound</SelectItem>
+                  <SelectItem value="discharge_summary">Discharge Summary</SelectItem>
+                  <SelectItem value="consultation_notes">Consultation Notes</SelectItem>
+                  <SelectItem value="insurance_document">Insurance Document</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="tags">Tags (comma-separated)</Label>
-            <Input
-              id="tags"
-              placeholder="e.g., urgent, follow-up, chronic"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                placeholder="Brief description of the document..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
 
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={uploading || requiresUserVerification || isFileBlocked || isAnalyzingWithAI}
-          >
-            {uploading 
-              ? "Uploading..." 
-              : isAnalyzingWithAI 
-                ? "Analyzing Document..." 
-                : "Upload Document"
-            }
-          </Button>
+            <div className="space-y-2">
+              <Label htmlFor="tags">Tags (comma-separated)</Label>
+              <Input
+                id="tags"
+                placeholder="e.g., urgent, follow-up, chronic"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+              />
+            </div>
+
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={uploading || isFileBlocked || isAnalyzingWithAI || !file}
+            >
+              {uploading 
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Uploading...</>
+                : isAnalyzingWithAI 
+                  ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing Document...</>
+                  : <><Upload className="mr-2 h-4 w-4" />Upload Document</>
+              }
+            </Button>
           </form>
         </CardContent>
       </Card>
 
-      {/* OCR Processor Modal */}
-      {showOCR && file && (
-        <OCRProcessor 
-          file={file}
-          onOCRComplete={handleOCRComplete}
-          onError={handleOCRError}
-        />
+      {/* Document Scanner Dialog */}
+      <Dialog open={showScanner} onOpenChange={setShowScanner}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Document Scanner</DialogTitle>
+            <DialogDescription>
+              Scan your medical documents using your device camera
+            </DialogDescription>
+          </DialogHeader>
+          <DocumentScanner 
+            open={showScanner}
+            onClose={() => setShowScanner(false)}
+            onScanComplete={handleScanComplete}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Content Analyzer Dialog */}
+      {showAnalyzer && uploadedDocumentId && (
+        <Dialog open={showAnalyzer} onOpenChange={(open) => {
+          if (!open) handleAnalysisComplete();
+        }}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Additional Content Analysis</DialogTitle>
+              <DialogDescription>
+                Perform additional analysis on your uploaded document
+              </DialogDescription>
+            </DialogHeader>
+            <ContentAnalyzer
+              documentId={uploadedDocumentId}
+              filename={file?.name || "Document"}
+              contentType={file?.type || "application/pdf"}
+              fileContent={fileContent}
+              onAnalysisComplete={handleAnalysisComplete}
+            />
+          </DialogContent>
+        </Dialog>
       )}
 
-      {/* Document Scanner Modal */}
-      <DocumentScanner
-        open={showScanner}
-        onClose={() => setShowScanner(false)}
-        onScanComplete={handleScanComplete}
-        onImagesComplete={handleImagesComplete}
-      />
-
-      {/* Content Analyzer */}
-      {showAnalyzer && uploadedDocumentId && file && (
-        <ContentAnalyzer
-          documentId={uploadedDocumentId}
-          filename={file.name}
-          contentType={file.type}
-          fileContent={fileContent}
-          onAnalysisComplete={handleAnalysisComplete}
-        />
-      )}
-      
-      {/* Upgrade Plan Dialog */}
-      {subscription.currentPlan && (
+      {/* Upgrade Dialog */}
+      {showUpgradeDialog && (
         <UpgradePlanDialog
           open={showUpgradeDialog}
           onOpenChange={setShowUpgradeDialog}
-          currentPlan={subscription.currentPlan.display_name}
+          currentPlan="free"
           uploadsUsed={subscription.uploadsUsed}
-          uploadLimit={subscription.currentPlan.upload_limit}
+          uploadLimit={5}
         />
       )}
     </div>
