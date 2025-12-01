@@ -222,11 +222,32 @@ const handler = async (req: Request): Promise<Response> => {
     supabase.functions.invoke('generate-patient-summary', { body: { patientId: patient.id } }).catch(() => {});
     supabase.functions.invoke('notify-patient-upload', { body: { documentId: document.id, patientId: patient.id, uploadedBy: user.id } }).catch(() => {});
 
-    if (analysisResult?.keywords?.length > 0 || analysisResult?.entities?.length > 0) {
+    if (analysisResult?.keywords?.length > 0 || analysisResult?.entities) {
       const keywords = [
-        ...(analysisResult.keywords || []).map((kw: string) => ({ document_id: document.id, keyword: kw, keyword_type: 'auto_extracted' })),
-        ...(analysisResult.entities || []).map((ent: any) => ({ document_id: document.id, keyword: ent.text || ent.value, entity_type: ent.type, entity_category: ent.category, confidence: ent.confidence }))
+        ...(analysisResult.keywords || []).map((kw: string) => ({ 
+          document_id: document.id, 
+          keyword: kw, 
+          keyword_type: 'auto_extracted' 
+        }))
       ];
+
+      // Handle entities object structure (doctors, conditions, medications, etc.)
+      if (analysisResult.entities && typeof analysisResult.entities === 'object') {
+        Object.entries(analysisResult.entities).forEach(([entityType, values]: [string, any]) => {
+          if (Array.isArray(values)) {
+            values.forEach((value: string) => {
+              if (value) {
+                keywords.push({
+                  document_id: document.id,
+                  keyword: value,
+                  entity_type: entityType,
+                  keyword_type: 'entity'
+                });
+              }
+            });
+          }
+        });
+      }
 
       if (keywords.length > 0) {
         const { error: kwError } = await supabase.from('document_keywords').insert(keywords);
