@@ -291,6 +291,8 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
       toast({ title: "Document Deleted", description: `${filename} has been deleted.` });
       if (patientData?.id) {
         await fetchDocuments(patientData.id);
+        // Refresh subscription to update upload count
+        await subscription.refresh();
         // Trigger summary regeneration after deletion
         await new Promise(resolve => setTimeout(resolve, 1000));
         refreshSummary();

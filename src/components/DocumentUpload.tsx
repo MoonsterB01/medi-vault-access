@@ -141,16 +141,6 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
       return;
     }
 
-    // Check file size (10MB limit)
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Please select a file smaller than 10MB",
-        variant: "destructive",
-      });
-      return;
-    }
-
     // Generate file hash and check if blocked
     try {
       const hashInfo = await getFileHashInfo(selectedFile);
