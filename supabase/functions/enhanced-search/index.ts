@@ -119,15 +119,6 @@ function calculateRelevanceScore(
       }
     });
   }
-            else if (entityType === 'conditions') score += 85;
-            else if (entityType === 'medications') score += 85;
-            else if (entityType === 'tests') score += 70;
-            else score += 50;
-          }
-        });
-      }
-    });
-  }
   
   // Medical specialties match
   if (document.medical_specialties) {
