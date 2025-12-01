@@ -488,6 +488,15 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
       return;
     }
 
+    // Warn for large files but don't block
+    const fileSize = file.size / (1024 * 1024); // Size in MB
+    if (fileSize > 15) {
+      const shouldContinue = confirm(
+        `This file is ${fileSize.toFixed(1)}MB. Large files may take longer to upload and process. Continue?`
+      );
+      if (!shouldContinue) return;
+    }
+
     setUploading(true);
     try {
       // Get current user session for authenticated request
@@ -498,7 +507,16 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
           description: "Please log in to upload documents",
           variant: "destructive",
         });
+        setUploading(false);
         return;
+      }
+
+      // Show progress for large files
+      if (fileSize > 5) {
+        toast({
+          title: "Processing Large File",
+          description: "Please wait while we process your document...",
+        });
       }
 
       const fileContent = await convertFileToBase64(file);
@@ -525,13 +543,23 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
       });
 
       if (error) {
+        console.error('Upload error:', error);
         throw new Error(error.message || 'Upload failed');
+      }
+
+      if (!data || !data.success) {
+        throw new Error(data?.details || 'Upload failed - no response data');
       }
 
       toast({
         title: "Upload Successful!",
         description: data?.message || "Document uploaded successfully",
       });
+      
+      // Refresh subscription after successful upload
+      if (subscription?.refresh) {
+        await subscription.refresh();
+      }
       
       // Check if analysis is needed based on upload response
       if (data?.documentId) {
@@ -552,9 +580,22 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
       
       onUploadSuccess?.();
     } catch (error: any) {
+      console.error('Upload error details:', error);
+      
+      let errorMessage = error.message || 'Upload failed';
+      
+      // Provide helpful error messages for common issues
+      if (errorMessage.includes('memory')) {
+        errorMessage = 'File too large to process. Please try a smaller file or contact support.';
+      } else if (errorMessage.includes('timeout')) {
+        errorMessage = 'Upload timed out. Please check your connection and try again.';
+      } else if (errorMessage.includes('authentication')) {
+        errorMessage = 'Session expired. Please refresh the page and try again.';
+      }
+      
       toast({
         title: "Upload Failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
