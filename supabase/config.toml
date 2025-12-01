@@ -1,5 +1,8 @@
 project_id = "qiqepumdtaozjzfjbggl"
 
+[functions.ai-document-vision]
+verify_jwt = true
+
 [functions.upload-record]
 verify_jwt = true
 
