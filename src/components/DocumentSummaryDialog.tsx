@@ -310,11 +310,36 @@ export function DocumentSummaryDialog({ document, children }: DocumentSummaryDia
                         <div key={entityType}>
                           <h5 className="text-sm font-medium capitalize text-muted-foreground">{entityType}:</h5>
                           <div className="flex flex-wrap gap-1 ml-4">
-                            {entities.map((entity: string, index: number) => (
-                              <Badge key={index} variant="outline" className="text-xs bg-blue-50">
-                                {entity}
-                              </Badge>
-                            ))}
+                            {entities.map((entity: any, index: number) => {
+                              // Handle string entities
+                              if (typeof entity === 'string') {
+                                return (
+                                  <Badge key={index} variant="outline" className="text-xs bg-blue-50">
+                                    {entity}
+                                  </Badge>
+                                );
+                              }
+                              // Handle object entities (medications, labResults)
+                              let displayText = '';
+                              if (entity.name) {
+                                // Medication format: "name - dose frequency"
+                                displayText = entity.dose 
+                                  ? `${entity.name} - ${entity.dose}${entity.frequency ? ' ' + entity.frequency : ''}`
+                                  : entity.name;
+                              } else if (entity.test) {
+                                // Lab result format: "test: value unit"
+                                displayText = `${entity.test}: ${entity.value}${entity.unit ? ' ' + entity.unit : ''}`;
+                              } else {
+                                // Fallback to JSON string for unknown object types
+                                displayText = JSON.stringify(entity);
+                              }
+                              
+                              return (
+                                <Badge key={index} variant="outline" className="text-xs bg-blue-50">
+                                  {displayText}
+                                </Badge>
+                              );
+                            })}
                           </div>
                         </div>
                       )
