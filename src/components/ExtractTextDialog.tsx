@@ -233,13 +233,47 @@ export function ExtractTextDialog({ document, children }: ExtractTextDialogProps
                     {Object.entries(document.extracted_entities).map(([entityType, entities]: [string, any]) => (
                       Array.isArray(entities) && entities.length > 0 && (
                         <div key={entityType}>
-                          <h5 className="text-sm font-medium capitalize text-gray-700">{entityType}:</h5>
+                          <h5 className="text-sm font-medium capitalize text-gray-700">{entityType.replace(/([A-Z])/g, ' $1').trim()}:</h5>
                           <div className="flex flex-wrap gap-1 ml-4">
-                            {entities.map((entity: string, index: number) => (
-                              <Badge key={index} variant="outline" className="text-xs bg-blue-50">
-                                {entity}
-                              </Badge>
-                            ))}
+                            {entities.map((entity: any, index: number) => {
+                              // Handle string entities
+                              if (typeof entity === 'string') {
+                                return (
+                                  <Badge key={index} variant="outline" className="text-xs bg-blue-50">
+                                    {entity}
+                                  </Badge>
+                                );
+                              }
+                              // Handle object entities (medications, labResults)
+                              else if (typeof entity === 'object' && entity !== null) {
+                                // Medications
+                                if (entity.name) {
+                                  return (
+                                    <Badge key={index} variant="outline" className="text-xs bg-green-50">
+                                      {entity.name}
+                                      {entity.dose && ` - ${entity.dose}`}
+                                      {entity.frequency && ` (${entity.frequency})`}
+                                    </Badge>
+                                  );
+                                }
+                                // Lab Results
+                                else if (entity.test) {
+                                  return (
+                                    <Badge 
+                                      key={index} 
+                                      variant="outline" 
+                                      className={`text-xs ${entity.isAbnormal ? 'bg-red-50 border-red-300' : 'bg-blue-50'}`}
+                                    >
+                                      {entity.test}: {entity.value}
+                                      {entity.unit && ` ${entity.unit}`}
+                                      {entity.normalRange && ` (Ref: ${entity.normalRange})`}
+                                      {entity.isAbnormal && ' ⚠️'}
+                                    </Badge>
+                                  );
+                                }
+                              }
+                              return null;
+                            })}
                           </div>
                         </div>
                       )

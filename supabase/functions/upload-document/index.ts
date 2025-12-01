@@ -98,69 +98,113 @@ const handler = async (req: Request): Promise<Response> => {
     let extractedText = '';
     let analysisResult: any = null;
 
-    // Optimize memory: only process PDF extraction if file is not too large
-    const MAX_PDF_SIZE_FOR_EXTRACTION = 10 * 1024 * 1024; // 10MB limit for PDF extraction
-    
-    if (file.type === 'application/pdf' && (!ocrResult || !ocrResult.text)) {
-      if (file.size <= MAX_PDF_SIZE_FOR_EXTRACTION) {
-        try {
-          console.log(JSON.stringify({ requestId, step: 'pdf_extraction_start', fileSize: file.size }));
-          const extractionResponse = await supabase.functions.invoke('pdf-text-extractor', {
-            body: { fileContent: file.content, fileName: file.name }
-          });
-          
-          if (extractionResponse.error) {
-            console.error(JSON.stringify({ requestId, step: 'pdf_extraction_error', error: extractionResponse.error }));
-          } else if (extractionResponse.data?.extractedText) {
-            extractedText = extractionResponse.data.extractedText;
-            console.log(JSON.stringify({ requestId, step: 'pdf_extraction_success', textLength: extractedText.length }));
-          }
-        } catch (extractError: any) {
-          console.error(JSON.stringify({ requestId, step: 'pdf_extraction_exception', error: extractError.message }));
-        }
-      } else {
-        console.log(JSON.stringify({ requestId, step: 'pdf_extraction_skipped', reason: 'file_too_large', fileSize: file.size }));
-      }
-    } else if (ocrResult?.text) {
-      extractedText = ocrResult.text;
-      console.log(JSON.stringify({ requestId, step: 'using_ocr_text', textLength: extractedText.length }));
-    }
-
-    // Run AI analysis on extracted text
-    if (extractedText && extractedText.length > 50) {
-      try {
-        console.log(JSON.stringify({ requestId, step: 'ai_analysis_start', textLength: extractedText.length }));
-        const analysisResponse = await supabase.functions.invoke('enhanced-document-analyze', {
-          body: { 
-            documentId: 'temp-analysis',
-            contentType: file.type,
-            filename: file.name,
-            ocrResult: {
-              text: extractedText,
-              confidence: 0.8,
-              textDensityScore: extractedText.split(/\s+/).length,
-              medicalKeywordCount: 0,
-              detectedKeywords: [],
-              verificationStatus: 'pending',
-              formatSupported: true,
-              processingNotes: 'Extracted from upload',
-              structuralCues: {}
-            }
+    // Check if AI Vision result was provided (new flow)
+    if (aiAnalysisResult) {
+      console.log(JSON.stringify({ requestId, step: 'using_ai_vision_result' }));
+      extractedText = aiAnalysisResult.extractedText || '';
+      
+      // Transform AI Vision result to analysis format
+      analysisResult = {
+        confidence: aiAnalysisResult.confidence || 0.8,
+        keywords: [],
+        categories: aiAnalysisResult.categories || [],
+        entities: aiAnalysisResult.medicalEntities || {},
+        summary: `AI analyzed document with ${aiAnalysisResult.categories?.length || 0} categories detected`,
+        specialties: [],
+        medicalKeywordCount: 0,
+        patientInfo: aiAnalysisResult.patientInfo || {},
+        criticalAlerts: aiAnalysisResult.criticalAlerts || []
+      };
+      
+      // Extract keywords from medical entities
+      if (aiAnalysisResult.medicalEntities) {
+        const keywords = new Set<string>();
+        Object.values(aiAnalysisResult.medicalEntities).forEach((entityArray: any) => {
+          if (Array.isArray(entityArray)) {
+            entityArray.forEach((item: any) => {
+              if (typeof item === 'string') {
+                keywords.add(item);
+              } else if (item?.name) {
+                keywords.add(item.name);
+              } else if (item?.test) {
+                keywords.add(item.test);
+              }
+            });
           }
         });
-        
-        if (analysisResponse.error) {
-          console.error(JSON.stringify({ requestId, step: 'ai_analysis_error', error: analysisResponse.error }));
-        } else if (analysisResponse.data) {
-          analysisResult = analysisResponse.data;
-          console.log(JSON.stringify({ requestId, step: 'ai_analysis_success' }));
-        }
-      } catch (analysisError: any) {
-        console.error(JSON.stringify({ requestId, step: 'ai_analysis_exception', error: analysisError.message }));
+        analysisResult.keywords = Array.from(keywords);
+        analysisResult.medicalKeywordCount = keywords.size;
       }
-    } else if (aiAnalysisResult) {
-      analysisResult = aiAnalysisResult;
-      console.log(JSON.stringify({ requestId, step: 'using_provided_analysis' }));
+      
+      console.log(JSON.stringify({ 
+        requestId, 
+        step: 'ai_vision_transformed',
+        textLength: extractedText.length,
+        keywordCount: analysisResult.keywords.length,
+        categories: analysisResult.categories
+      }));
+    } else {
+      // Fallback to old flow for backward compatibility
+      const MAX_PDF_SIZE_FOR_EXTRACTION = 10 * 1024 * 1024;
+      
+      if (file.type === 'application/pdf' && (!ocrResult || !ocrResult.text)) {
+        if (file.size <= MAX_PDF_SIZE_FOR_EXTRACTION) {
+          try {
+            console.log(JSON.stringify({ requestId, step: 'pdf_extraction_start', fileSize: file.size }));
+            const extractionResponse = await supabase.functions.invoke('pdf-text-extractor', {
+              body: { fileContent: file.content, fileName: file.name }
+            });
+            
+            if (extractionResponse.error) {
+              console.error(JSON.stringify({ requestId, step: 'pdf_extraction_error', error: extractionResponse.error }));
+            } else if (extractionResponse.data?.extractedText) {
+              extractedText = extractionResponse.data.extractedText;
+              console.log(JSON.stringify({ requestId, step: 'pdf_extraction_success', textLength: extractedText.length }));
+            }
+          } catch (extractError: any) {
+            console.error(JSON.stringify({ requestId, step: 'pdf_extraction_exception', error: extractError.message }));
+          }
+        } else {
+          console.log(JSON.stringify({ requestId, step: 'pdf_extraction_skipped', reason: 'file_too_large', fileSize: file.size }));
+        }
+      } else if (ocrResult?.text) {
+        extractedText = ocrResult.text;
+        console.log(JSON.stringify({ requestId, step: 'using_ocr_text', textLength: extractedText.length }));
+      }
+
+      // Run AI analysis on extracted text
+      if (extractedText && extractedText.length > 50) {
+        try {
+          console.log(JSON.stringify({ requestId, step: 'ai_analysis_start', textLength: extractedText.length }));
+          const analysisResponse = await supabase.functions.invoke('enhanced-document-analyze', {
+            body: { 
+              documentId: 'temp-analysis',
+              contentType: file.type,
+              filename: file.name,
+              ocrResult: {
+                text: extractedText,
+                confidence: 0.8,
+                textDensityScore: extractedText.split(/\s+/).length,
+                medicalKeywordCount: 0,
+                detectedKeywords: [],
+                verificationStatus: 'pending',
+                formatSupported: true,
+                processingNotes: 'Extracted from upload',
+                structuralCues: {}
+              }
+            }
+          });
+          
+          if (analysisResponse.error) {
+            console.error(JSON.stringify({ requestId, step: 'ai_analysis_error', error: analysisResponse.error }));
+          } else if (analysisResponse.data) {
+            analysisResult = analysisResponse.data;
+            console.log(JSON.stringify({ requestId, step: 'ai_analysis_success' }));
+          }
+        } catch (analysisError: any) {
+          console.error(JSON.stringify({ requestId, step: 'ai_analysis_exception', error: analysisError.message }));
+        }
+      }
     }
 
     // Convert base64 to buffer for storage upload
@@ -192,6 +236,17 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log(JSON.stringify({ requestId, step: 'storage_upload_success', path: uploadResult.path }));
 
+    // Determine verification status based on analysis
+    let verificationStatus = 'unverified';
+    if (analysisResult) {
+      // Auto-verify if confidence is high and categories detected
+      if (analysisResult.confidence >= 0.7 && analysisResult.categories?.length > 0) {
+        verificationStatus = 'verified_medical';
+      } else if (analysisResult.confidence >= 0.5) {
+        verificationStatus = 'user_verified_medical';
+      }
+    }
+
     const documentData: any = {
       patient_id: patient.id,
       uploaded_by: user.id,
@@ -201,14 +256,15 @@ const handler = async (req: Request): Promise<Response> => {
       document_type: documentType,
       description: description || null,
       tags: tags || [],
-      verification_status: analysisResult ? 'verified_medical' : 'unverified',
+      verification_status: verificationStatus,
       uploaded_by_user_shareable_id: user.user_metadata?.user_shareable_id || null,
     };
 
     if (extractedText) {
       documentData.extracted_text = extractedText;
-      documentData.ocr_extracted_text = ocrResult?.text || null;
+      documentData.ocr_extracted_text = extractedText; // Store in both fields for backward compatibility
       documentData.searchable_content = extractedText.toLowerCase();
+      documentData.text_density_score = extractedText.split(/\s+/).length / 100; // Basic density score
     }
 
     if (analysisResult) {
@@ -219,6 +275,18 @@ const handler = async (req: Request): Promise<Response> => {
       documentData.content_confidence = analysisResult.confidence || null;
       documentData.medical_specialties = analysisResult.specialties || [];
       documentData.medical_keyword_count = analysisResult.medicalKeywordCount || 0;
+      
+      // Add processing notes with AI details
+      const noteParts = [];
+      if (analysisResult.categories?.length > 0) {
+        noteParts.push(`Categories: ${analysisResult.categories.join(', ')}`);
+      }
+      if (analysisResult.criticalAlerts?.length > 0) {
+        noteParts.push(`Alerts: ${analysisResult.criticalAlerts.length} critical findings`);
+      }
+      if (noteParts.length > 0) {
+        documentData.processing_notes = noteParts.join('. ');
+      }
     }
 
     if (fileHash) {

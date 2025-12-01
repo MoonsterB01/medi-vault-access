@@ -94,10 +94,31 @@ function calculateRelevanceScore(
     Object.keys(document.extracted_entities).forEach(entityType => {
       const entities = document.extracted_entities[entityType];
       if (Array.isArray(entities)) {
-        entities.forEach((entity: string) => {
-          if (entity.toLowerCase().includes(queryLower)) {
-            // Higher score for medical entity matches
+        entities.forEach((entity: any) => {
+          // Handle string entities
+          if (typeof entity === 'string' && entity.toLowerCase().includes(queryLower)) {
             if (entityType === 'doctors') score += 90;
+            else if (entityType === 'conditions') score += 85;
+            else if (entityType === 'medications') score += 80;
+            else score += 70;
+          }
+          // Handle object entities (medications with dose, labResults with values, etc.)
+          else if (typeof entity === 'object' && entity !== null) {
+            Object.entries(entity).forEach(([key, value]: [string, any]) => {
+              if (typeof value === 'string' && value.toLowerCase().includes(queryLower)) {
+                // Higher score for name/test fields
+                if (key === 'name' || key === 'test') {
+                  score += 75;
+                } else {
+                  score += 50;
+                }
+              }
+            });
+          }
+        });
+      }
+    });
+  }
             else if (entityType === 'conditions') score += 85;
             else if (entityType === 'medications') score += 85;
             else if (entityType === 'tests') score += 70;
@@ -290,9 +311,19 @@ serve(async (req) => {
         if (doc.extracted_entities) {
           Object.values(doc.extracted_entities).forEach((entities: any) => {
             if (Array.isArray(entities)) {
-              entities.forEach((entity: string) => {
-                if (entity.toLowerCase().includes(queryLower)) {
+              entities.forEach((entity: any) => {
+                // Handle string entities
+                if (typeof entity === 'string' && entity.toLowerCase().includes(queryLower)) {
                   isRelevant = true;
+                }
+                // Handle object entities (medications, labResults)
+                else if (typeof entity === 'object' && entity !== null) {
+                  // Check all string values in the object
+                  Object.values(entity).forEach((value: any) => {
+                    if (typeof value === 'string' && value.toLowerCase().includes(queryLower)) {
+                      isRelevant = true;
+                    }
+                  });
                 }
               });
             }
