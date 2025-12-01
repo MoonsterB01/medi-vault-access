@@ -55,6 +55,7 @@ interface ScannedImage {
   id: string;
   dataUrl: string;
   timestamp: Date;
+  rotation: number; // 0, 90, 180, 270
 }
 
 /**
@@ -81,6 +82,62 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
     scannedImages.length > 0 || isCapturing,
     'You have captured images that will be lost. Are you sure?'
   );
+
+  // Helper: Fix image orientation issues
+  const fixImageOrientation = useCallback(async (dataUrl: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        ctx?.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/jpeg', 0.95));
+      };
+      img.src = dataUrl;
+    });
+  }, []);
+
+  // Helper: Get actual image dimensions
+  const getImageDimensions = useCallback((dataUrl: string): Promise<{width: number, height: number}> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.width, height: img.height });
+      };
+      img.src = dataUrl;
+    });
+  }, []);
+
+  // Helper: Rotate image data using canvas
+  const rotateImageData = useCallback((dataUrl: string, degrees: number): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d')!;
+        
+        // Swap dimensions for 90/270 degree rotations
+        if (degrees === 90 || degrees === 270) {
+          canvas.width = img.height;
+          canvas.height = img.width;
+        } else {
+          canvas.width = img.width;
+          canvas.height = img.height;
+        }
+        
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((degrees * Math.PI) / 180);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        
+        resolve(canvas.toDataURL('image/jpeg', 0.95));
+      };
+      img.src = dataUrl;
+    });
+  }, []);
 
   const clearSession = useCallback(() => {
     localStorage.removeItem('scannerSession');
@@ -166,12 +223,12 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
       }
 
       const image = await Camera.getPhoto({
-        quality: 90,
+        quality: 95,
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Camera,
-        width: 1024,
-        height: 1024,
+        // Remove width/height constraints to preserve native aspect ratio
         correctOrientation: true,
+        allowEditing: false,
         saveToGallery: false,
         presentationStyle: 'fullscreen',
         promptLabelCancel: 'Cancel',
@@ -180,10 +237,14 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
       });
 
       if (image.dataUrl) {
+        // Fix orientation before saving
+        const correctedDataUrl = await fixImageOrientation(image.dataUrl);
+        
         const newImage: ScannedImage = {
           id: `${Date.now()}-${Math.random()}`,
-          dataUrl: image.dataUrl,
+          dataUrl: correctedDataUrl,
           timestamp: new Date(),
+          rotation: 0,
         };
 
         const updatedImages = [...scannedImages, newImage];
@@ -228,6 +289,35 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
     saveSession(updatedImages, documentName);
   };
 
+  const rotateImage = async (id: string) => {
+    const imageToRotate = scannedImages.find(img => img.id === id);
+    if (!imageToRotate) return;
+
+    const newRotation = (imageToRotate.rotation + 90) % 360;
+    
+    try {
+      // Rotate the image data
+      const rotatedDataUrl = await rotateImageData(imageToRotate.dataUrl, 90);
+      
+      const updatedImages = scannedImages.map(img =>
+        img.id === id ? { ...img, dataUrl: rotatedDataUrl, rotation: newRotation } : img
+      );
+      setScannedImages(updatedImages);
+      saveSession(updatedImages, documentName);
+
+      toast({
+        title: 'Image Rotated',
+        description: `Rotated 90° clockwise`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Rotation Failed',
+        description: 'Could not rotate image. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleDocumentNameChange = (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -264,6 +354,12 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
         format: 'a4',
       });
 
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const maxWidth = pageWidth - (margin * 2);
+      const maxHeight = pageHeight - (margin * 2);
+
       for (let i = 0; i < scannedImages.length; i++) {
         const image = scannedImages[i];
         
@@ -271,22 +367,31 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
           pdf.addPage();
         }
 
-        // Calculate dimensions to fit the page while maintaining aspect ratio
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const margin = 10;
-        const maxWidth = pageWidth - (margin * 2);
-        const maxHeight = pageHeight - (margin * 2);
+        // Get actual image dimensions
+        const { width: imgWidth, height: imgHeight } = await getImageDimensions(image.dataUrl);
+        
+        // Calculate scale to fit while maintaining aspect ratio
+        const widthRatio = maxWidth / imgWidth;
+        const heightRatio = maxHeight / imgHeight;
+        const scale = Math.min(widthRatio, heightRatio);
+        
+        // Calculate final dimensions
+        const finalWidth = imgWidth * scale;
+        const finalHeight = imgHeight * scale;
+        
+        // Center on page
+        const x = margin + (maxWidth - finalWidth) / 2;
+        const y = margin + (maxHeight - finalHeight) / 2;
 
         pdf.addImage(
           image.dataUrl,
           'JPEG',
-          margin,
-          margin,
-          maxWidth,
-          maxHeight,
+          x,
+          y,
+          finalWidth,
+          finalHeight,
           undefined,
-          'FAST'
+          'MEDIUM'
         );
       }
 
@@ -448,8 +553,12 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
             <CardHeader>
               <CardTitle className="text-lg">Capture Document</CardTitle>
               <CardDescription>
-                Use your device's camera to capture pages. You can scan
-                multiple pages into a single document.
+                Use your device's camera to capture pages. For best results:
+                <ul className="text-xs mt-1 space-y-0.5 list-disc list-inside">
+                  <li>Hold the camera steady and straight</li>
+                  <li>Ensure good lighting</li>
+                  <li>Use the rotate button if image appears sideways</li>
+                </ul>
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -481,25 +590,36 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {scannedImages.map((image, index) => (
-                    <div key={image.id} className="relative">
+                    <div key={image.id} className="relative group">
                       <img
                         src={image.dataUrl}
                         alt={`Scanned page ${index + 1}`}
-                        className="w-full h-32 object-cover rounded-md border"
+                        className="w-full h-40 object-contain rounded-md border bg-muted"
                       />
                       <div className="absolute top-2 left-2">
                         <Badge variant="secondary" className="text-xs">
                           Page {index + 1}
                         </Badge>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="absolute top-2 right-2 h-6 w-6 p-0"
-                        onClick={() => removeImage(image.id)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-6 w-6 p-0"
+                          onClick={() => rotateImage(image.id)}
+                          title="Rotate 90°"
+                        >
+                          <RotateCw className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-6 w-6 p-0"
+                          onClick={() => removeImage(image.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
