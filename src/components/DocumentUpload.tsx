@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Upload, FileText, Camera, CheckCircle, AlertTriangle, User, Loader2, Shield, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { DocumentScanner } from "@/components/DocumentScanner";
-import { ContentAnalyzer } from "@/components/ContentAnalyzer";
 import { generateFileHash } from "@/lib/fileHash";
 import { UpgradePlanDialog } from "@/components/UpgradePlanDialog";
 import { useSubscription } from "@/hooks/use-subscription";
@@ -60,10 +59,8 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
   const [patientId, setPatientId] = useState<string | null>(null);
   const [patientName, setPatientName] = useState("");
   const [showScanner, setShowScanner] = useState(false);
-  const [showAnalyzer, setShowAnalyzer] = useState(false);
   const [aiVisionResult, setAiVisionResult] = useState<AIVisionResult | null>(null);
   const [isAnalyzingWithAI, setIsAnalyzingWithAI] = useState(false);
-  const [uploadedDocumentId, setUploadedDocumentId] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>("");
   const [fileHash, setFileHash] = useState<string | null>(null);
   const [isFileBlocked, setIsFileBlocked] = useState(false);
@@ -362,21 +359,8 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
         await subscription.refresh();
       }
       
-      // Check if analysis is needed based on upload response
-      if (data?.documentId) {
-        setUploadedDocumentId(data.documentId);
-        
-        // Only show ContentAnalyzer if additional analysis is needed
-        if (!data.skipAnalysis) {
-          setShowAnalyzer(true);
-        } else {
-          // Analysis is complete, reset form
-          resetForm();
-        }
-      } else {
-        // Reset form if no analysis needed
-        resetForm();
-      }
+      // AI Vision already handled analysis, reset form
+      resetForm();
       
       onUploadSuccess?.();
     } catch (error: any) {
@@ -419,12 +403,6 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
     if (fileInput) fileInput.value = '';
   };
 
-  const handleAnalysisComplete = () => {
-    resetForm();
-    setShowAnalyzer(false);
-    setUploadedDocumentId(null);
-    setFileContent("");
-  };
 
   if (!patientId) {
     return (
@@ -699,29 +677,6 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
           />
         </DialogContent>
       </Dialog>
-
-      {/* Content Analyzer Dialog */}
-      {showAnalyzer && uploadedDocumentId && (
-        <Dialog open={showAnalyzer} onOpenChange={(open) => {
-          if (!open) handleAnalysisComplete();
-        }}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Additional Content Analysis</DialogTitle>
-              <DialogDescription>
-                Perform additional analysis on your uploaded document
-              </DialogDescription>
-            </DialogHeader>
-            <ContentAnalyzer
-              documentId={uploadedDocumentId}
-              filename={file?.name || "Document"}
-              contentType={file?.type || "application/pdf"}
-              fileContent={fileContent}
-              onAnalysisComplete={handleAnalysisComplete}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
 
       {/* Upgrade Dialog */}
       {showUpgradeDialog && (
