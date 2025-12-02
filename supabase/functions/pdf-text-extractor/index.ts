@@ -139,11 +139,12 @@ async function extractTextFromPDF(pdfBuffer: Uint8Array): Promise<{
     };
     
   } catch (error) {
+    const err = error as Error;
     console.error('❌ PDF.js extraction error:', error);
     console.error('Error details:', {
-      name: error?.name,
-      message: error?.message,
-      stack: error?.stack?.substring(0, 500)
+      name: err?.name || 'Unknown',
+      message: err?.message || 'Unknown error',
+      stack: err?.stack?.substring(0, 500)
     });
     
     // Return graceful fallback instead of throwing

@@ -64,9 +64,9 @@ serve(async (req) => {
     console.log('Found appointment:', appointment);
 
     // Get patient details separately
-    const { data: patient, error: patientError } = await supabaseClient
+    const { data: patient, error: patientError} = await supabaseClient
       .from('patients')
-      .select('name, shareable_id')
+      .select('name, shareable_id, created_by')
       .eq('id', appointment.patient_id)
       .maybeSingle();
 
@@ -98,6 +98,14 @@ serve(async (req) => {
     };
 
     // Notify only the patient creator
+    if (!patient || !patient.created_by) {
+      console.log('Patient or creator not found');
+      return new Response(
+        JSON.stringify({ success: false, message: 'Patient creator not found' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
+      );
+    }
+
     const { data: creatorUser, error: creatorError } = await supabaseClient
       .from('users')
       .select('id, name, email')

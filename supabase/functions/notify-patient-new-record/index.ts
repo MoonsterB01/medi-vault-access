@@ -35,7 +35,7 @@ serve(async (req) => {
     // Get patient information
     const { data: patient, error: patientError } = await supabase
       .from('patients')
-      .select('name, primary_contact')
+      .select('name, primary_contact, created_by')
       .eq('id', patientId)
       .single();
 
@@ -96,7 +96,7 @@ serve(async (req) => {
       success: true,
       message: `Notifications processed: ${successful} sent, ${failed} failed`,
       details: {
-        total_recipients: familyAccess?.length || 0,
+        total_recipients: notificationPromises.length,
         successful_notifications: successful,
         failed_notifications: failed,
       },

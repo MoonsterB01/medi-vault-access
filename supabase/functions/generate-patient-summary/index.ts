@@ -287,7 +287,7 @@ Be concise, accurate, and prioritize actionable medical information.`;
           if (aiResponse.ok) {
             const aiData = await aiResponse.json();
             const fullSummary = aiData.choices?.[0]?.message?.content || '';
-            const lines = fullSummary.split('\n').filter(l => l.trim());
+            const lines = fullSummary.split('\n').filter((l: string) => l.trim());
             
             // Calculate confidence based on data completeness
             const dataCompleteness = 
