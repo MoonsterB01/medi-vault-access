@@ -15,6 +15,7 @@ import ContactUs from "./pages/ContactUs";
 import NotFound from "./pages/NotFound";
 import DoctorAuth from "./pages/DoctorAuth";
 import DoctorDashboard from "./pages/DoctorDashboard";
+import DoctorPatientView from "./pages/DoctorPatientView";
 import FAQ from "./pages/FAQ";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import HospitalRegistration from "./pages/HospitalRegistration";
@@ -49,6 +50,7 @@ const App = () => (
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/doctor-auth" element={<DoctorAuth />} />
           <Route path="/doctor-dashboard" element={<AppLayout userRole="doctor"><DoctorDashboard /></AppLayout>} />
+          <Route path="/doctor-patient/:patientId" element={<AppLayout userRole="doctor"><DoctorPatientView /></AppLayout>} />
           <Route path="/hospital-registration" element={<HospitalRegistration />} />
           <Route path="/hospital-auth" element={<HospitalAuth />} />
           <Route path="/hms-dashboard" element={<HMSDashboard />} />

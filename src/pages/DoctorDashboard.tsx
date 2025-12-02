@@ -121,24 +121,42 @@ const DoctorDashboard = ({ user }: DoctorDashboardProps = {}) => {
   };
 
   const fetchPatients = async (doctorId: string) => {
+    // Query patients directly from appointments - the source of truth
     const { data, error } = await supabase
-      .from('doctor_patient_relationships')
-      .select(`patients(*), last_visit_date`)
-      .eq('doctor_id', doctorId)
-      .eq('is_active', true);
+      .from('appointments')
+      .select(`
+        patient_id,
+        appointment_date,
+        status,
+        patients!inner (
+          id, name, dob, gender, primary_contact
+        )
+      `)
+      .eq('doctor_id', doctorId);
+
     if (error) throw error;
 
-    const patientsWithCounts = await Promise.all(
-      (data || []).map(async (rel: any) => {
-        const { count } = await supabase
-          .from('appointments')
-          .select('*', { count: 'exact', head: true })
-          .eq('doctor_id', doctorId)
-          .eq('patient_id', rel.patients.id);
-        return { ...rel.patients, last_visit_date: rel.last_visit_date, appointment_count: count || 0 };
-      })
-    );
-    setPatients(patientsWithCounts);
+    // Group appointments by patient and calculate stats
+    const patientMap = new Map<string, Patient>();
+    (data || []).forEach((apt: any) => {
+      const patientId = apt.patient_id;
+      if (!patientMap.has(patientId)) {
+        patientMap.set(patientId, {
+          ...apt.patients,
+          appointment_count: 0,
+          last_visit_date: undefined
+        });
+      }
+      const patient = patientMap.get(patientId)!;
+      patient.appointment_count = (patient.appointment_count || 0) + 1;
+      
+      // Track most recent appointment as last visit
+      if (!patient.last_visit_date || apt.appointment_date > patient.last_visit_date) {
+        patient.last_visit_date = apt.appointment_date;
+      }
+    });
+
+    setPatients(Array.from(patientMap.values()));
   };
 
   if (loading) {
@@ -257,7 +275,11 @@ const DoctorDashboard = ({ user }: DoctorDashboardProps = {}) => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {patients.map((patient) => (
-                    <Card key={patient.id}>
+                    <Card 
+                      key={patient.id}
+                      className="cursor-pointer hover:shadow-lg transition-all hover:border-primary"
+                      onClick={() => navigate(`/doctor-patient/${patient.id}`)}
+                    >
                       <CardContent className="p-4">
                         <div className="flex items-center space-x-3 mb-3">
                           <Avatar><AvatarFallback>{patient.name.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>

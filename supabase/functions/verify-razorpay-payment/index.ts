@@ -59,6 +59,9 @@ serve(async (req) => {
 
     // Verify signature
     const razorpayKeySecret = Deno.env.get('RAZORPAY_KEY_SECRET');
+    if (!razorpayKeySecret) {
+      throw new Error('Razorpay key secret not configured');
+    }
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = createHmac("sha256", razorpayKeySecret)
       .update(body)
@@ -99,11 +102,15 @@ serve(async (req) => {
     }
 
     // Record payment in payment_history
-    const { data: plan } = await supabase
+    const { data: plan, error: planError } = await supabase
       .from('subscription_plans')
       .select('monthly_price, yearly_price')
       .eq('id', planId)
       .single();
+
+    if (planError || !plan) {
+      throw new Error('Plan not found');
+    }
 
     const amount = billingCycle === 'yearly' ? plan.yearly_price : plan.monthly_price;
 
@@ -125,7 +132,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in verify-razorpay-payment:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

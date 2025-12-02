@@ -1905,6 +1905,76 @@ export type Database = {
           },
         ]
       }
+      prescriptions: {
+        Row: {
+          advice: string | null
+          appointment_id: string | null
+          chief_complaint: string | null
+          created_at: string | null
+          diagnosis: string | null
+          doctor_id: string
+          follow_up_date: string | null
+          id: string
+          medicines: Json
+          patient_id: string
+          prescription_id: string
+          updated_at: string | null
+          vitals: Json | null
+        }
+        Insert: {
+          advice?: string | null
+          appointment_id?: string | null
+          chief_complaint?: string | null
+          created_at?: string | null
+          diagnosis?: string | null
+          doctor_id: string
+          follow_up_date?: string | null
+          id?: string
+          medicines?: Json
+          patient_id: string
+          prescription_id: string
+          updated_at?: string | null
+          vitals?: Json | null
+        }
+        Update: {
+          advice?: string | null
+          appointment_id?: string | null
+          chief_complaint?: string | null
+          created_at?: string | null
+          diagnosis?: string | null
+          doctor_id?: string
+          follow_up_date?: string | null
+          id?: string
+          medicines?: Json
+          patient_id?: string
+          prescription_id?: string
+          updated_at?: string | null
+          vitals?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescriptions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_plans: {
         Row: {
           created_at: string | null
@@ -2145,6 +2215,7 @@ export type Database = {
       }
       generate_appointment_id: { Args: never; Returns: string }
       generate_doctor_id: { Args: never; Returns: string }
+      generate_prescription_id: { Args: never; Returns: string }
       generate_purchase_number: { Args: never; Returns: string }
       generate_shareable_id: { Args: never; Returns: string }
       generate_user_shareable_id: { Args: never; Returns: string }
