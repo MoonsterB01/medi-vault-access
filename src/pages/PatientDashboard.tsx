@@ -44,6 +44,7 @@ interface PatientDashboardProps {
 export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   const [patientData, setPatientData] = useState<any>(null);
   const [documents, setDocuments] = useState<any[]>([]);
+  const [prescriptions, setPrescriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const location = useLocation();
@@ -171,6 +172,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
           if (newPatient) {
             setPatientData(newPatient);
             await fetchDocuments(newPatient.id);
+            await fetchPrescriptions(newPatient.id);
             toast({
               title: "Profile Created",
               description: "Your patient profile has been created. Please update your information.",
@@ -189,6 +191,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
 
       setPatientData(patient);
       await fetchDocuments(patient.id);
+      await fetchPrescriptions(patient.id);
     } catch (error: any) {
       console.error('Error fetching patient data:', error);
       
@@ -254,6 +257,37 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPrescriptions = async (patientId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('prescriptions')
+        .select(`
+          *,
+          doctors!inner (
+            id,
+            user_id,
+            users!inner (name)
+          )
+        `)
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching prescriptions:', error);
+        throw error;
+      }
+
+      setPrescriptions(data || []);
+    } catch (error: any) {
+      console.error('Error in fetchPrescriptions:', error);
+      toast({
+        title: "Prescriptions Error",
+        description: `Failed to load prescriptions.`,
+        variant: "destructive",
+      });
     }
   };
 
@@ -461,54 +495,162 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
             </TabsContent>
 
             <TabsContent value="documents" className="mt-6" id="tab-content-documents">
-              <Card>
-                <CardHeader>
-                  <CardTitle>My Documents</CardTitle>
-                  <CardDescription>Your uploaded medical documents</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {documents.length > 0 ? (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {documents.map((doc) => (
-                        <Card key={doc.id} className="p-4 flex flex-col justify-between">
-                          <div className="space-y-3">
-                            <h3 className="font-semibold text-sm truncate" title={doc.filename}>{doc.filename}</h3>
-                            <p className="text-xs text-muted-foreground">{formatDocumentType(doc.document_type)}</p>
-                            <div className="space-y-1">
-                              <p className="text-xs text-muted-foreground"><Calendar className="h-3 w-3 inline mr-1" />{new Date(doc.uploaded_at).toLocaleDateString()}</p>
-                              <p className="text-xs text-muted-foreground">Size: {formatFileSize(doc.file_size)}</p>
-                              {doc.content_confidence && <p className="text-xs text-green-600 dark:text-green-400">✓ AI Analyzed ({Math.round(doc.content_confidence * 100)}% confidence)</p>}
-                            </div>
-                            {doc.content_keywords?.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {doc.content_keywords.slice(0, 3).map((kw: string, i: number) => <Badge key={i} variant="outline" className="text-xs">{kw}</Badge>)}
+              <div className="space-y-6">
+                {/* Prescriptions Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>My Prescriptions</CardTitle>
+                    <CardDescription>Prescriptions created by your doctors</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {prescriptions.length > 0 ? (
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {prescriptions.map((rx) => (
+                          <Card key={rx.id} className="p-4 flex flex-col justify-between">
+                            <div className="space-y-3">
+                              <h3 className="font-semibold text-sm">{rx.prescription_id}</h3>
+                              <p className="text-xs text-muted-foreground">
+                                Dr. {rx.doctors?.users?.name || 'Unknown'}
+                              </p>
+                              <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground">
+                                  <Calendar className="h-3 w-3 inline mr-1" />
+                                  {new Date(rx.created_at).toLocaleDateString()}
+                                </p>
+                                {rx.diagnosis && (
+                                  <p className="text-xs"><strong>Diagnosis:</strong> {rx.diagnosis}</p>
+                                )}
                               </div>
-                            )}
-                          </div>
-                          <div className="flex gap-2 mt-4">
-                            <Button size="sm" variant="outline" onClick={async () => {
-                               const { data } = await supabase.storage.from('medical-documents').createSignedUrl(doc.file_path, 3600);
-                               if (data?.signedUrl) window.open(data.signedUrl, '_blank');
-                            }}><Download className="h-4 w-4 mr-2" />View</Button>
-                            <DocumentSummaryDialog document={doc}>
-                              <Button size="sm" variant="outline" title="View AI summary"><Bot className="h-4 w-4 mr-2" />Summary</Button>
-                            </DocumentSummaryDialog>
-                            <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument(doc.id, doc.filename)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium mb-2">No documents found</h3>
-                      <p>Upload a document to get started.</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                              {rx.medicines && rx.medicines.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-xs font-semibold">Medicines:</p>
+                                  {rx.medicines.slice(0, 2).map((med: any, i: number) => (
+                                    <p key={i} className="text-xs text-muted-foreground">• {med.name}</p>
+                                  ))}
+                                  {rx.medicines.length > 2 && (
+                                    <p className="text-xs text-muted-foreground">
+                                      + {rx.medicines.length - 2} more
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-2 mt-4">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => {
+                                  // Open prescription detail view
+                                  const win = window.open('', '_blank');
+                                  if (win) {
+                                    win.document.write(`
+                                      <html>
+                                        <head>
+                                          <title>Prescription ${rx.prescription_id}</title>
+                                          <style>
+                                            body { font-family: Arial, sans-serif; padding: 40px; }
+                                            h1 { color: #333; }
+                                            .section { margin: 20px 0; }
+                                            .medicine { padding: 10px; border-left: 3px solid #4CAF50; margin: 10px 0; }
+                                          </style>
+                                        </head>
+                                        <body>
+                                          <h1>Prescription: ${rx.prescription_id}</h1>
+                                          <div class="section">
+                                            <p><strong>Date:</strong> ${new Date(rx.created_at).toLocaleDateString()}</p>
+                                            <p><strong>Doctor:</strong> Dr. ${rx.doctors?.users?.name || 'Unknown'}</p>
+                                            ${rx.diagnosis ? `<p><strong>Diagnosis:</strong> ${rx.diagnosis}</p>` : ''}
+                                          </div>
+                                          <div class="section">
+                                            <h2>Medicines</h2>
+                                            ${rx.medicines.map((med: any) => `
+                                              <div class="medicine">
+                                                <p><strong>${med.name}</strong></p>
+                                                <p>Dose: ${med.dose}</p>
+                                                <p>Frequency: ${med.frequency}</p>
+                                                ${med.duration ? `<p>Duration: ${med.duration}</p>` : ''}
+                                                ${med.instructions ? `<p>Instructions: ${med.instructions}</p>` : ''}
+                                              </div>
+                                            `).join('')}
+                                          </div>
+                                          ${rx.advice ? `
+                                            <div class="section">
+                                              <h2>Advice</h2>
+                                              <p>${rx.advice}</p>
+                                            </div>
+                                          ` : ''}
+                                        </body>
+                                      </html>
+                                    `);
+                                  }
+                                }}
+                              >
+                                <FileText className="h-4 w-4 mr-2" />View
+                              </Button>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <h3 className="text-lg font-medium mb-2">No prescriptions yet</h3>
+                        <p>Prescriptions from your doctors will appear here.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Documents Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>My Documents</CardTitle>
+                    <CardDescription>Your uploaded medical documents</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {documents.length > 0 ? (
+                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {documents.map((doc) => (
+                          <Card key={doc.id} className="p-4 flex flex-col justify-between">
+                            <div className="space-y-3">
+                              <h3 className="font-semibold text-sm truncate" title={doc.filename}>{doc.filename}</h3>
+                              <p className="text-xs text-muted-foreground">{formatDocumentType(doc.document_type)}</p>
+                              <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground"><Calendar className="h-3 w-3 inline mr-1" />{new Date(doc.uploaded_at).toLocaleDateString()}</p>
+                                <p className="text-xs text-muted-foreground">Size: {formatFileSize(doc.file_size)}</p>
+                                {doc.content_confidence && <p className="text-xs text-green-600 dark:text-green-400">✓ AI Analyzed ({Math.round(doc.content_confidence * 100)}% confidence)</p>}
+                              </div>
+                              {doc.content_keywords?.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {doc.content_keywords.slice(0, 3).map((kw: string, i: number) => <Badge key={i} variant="outline" className="text-xs">{kw}</Badge>)}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-2 mt-4">
+                              <Button size="sm" variant="outline" onClick={async () => {
+                                 const { data } = await supabase.storage.from('medical-documents').createSignedUrl(doc.file_path, 3600);
+                                 if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+                              }}><Download className="h-4 w-4 mr-2" />View</Button>
+                              <DocumentSummaryDialog document={doc}>
+                                <Button size="sm" variant="outline" title="View AI summary"><Bot className="h-4 w-4 mr-2" />Summary</Button>
+                              </DocumentSummaryDialog>
+                              <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument(doc.id, doc.filename)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <FileText className="h-12 w-12 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium mb-2">No documents found</h3>
+                        <p>Upload a document to get started.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
 
             <TabsContent value="search" className="mt-6" id="tab-content-search">
