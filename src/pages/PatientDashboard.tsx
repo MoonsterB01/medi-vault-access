@@ -140,27 +140,12 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
         // Try to create patient record if it doesn't exist
         const { data: userData } = await supabase.auth.getUser();
         if (userData.user) {
-          // First, ensure user record exists (for Google OAuth users)
+          // Get user name from users table (trigger creates this for OAuth users)
           const { data: existingUser } = await supabase
             .from('users')
-            .select('id, name')
+            .select('name')
             .eq('id', userId)
             .single();
-          
-          if (!existingUser) {
-            // Create user record for OAuth users
-            const name = userData.user.user_metadata?.full_name || 
-                         userData.user.user_metadata?.name || 
-                         userData.user.email?.split('@')[0] || 
-                         'User';
-            
-            await supabase.from('users').insert({
-              id: userId,
-              email: userData.user.email || '',
-              name: name,
-              role: 'patient',
-            });
-          }
           
           const patientName = existingUser?.name || 
                               userData.user.user_metadata?.full_name || 

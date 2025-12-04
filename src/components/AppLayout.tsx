@@ -14,11 +14,11 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
  * @interface AppLayoutProps
  * @description Defines the props for the AppLayout component.
  * @property {React.ReactElement} children - The main content to be rendered within the layout.
- * @property {'patient' | 'hospital_staff' | 'admin' | 'doctor' | 'family_member'} userRole - The role of the current user, which determines the sidebar content.
+ * @property {'patient' | 'hospital_staff' | 'admin' | 'doctor'} userRole - The role of the current user, which determines the sidebar content.
  */
 interface AppLayoutProps {
   children: React.ReactElement;
-  userRole: 'patient' | 'hospital_staff' | 'admin' | 'doctor' | 'family_member';
+  userRole: 'patient' | 'hospital_staff' | 'admin' | 'doctor';
 }
 
 /**
