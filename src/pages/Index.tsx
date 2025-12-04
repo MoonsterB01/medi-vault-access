@@ -17,13 +17,38 @@ export default function Index() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: userData } = await supabase
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser) {
+        // Check if user record exists
+        let { data: userData, error } = await supabase
           .from('users')
           .select('role')
-          .eq('id', user.id)
+          .eq('id', authUser.id)
           .single();
+        
+        // If no user record exists (e.g., Google OAuth user), create one
+        if (error && error.code === 'PGRST116') {
+          const name = authUser.user_metadata?.full_name || 
+                       authUser.user_metadata?.name || 
+                       authUser.email?.split('@')[0] || 
+                       'User';
+          
+          const { data: newUser, error: createError } = await supabase
+            .from('users')
+            .insert({
+              id: authUser.id,
+              email: authUser.email || '',
+              name: name,
+              role: 'patient', // Default role for OAuth users
+            })
+            .select('role')
+            .single();
+          
+          if (!createError && newUser) {
+            userData = newUser;
+          }
+        }
+        
         setUser(userData);
       }
     };
