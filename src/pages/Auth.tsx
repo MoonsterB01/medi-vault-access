@@ -4,42 +4,24 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { Hospital, Users, User } from "lucide-react";
 import { z } from "zod";
 import logo from "@/assets/logo.png";
 import PublicLayout from "@/components/PublicLayout";
 
-/**
- * @constant {z.ZodObject} signInSchema
- * @description A Zod schema for validating sign-in form data.
- */
 const signInSchema = z.object({
   email: z.string().trim().email({ message: "Please enter a valid email address" }).max(255),
   password: z.string().min(1, { message: "Password is required" }),
 });
 
-/**
- * @constant {z.ZodObject} signUpSchema
- * @description A Zod schema for validating sign-up form data.
- */
 const signUpSchema = z.object({
   name: z.string().trim().min(2, { message: "Name must be at least 2 characters" }).max(100).regex(/^[a-zA-Z\s'-]+$/),
   email: z.string().trim().email({ message: "Please enter a valid email address" }).max(255),
   password: z.string().min(8, { message: "Password must be at least 8 characters" }).max(128).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/),
-  role: z.string().refine((value) => ["hospital_staff", "patient"].includes(value), {
-    message: "Please select a valid role"
-  }),
 });
 
-/**
- * @function Auth
- * @description A page component for user authentication. It provides tabs for signing in and signing up.
- * @returns {JSX.Element} - The rendered Auth page component.
- */
 export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
@@ -48,7 +30,6 @@ export default function Auth() {
     email: "",
     password: "",
     name: "",
-    role: "",
   });
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
@@ -66,7 +47,7 @@ export default function Auth() {
         password: validatedData.password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
-          data: { name: validatedData.name, role: validatedData.role },
+          data: { name: validatedData.name, role: 'patient' },
         },
       });
       if (error) throw error;
@@ -75,7 +56,7 @@ export default function Auth() {
           title: "Account created successfully!",
           description: "Please check your email to verify your account.",
         });
-        setFormData({ email: "", password: "", name: "", role: "" });
+        setFormData({ email: "", password: "", name: "" });
       }
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -183,8 +164,8 @@ export default function Auth() {
           </div>
           <Card>
             <CardHeader>
-              <CardTitle>Authentication</CardTitle>
-              <CardDescription>Sign in or create a new account</CardDescription>
+              <CardTitle>Patient Portal</CardTitle>
+              <CardDescription>Sign in or create a patient account</CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="signin" className="w-full">
@@ -301,19 +282,9 @@ export default function Auth() {
                       <Label htmlFor="signup-password">Password</Label>
                       <Input id="signup-password" type="password" placeholder="••••••••" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required className={validationErrors.password ? "border-destructive" : ""} />
                       {validationErrors.password && <p className="text-sm text-destructive">{validationErrors.password}</p>}
+                      <p className="text-xs text-muted-foreground">Must be at least 8 characters with uppercase, lowercase, and number</p>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="role">Role</Label>
-                      <Select onValueChange={(value) => setFormData({ ...formData, role: value })}>
-                        <SelectTrigger className={validationErrors.role ? "border-destructive" : ""}><SelectValue placeholder="Select your role" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="hospital_staff"><div className="flex items-center gap-2"><Hospital className="h-4 w-4" />Hospital Staff</div></SelectItem>
-                          <SelectItem value="patient"><div className="flex items-center gap-2"><User className="h-4 w-4" />Patient</div></SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {validationErrors.role && <p className="text-sm text-destructive">{validationErrors.role}</p>}
-                    </div>
-                    <Button type="submit" className="w-full" disabled={loading}>{loading ? "Creating account..." : "Create Account"}</Button>
+                    <Button type="submit" className="w-full" disabled={loading}>{loading ? "Creating account..." : "Create Patient Account"}</Button>
                   </form>
                 </TabsContent>
               </Tabs>
