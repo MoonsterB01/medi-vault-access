@@ -676,14 +676,10 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
                                   variant="outline"
                                   onClick={async () => {
                                     try {
-                                      const { data, error } = await supabase.storage
-                                        .from('documents')
-                                        .download(doc.file_path);
-                                      if (error) throw error;
-                                      const url = URL.createObjectURL(data);
-                                      window.open(url, '_blank');
+                                      const { viewDocument } = await import('@/lib/storage');
+                                      await viewDocument(doc.file_path);
                                     } catch (error: any) {
-                                      toast({ title: "Download Failed", description: error.message, variant: "destructive" });
+                                      toast({ title: "View Failed", description: error.message, variant: "destructive" });
                                     }
                                   }}
                                 >
