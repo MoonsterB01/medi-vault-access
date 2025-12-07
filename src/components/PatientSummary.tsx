@@ -116,20 +116,20 @@ const PatientSummary = ({ summary, isLoading, error, onRefresh }: PatientSummary
       )}
 
       {/* AI Health Summary - Main Feature */}
-      <Card className="border-2 border-primary">
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Bot className="h-6 w-6 text-primary" /> 
+      <Card className="border-2 border-primary w-full">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Bot className="h-5 w-5 md:h-6 md:w-6 text-primary flex-shrink-0" /> 
             AI Health Summary
           </CardTitle>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-primary/5">
-              {documentCount} {documentCount === 1 ? 'Document' : 'Documents'}
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="bg-primary/5 text-xs">
+              {documentCount} {documentCount === 1 ? 'Doc' : 'Docs'}
             </Badge>
             <Badge variant={
               ((summary.aiSummary?.confidence || 0) > 0.7) ? 'default' : 'secondary'
-            }>
-              {((summary.aiSummary?.confidence || 0) * 100).toFixed(0)}% Confidence
+            } className="text-xs">
+              {((summary.aiSummary?.confidence || 0) * 100).toFixed(0)}%
             </Badge>
             <Button 
               variant="ghost" 
@@ -137,6 +137,7 @@ const PatientSummary = ({ summary, isLoading, error, onRefresh }: PatientSummary
               onClick={handleRegenerateSummary}
               disabled={isRegenerating}
               title="Refresh summary"
+              className="h-8 w-8 p-0"
             >
               <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
             </Button>
@@ -183,31 +184,32 @@ const PatientSummary = ({ summary, isLoading, error, onRefresh }: PatientSummary
 
       {/* Patient Information - Compact */}
       {summary.patientInfo && (
-            <Card className="transition-all hover:shadow-md">
+            <Card className="transition-all hover:shadow-md w-full">
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                <CardTitle className="text-base">Patient Information</CardTitle>
+                <CardTitle className="text-sm md:text-base">Patient Info</CardTitle>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsEditDialogOpen(true)}
+                  className="h-8 px-2"
                 >
                   <Pencil className="h-4 w-4 mr-1" />
-                  Edit
+                  <span className="hidden sm:inline">Edit</span>
                 </Button>
               </CardHeader>
-          <CardContent className="text-sm">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
+          <CardContent className="text-sm pt-0">
+            <div className="grid grid-cols-3 gap-2 md:gap-3">
+              <div className="min-w-0">
                 <p className="text-muted-foreground text-xs">Name</p>
-                <p className="font-medium">{summary.patientInfo.name || 'N/A'}</p>
+                <p className="font-medium text-xs md:text-sm truncate">{summary.patientInfo.name || 'N/A'}</p>
               </div>
-              <div>
-                <p className="text-muted-foreground text-xs">Date of Birth</p>
-                <p className="font-medium">{summary.patientInfo.dob || 'N/A'}</p>
+              <div className="min-w-0">
+                <p className="text-muted-foreground text-xs">DOB</p>
+                <p className="font-medium text-xs md:text-sm truncate">{summary.patientInfo.dob || 'N/A'}</p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-muted-foreground text-xs">Gender</p>
-                <p className="font-medium">{summary.patientInfo.gender || 'N/A'}</p>
+                <p className="font-medium text-xs md:text-sm truncate">{summary.patientInfo.gender || 'N/A'}</p>
               </div>
             </div>
           </CardContent>

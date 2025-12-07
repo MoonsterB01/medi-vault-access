@@ -167,35 +167,35 @@ export function EnhancedDocumentSearch({ patientId, onDocumentSelect }: Enhanced
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 w-full max-w-full overflow-hidden">
       {/* Search Header */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Enhanced Document Search
+      <Card className="w-full">
+        <CardHeader className="pb-3 md:pb-6">
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Search className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
+            <span className="truncate">Document Search</span>
           </CardTitle>
-          <CardDescription>
-            Search documents by content, keywords, categories, and metadata
+          <CardDescription className="text-xs md:text-sm">
+            Search by content, keywords, or categories
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 md:space-y-4 pt-0">
           {/* Search Input */}
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search document content, keywords, or descriptions..."
+              placeholder="Search documents..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 text-sm"
             />
           </div>
 
-          {/* Filters */}
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
+          {/* Filters - Stack on mobile */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+            <div className="w-full sm:flex-1">
               <Select value={documentType} onValueChange={setDocumentType}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Document Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -210,27 +210,29 @@ export function EnhancedDocumentSearch({ patientId, onDocumentSelect }: Enhanced
               </Select>
             </div>
 
-            <Button variant="outline" onClick={clearFilters}>
+            <Button variant="outline" onClick={clearFilters} className="w-full sm:w-auto">
               <Filter className="mr-2 h-4 w-4" />
-              Clear Filters
+              Clear
             </Button>
           </div>
 
-          {/* Category Filter */}
+          {/* Category Filter - Scrollable on mobile */}
           {availableCategories.length > 0 && (
             <div>
-              <p className="text-sm font-medium mb-2">Categories:</p>
-              <div className="flex flex-wrap gap-2">
-                {availableCategories.map(category => (
-                  <Badge
-                    key={category}
-                    variant={selectedCategories.includes(category) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => toggleCategory(category)}
-                  >
-                    {category}
-                  </Badge>
-                ))}
+              <p className="text-xs md:text-sm font-medium mb-2">Categories:</p>
+              <div className="overflow-x-auto scrollbar-hide -mx-1 px-1 pb-1">
+                <div className="flex gap-2 w-max">
+                  {availableCategories.map(category => (
+                    <Badge
+                      key={category}
+                      variant={selectedCategories.includes(category) ? "default" : "outline"}
+                      className="cursor-pointer whitespace-nowrap text-xs"
+                      onClick={() => toggleCategory(category)}
+                    >
+                      {category}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -267,104 +269,87 @@ export function EnhancedDocumentSearch({ patientId, onDocumentSelect }: Enhanced
           </Card>
         )}
 
-        {results.length > 0 && (
-          <div className="space-y-4">
+      {results.length > 0 && (
+          <div className="space-y-3 md:space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Search Results ({results.length})</h3>
+              <h3 className="text-sm md:text-lg font-semibold">Results ({results.length})</h3>
             </div>
 
             {results.map((doc) => (
               <Card 
                 key={doc.id} 
-                className="cursor-pointer hover:shadow-md transition-shadow"
+                className="cursor-pointer hover:shadow-md transition-shadow w-full"
                 onClick={() => onDocumentSelect?.(doc)}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 space-y-2">
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex flex-col gap-2">
+                    {/* Header row */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <h4 className="font-medium text-sm truncate">{doc.filename}</h4>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {getRelevanceStars(doc.relevance_score)}
+                      </div>
+                    </div>
+
+                    {/* Meta info - stacked on mobile */}
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      <span className="truncate max-w-[120px]">{doc.patient_name}</span>
+                      <span>{doc.document_type || 'Unknown'}</span>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(doc.uploaded_at), 'MMM dd')}
+                      </div>
+                    </div>
+
+                    {doc.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {doc.description}
+                      </p>
+                    )}
+
+                    {/* Content Keywords - Scrollable */}
+                    {doc.content_keywords.length > 0 && (
                       <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <h4 className="font-medium">{doc.filename}</h4>
-                        <div className="flex items-center gap-1">
-                          {getRelevanceStars(doc.relevance_score)}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Patient: {doc.patient_name}</span>
-                        <span>Type: {doc.document_type || 'Unknown'}</span>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {format(new Date(doc.uploaded_at), 'MMM dd, yyyy')}
-                        </div>
-                      </div>
-
-                      {doc.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {doc.description}
-                        </p>
-                      )}
-
-                      {/* Content Keywords */}
-                      {doc.content_keywords.length > 0 && (
-                        <div className="flex items-center gap-2">
-                          <Tag className="h-3 w-3 text-muted-foreground" />
-                          <div className="flex flex-wrap gap-1">
-                            {doc.content_keywords.slice(0, 5).map((keyword, index) => (
+                        <Tag className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                        <div className="overflow-x-auto scrollbar-hide">
+                          <div className="flex gap-1 w-max">
+                            {doc.content_keywords.slice(0, 4).map((keyword, index) => (
                               <Badge 
                                 key={index} 
                                 variant="secondary" 
-                                className="text-xs"
+                                className="text-xs whitespace-nowrap"
                               >
                                 {keyword}
                               </Badge>
                             ))}
-                            {doc.content_keywords.length > 5 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{doc.content_keywords.length - 5} more
+                            {doc.content_keywords.length > 4 && (
+                              <Badge variant="outline" className="text-xs whitespace-nowrap">
+                                +{doc.content_keywords.length - 4}
                               </Badge>
                             )}
                           </div>
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {/* Auto Categories */}
-                      {doc.auto_categories.length > 0 && (
-                        <div className="flex items-center gap-2">
-                          <Brain className="h-3 w-3 text-muted-foreground" />
-                          <div className="flex flex-wrap gap-1">
-                            {doc.auto_categories.map((category, index) => (
-                              <Badge 
-                                key={index} 
-                                variant="outline" 
-                                className="text-xs"
-                              >
-                                {category}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Matched Keywords */}
-                      {doc.matched_keywords.length > 0 && (
-                        <div className="text-xs text-green-600">
-                          Matched: {doc.matched_keywords.join(', ')}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col items-end gap-2">
-                      {doc.content_confidence > 0 && (
-                        <Badge variant="secondary">
-                          {Math.round(doc.content_confidence * 100)}% confidence
-                        </Badge>
-                      )}
+                    {/* Bottom row with confidence and action */}
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-2">
+                        {doc.content_confidence > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {Math.round(doc.content_confidence * 100)}%
+                          </Badge>
+                        )}
+                      </div>
                       
                       {doc.file_url && (
                         <Button
                           size="sm"
                           variant="outline"
+                          className="h-7 text-xs"
                           onClick={(e) => {
                             e.stopPropagation();
                             window.open(doc.file_url, '_blank');

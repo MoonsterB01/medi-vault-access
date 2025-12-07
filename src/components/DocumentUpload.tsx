@@ -416,59 +416,56 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5" />
+    <div className="space-y-4 md:space-y-6 w-full max-w-full overflow-hidden">
+      <Card className="w-full">
+        <CardHeader className="pb-3 md:pb-6">
+          <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+            <Upload className="h-4 w-4 md:h-5 md:w-5 flex-shrink-0" />
             Upload Medical Document
           </CardTitle>
-          <CardDescription className="flex items-center gap-2 mt-2">
-            <User className="h-4 w-4" />
-            Uploading as: <span className="font-medium text-foreground">{patientName}</span>
+          <CardDescription className="flex items-center gap-2 mt-2 text-xs md:text-sm">
+            <User className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+            <span className="truncate">Uploading as: <span className="font-medium text-foreground">{patientName}</span></span>
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleUpload} className="space-y-6">
-            <div className="space-y-4">
-              <Label>Document File *</Label>
+        <CardContent className="pt-0">
+          <form onSubmit={handleUpload} className="space-y-4 md:space-y-6">
+            <div className="space-y-3 md:space-y-4">
+              <Label className="text-sm">Document File *</Label>
               
-              {/* File Upload Options */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* File Upload Options - Stack on mobile */}
+              <div className="grid grid-cols-1 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="file-input" className="text-sm font-medium">
+                  <Label htmlFor="file-input" className="text-xs md:text-sm font-medium">
                     Upload from Device
                   </Label>
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary/50 transition-colors">
+                  <div className="border-2 border-dashed rounded-lg p-4 md:p-6 text-center hover:border-primary/50 transition-colors">
                     <Input
                       id="file-input"
                       type="file"
                       onChange={handleFileChange}
                       accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                      className="cursor-pointer"
+                      className="cursor-pointer text-sm"
                     />
                     <p className="text-xs text-muted-foreground mt-2">
-                      Drag & drop or click to select
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      PDF, JPG, PNG, DOC, DOCX (Max 20MB)
+                      PDF, JPG, PNG, DOC (Max 20MB)
                     </p>
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">
-                    Scan Document
+                  <Label className="text-xs md:text-sm font-medium">
+                    Or Scan Document
                   </Label>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setShowScanner(true)}
-                    className="w-full h-full min-h-[120px]"
+                    className="w-full h-16 md:h-20"
                   >
-                    <div className="flex flex-col items-center gap-2">
-                      <Camera className="h-8 w-8" />
-                      <span>Open Camera Scanner</span>
+                    <div className="flex items-center gap-2">
+                      <Camera className="h-5 w-5 md:h-6 md:w-6" />
+                      <span className="text-sm">Open Camera</span>
                     </div>
                   </Button>
                 </div>

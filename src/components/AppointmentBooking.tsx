@@ -374,36 +374,36 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
       </Card>
 
       {/* Doctor List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
         {filteredDoctors.map((doctor) => (
-          <Card key={doctor.id} className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-3 mb-4">
-                <Avatar>
+          <Card key={doctor.id} className="hover:shadow-lg transition-shadow w-full">
+            <CardContent className="p-4 md:p-6">
+              <div className="flex items-center space-x-3 mb-3 md:mb-4">
+                <Avatar className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0">
                   <AvatarFallback>
-                    <Stethoscope className="w-5 h-5" />
+                    <Stethoscope className="w-4 h-4 md:w-5 md:h-5" />
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <h3 className="font-semibold">{doctor.users?.name ?? `Doctor ${doctor.doctor_id}`}</h3>
-                  <p className="text-sm text-muted-foreground">ID: {doctor.doctor_id}</p>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-sm md:text-base truncate">{doctor.users?.name ?? `Dr. ${doctor.doctor_id}`}</h3>
+                  <p className="text-xs text-muted-foreground truncate">ID: {doctor.doctor_id}</p>
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2 md:space-y-3">
                 <div>
-                  <Badge variant="secondary" className="mb-2">
+                  <Badge variant="secondary" className="mb-1 md:mb-2 text-xs">
                     {doctor.specialization.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </Badge>
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Star className="w-4 h-4 mr-1" />
-                    {doctor.years_experience} years experience
+                  <div className="flex items-center text-xs md:text-sm text-muted-foreground">
+                    <Star className="w-3 h-3 md:w-4 md:h-4 mr-1" />
+                    {doctor.years_experience} yrs exp
                   </div>
                 </div>
 
                 <div className="text-sm">
-                  <strong className="text-lg">${doctor.consultation_fee}</strong>
-                  <span className="text-muted-foreground"> / consultation</span>
+                  <strong className="text-base md:text-lg">${doctor.consultation_fee}</strong>
+                  <span className="text-muted-foreground text-xs md:text-sm"> / visit</span>
                 </div>
 
                 {doctor.qualifications && doctor.qualifications.length > 0 && (
@@ -415,14 +415,14 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
                     ))}
                     {doctor.qualifications.length > 2 && (
                       <Badge variant="outline" className="text-xs">
-                        +{doctor.qualifications.length - 2} more
+                        +{doctor.qualifications.length - 2}
                       </Badge>
                     )}
                   </div>
                 )}
 
                 {doctor.bio && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">
+                  <p className="text-xs md:text-sm text-muted-foreground line-clamp-2">
                     {doctor.bio}
                   </p>
                 )}
@@ -430,21 +430,21 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
                 <Dialog open={bookingDialogOpen && selectedDoctor?.id === doctor.id} onOpenChange={setBookingDialogOpen}>
                   <DialogTrigger asChild>
                     <Button 
-                      className="w-full" 
+                      className="w-full text-sm" 
                       onClick={() => setSelectedDoctor(doctor)}
                     >
                       Book Appointment
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-[95vw] md:max-w-2xl max-h-[85vh] overflow-y-auto mx-2">
                     <DialogHeader>
-                      <DialogTitle>Book Appointment with Dr. {doctor.users?.name ?? doctor.doctor_id}</DialogTitle>
-                      <DialogDescription>
+                      <DialogTitle className="text-sm md:text-base">Book with Dr. {doctor.users?.name ?? doctor.doctor_id}</DialogTitle>
+                      <DialogDescription className="text-xs md:text-sm">
                         {doctor.specialization.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} • ${doctor.consultation_fee}
                       </DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
                       <div className="space-y-4">
                         <div>
                           <Label htmlFor="patient">Select Patient</Label>
@@ -490,28 +490,28 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
                         </div>
 
                         <div>
-                          <Label>Time Slot</Label>
+                          <Label className="text-xs md:text-sm">Time Slot</Label>
                           {!selectedDate ? (
-                            <div className="text-center py-4 text-sm text-muted-foreground border rounded-md">
-                              Please select a date first
+                            <div className="text-center py-3 text-xs md:text-sm text-muted-foreground border rounded-md">
+                              Select a date first
                             </div>
                           ) : availableSlots.length === 0 ? (
-                            <div className="text-center py-4 text-sm text-muted-foreground border rounded-md">
-                              No available slots for this date
+                            <div className="text-center py-3 text-xs md:text-sm text-muted-foreground border rounded-md">
+                              No slots available
                             </div>
                           ) : (
-                            <div className="grid grid-cols-3 gap-2 max-h-[200px] overflow-y-auto border rounded-md p-2">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[120px] md:max-h-[200px] overflow-y-auto border rounded-md p-2">
                               {availableSlots.map((slot) => (
                                 <Button
                                   key={slot.start_time}
                                   type="button"
                                   variant={selectedTime === slot.start_time ? "default" : "outline"}
                                   onClick={() => setSelectedTime(slot.start_time)}
-                                  className="w-full flex flex-col h-auto py-2"
+                                  className="w-full flex flex-col h-auto py-1.5 md:py-2 text-xs"
                                 >
-                                  <Clock className="h-4 w-4 mb-1" />
-                                  <span className="text-sm">{slot.start_time}</span>
-                                  <Badge variant="secondary" className="mt-1 text-xs">
+                                  <Clock className="h-3 w-3 md:h-4 md:w-4" />
+                                  <span>{slot.start_time}</span>
+                                  <Badge variant="secondary" className="text-[10px]">
                                     {slot.current_bookings}/{slot.max_appointments}
                                   </Badge>
                                 </Button>
@@ -521,9 +521,9 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
                         </div>
 
                         <div>
-                          <Label>Appointment Type</Label>
+                          <Label className="text-xs md:text-sm">Type</Label>
                           <Select value={appointmentType} onValueChange={setAppointmentType}>
-                            <SelectTrigger>
+                            <SelectTrigger className="text-sm">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -536,54 +536,57 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
                         </div>
                       </div>
 
-                      <div className="space-y-4">
+                      <div className="space-y-3 md:space-y-4">
                         <div>
-                          <Label htmlFor="complaint">Chief Complaint</Label>
+                          <Label htmlFor="complaint" className="text-xs md:text-sm">Concern</Label>
                           <Textarea
                             id="complaint"
                             placeholder="Describe your main concern..."
                             value={chiefComplaint}
                             onChange={(e) => setChiefComplaint(e.target.value)}
-                            rows={3}
+                            rows={2}
+                            className="text-sm"
                           />
                         </div>
 
                         <div>
-                          <Label htmlFor="notes">Additional Notes</Label>
+                          <Label htmlFor="notes" className="text-xs md:text-sm">Notes</Label>
                           <Textarea
                             id="notes"
-                            placeholder="Any additional information for the doctor..."
+                            placeholder="Additional information..."
                             value={patientNotes}
                             onChange={(e) => setPatientNotes(e.target.value)}
-                            rows={4}
+                            rows={2}
+                            className="text-sm"
                           />
                         </div>
 
-                        <div className="bg-muted p-4 rounded-lg">
-                          <h4 className="font-semibold mb-2">Appointment Summary</h4>
-                          <div className="space-y-1 text-sm">
+                        <div className="bg-muted p-3 md:p-4 rounded-lg">
+                          <h4 className="font-semibold mb-2 text-xs md:text-sm">Summary</h4>
+                          <div className="space-y-1 text-xs md:text-sm">
                             <p><strong>Doctor:</strong> Dr. {doctor.users?.name ?? doctor.doctor_id}</p>
-                            <p><strong>Specialty:</strong> {doctor.specialization.replace('_', ' ')}</p>
                             <p><strong>Fee:</strong> ${doctor.consultation_fee}</p>
-                            {selectedDate && <p><strong>Date:</strong> {format(selectedDate, "PPP")}</p>}
+                            {selectedDate && <p><strong>Date:</strong> {format(selectedDate, "MMM dd, yyyy")}</p>}
                             {selectedTime && <p><strong>Time:</strong> {selectedTime}</p>}
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex justify-end space-x-2 pt-4">
+                    <div className="flex justify-end gap-2 pt-4 pb-2 sticky bottom-0 bg-background border-t mt-4 -mx-6 px-6">
                       <Button 
                         variant="outline" 
                         onClick={() => setBookingDialogOpen(false)}
+                        size="sm"
                       >
                         Cancel
                       </Button>
                       <Button 
                         onClick={handleBookAppointment}
                         disabled={loading}
+                        size="sm"
                       >
-                        {loading ? "Booking..." : "Book Appointment"}
+                        {loading ? "Booking..." : "Confirm"}
                       </Button>
                     </div>
                   </DialogContent>

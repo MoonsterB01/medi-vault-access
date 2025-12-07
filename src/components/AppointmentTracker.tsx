@@ -297,67 +297,69 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div className="space-y-4 md:space-y-6 w-full max-w-full overflow-hidden">
+      {/* Summary Cards - 2 columns on mobile, 4 on desktop */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center space-x-2">
-              <Clock className="w-5 h-5 text-yellow-600" />
-              <div>
-                <p className="text-2xl font-bold">{pendingAppointments.length}</p>
-                <p className="text-sm text-muted-foreground">Pending</p>
+              <Clock className="w-4 h-4 md:w-5 md:h-5 text-yellow-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xl md:text-2xl font-bold">{pendingAppointments.length}</p>
+                <p className="text-xs md:text-sm text-muted-foreground truncate">Pending</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center space-x-2">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <div>
-                <p className="text-2xl font-bold">{upcomingAppointments.length}</p>
-                <p className="text-sm text-muted-foreground">Confirmed</p>
+              <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xl md:text-2xl font-bold">{upcomingAppointments.length}</p>
+                <p className="text-xs md:text-sm text-muted-foreground truncate">Confirmed</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center space-x-2">
-              <Calendar className="w-5 h-5 text-blue-600" />
-              <div>
-                <p className="text-2xl font-bold">{completedAppointments.length}</p>
-                <p className="text-sm text-muted-foreground">Completed</p>
+              <Calendar className="w-4 h-4 md:w-5 md:h-5 text-blue-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xl md:text-2xl font-bold">{completedAppointments.length}</p>
+                <p className="text-xs md:text-sm text-muted-foreground truncate">Done</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3 md:p-4">
             <div className="flex items-center space-x-2">
-              <XCircle className="w-5 h-5 text-red-600" />
-              <div>
-                <p className="text-2xl font-bold">{cancelledAppointments.length}</p>
-                <p className="text-sm text-muted-foreground">Cancelled</p>
+              <XCircle className="w-4 h-4 md:w-5 md:h-5 text-red-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xl md:text-2xl font-bold">{cancelledAppointments.length}</p>
+                <p className="text-xs md:text-sm text-muted-foreground truncate">Cancelled</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Appointments Tabs */}
-      <Tabs defaultValue="upcoming" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-          <TabsTrigger value="pending">Pending ({pendingAppointments.length})</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="cancelled">Cancelled ({cancelledAppointments.length})</TabsTrigger>
-          <TabsTrigger value="all">All</TabsTrigger>
-        </TabsList>
+      {/* Appointments Tabs - Scrollable on mobile */}
+      <Tabs defaultValue="upcoming" className="space-y-4 w-full">
+        <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+          <TabsList className="inline-flex w-auto min-w-full md:w-full">
+            <TabsTrigger value="upcoming" className="text-xs md:text-sm px-2 md:px-3">Upcoming</TabsTrigger>
+            <TabsTrigger value="pending" className="text-xs md:text-sm px-2 md:px-3">Pending ({pendingAppointments.length})</TabsTrigger>
+            <TabsTrigger value="completed" className="text-xs md:text-sm px-2 md:px-3">Done</TabsTrigger>
+            <TabsTrigger value="cancelled" className="text-xs md:text-sm px-2 md:px-3">Cancelled</TabsTrigger>
+            <TabsTrigger value="all" className="text-xs md:text-sm px-2 md:px-3">All</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="upcoming" className="space-y-4">
           {upcomingAppointments.length === 0 ? (
