@@ -391,7 +391,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
       fallbackMessage="There was an issue loading your patient dashboard. This may be due to a database configuration issue."
       onReset={() => user && fetchPatientData(user.id)}
     >
-      <div className={cn("container mx-auto px-4 py-8", isMobile && "pb-24")}>
+      <div className={cn("container mx-auto px-4 py-8 max-w-full overflow-x-hidden", isMobile && "pb-28")}>
         {patientData && missingFields.length > 0 && (
         <MissingInfoDialog
           patientId={patientData.id}
@@ -401,7 +401,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
           onUpdate={() => fetchPatientData(user.id)}
         />
       )}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 w-full max-w-full">
         <div className="space-y-6">
           <Card>
             <CardHeader>

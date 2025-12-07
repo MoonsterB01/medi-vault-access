@@ -2,9 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail, Phone, User } from "lucide-react";
+import { Mail, Phone, User, ArrowLeft } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * @function ContactUs
@@ -16,6 +18,16 @@ export default function ContactUs() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [submissionStatus, setSubmissionStatus] = useState("idle");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+    };
+    checkAuth();
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -45,6 +57,16 @@ export default function ContactUs() {
   return (
     <PublicLayout>
       <header className="container mx-auto px-4 py-16 text-center">
+        {isLoggedIn && (
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/patient-dashboard')} 
+            className="mb-6"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        )}
         <h1 className="text-4xl font-bold mb-4">
           Contact Us
         </h1>

@@ -120,9 +120,9 @@ export function MediBot({ patientId }: MediBotProps) {
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Button - positioned above mobile bottom nav */}
       <Button
-        className="fixed bottom-6 right-6 rounded-full w-14 h-14 shadow-lg hover:scale-110 transition-transform"
+        className="fixed bottom-24 md:bottom-6 right-4 md:right-6 rounded-full w-14 h-14 shadow-xl hover:scale-110 transition-transform z-[60] bg-primary"
         onClick={() => setIsOpen(true)}
       >
         <Bot className="h-6 w-6" />
