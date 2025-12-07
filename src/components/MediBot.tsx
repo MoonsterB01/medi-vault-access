@@ -122,10 +122,13 @@ export function MediBot({ patientId }: MediBotProps) {
     <>
       {/* Floating Button - positioned above mobile bottom nav */}
       <Button
-        className="fixed bottom-24 md:bottom-6 right-4 md:right-6 rounded-full w-14 h-14 shadow-xl hover:scale-110 transition-transform z-[60] bg-primary"
+        className="fixed right-4 rounded-full w-12 h-12 md:w-14 md:h-14 shadow-xl hover:scale-110 transition-transform z-[55] bg-primary md:bottom-6"
+        style={{
+          bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
+        }}
         onClick={() => setIsOpen(true)}
       >
-        <Bot className="h-6 w-6" />
+        <Bot className="h-5 w-5 md:h-6 md:w-6" />
       </Button>
 
       {/* Chat Drawer */}
