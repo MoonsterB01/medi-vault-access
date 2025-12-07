@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { FileText, Calendar, Trash2, Download, X, Bot, Loader2 } from "lucide-react";
+import { FileText, Calendar, Trash2, Download, Bot, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { triggerDocumentDownload, viewDocument } from "@/lib/storage";
 
 interface MobileDocumentsTabProps {
   documents: any[];
@@ -34,25 +35,7 @@ export function MobileDocumentsTab({
 
   const handleDownload = async (doc: any) => {
     try {
-      // Create a signed URL for download
-      const { data, error } = await supabase.storage
-        .from('patient-documents')
-        .createSignedUrl(doc.file_path, 300); // 5 min expiry
-      
-      if (error) throw error;
-      
-      // Fetch and download
-      const response = await fetch(data.signedUrl);
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = doc.filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
+      await triggerDocumentDownload(doc.file_path, doc.filename);
       toast({ title: "Download started" });
     } catch (error) {
       console.error('Download error:', error);
@@ -62,14 +45,7 @@ export function MobileDocumentsTab({
 
   const handleViewDocument = async (doc: any) => {
     try {
-      // Create a signed URL for viewing
-      const { data, error } = await supabase.storage
-        .from('patient-documents')
-        .createSignedUrl(doc.file_path, 300); // 5 min expiry
-      
-      if (error) throw error;
-      
-      window.open(data.signedUrl, '_blank');
+      await viewDocument(doc.file_path);
     } catch (error) {
       console.error('View error:', error);
       toast({ title: "Could not open document", description: "Please try again", variant: "destructive" });
