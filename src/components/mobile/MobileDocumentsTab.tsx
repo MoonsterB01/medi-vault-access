@@ -34,13 +34,17 @@ export function MobileDocumentsTab({
 
   const handleDownload = async (doc: any) => {
     try {
+      // Create a signed URL for download
       const { data, error } = await supabase.storage
-        .from('documents')
-        .download(doc.file_path);
+        .from('patient-documents')
+        .createSignedUrl(doc.file_path, 300); // 5 min expiry
       
       if (error) throw error;
       
-      const url = URL.createObjectURL(data);
+      // Fetch and download
+      const response = await fetch(data.signedUrl);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = doc.filename;
@@ -48,25 +52,27 @@ export function MobileDocumentsTab({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      
+      toast({ title: "Download started" });
     } catch (error) {
       console.error('Download error:', error);
-      toast({ title: "Download failed", variant: "destructive" });
+      toast({ title: "Download failed", description: "Could not download the document", variant: "destructive" });
     }
   };
 
   const handleViewDocument = async (doc: any) => {
     try {
+      // Create a signed URL for viewing
       const { data, error } = await supabase.storage
-        .from('documents')
-        .download(doc.file_path);
+        .from('patient-documents')
+        .createSignedUrl(doc.file_path, 300); // 5 min expiry
       
       if (error) throw error;
       
-      const url = URL.createObjectURL(data);
-      window.open(url, '_blank');
+      window.open(data.signedUrl, '_blank');
     } catch (error) {
       console.error('View error:', error);
-      toast({ title: "Could not open document", variant: "destructive" });
+      toast({ title: "Could not open document", description: "Please try again", variant: "destructive" });
     }
   };
 
