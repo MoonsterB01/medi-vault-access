@@ -385,310 +385,511 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
     }
   };
 
+  // Mobile collapsed sidebar state
+  const [showMobileInfo, setShowMobileInfo] = useState(false);
+
   return (
     <ErrorBoundary 
       fallbackTitle="Dashboard Error" 
       fallbackMessage="There was an issue loading your patient dashboard. This may be due to a database configuration issue."
       onReset={() => user && fetchPatientData(user.id)}
     >
-      <div className={cn("container mx-auto px-4 py-8 max-w-full overflow-x-hidden", isMobile && "pb-28")}>
+      <div className={cn(
+        "w-full min-h-screen",
+        isMobile ? "px-3 py-4 pb-28" : "container mx-auto px-4 py-8"
+      )}>
         {patientData && missingFields.length > 0 && (
-        <MissingInfoDialog
-          patientId={patientData.id}
-          missingFields={missingFields}
-          open={isMissingInfoDialogOpen}
-          onOpenChange={setMissingInfoDialogOpen}
-          onUpdate={() => fetchPatientData(user.id)}
-        />
-      )}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 w-full max-w-full">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Your Unique ID
-              </CardTitle>
-              <CardDescription>
-                Your personal identifier as a {user?.role?.replace('_', ' ')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 p-3 bg-accent/20 border rounded-lg">
-                <code className="flex-1 font-mono text-sm font-bold">
-                  {user?.user_shareable_id || 'N/A'}
-                </code>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => copyShareableId(user?.user_shareable_id)}
-                >
-                  <Copy className="h-3 w-3" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <MissingInfoDialog
+            patientId={patientData.id}
+            missingFields={missingFields}
+            open={isMissingInfoDialogOpen}
+            onOpenChange={setMissingInfoDialogOpen}
+            onUpdate={() => fetchPatientData(user.id)}
+          />
+        )}
 
-          {patientData && (
-            <>
-              <Card>
-                <CardHeader><CardTitle>Patient Information</CardTitle></CardHeader>
-                <CardContent className="text-sm space-y-1">
-                  <p><strong>Name:</strong> {patientData.name}</p>
-                  <p><strong>DOB:</strong> {patientData.dob}</p>
-                  <p><strong>Gender:</strong> {patientData.gender}</p>
+        {/* Mobile Layout */}
+        {isMobile ? (
+          <div className="space-y-4 w-full">
+            {/* Mobile Header with collapsible info */}
+            <Card className="w-full">
+              <CardHeader className="py-3 px-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <User className="h-5 w-5 flex-shrink-0" />
+                    <span className="font-semibold truncate">{patientData?.name || 'Patient'}</span>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setShowMobileInfo(!showMobileInfo)}
+                  >
+                    {showMobileInfo ? 'Hide Info' : 'Show Info'}
+                  </Button>
+                </div>
+              </CardHeader>
+              
+              {showMobileInfo && (
+                <CardContent className="pt-0 px-4 pb-4 space-y-4">
+                  {/* Patient Info */}
+                  <div className="text-sm space-y-1">
+                    <p><strong>DOB:</strong> {patientData?.dob}</p>
+                    <p><strong>Gender:</strong> {patientData?.gender}</p>
+                  </div>
+                  
+                  {/* User Shareable ID */}
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">Your ID</p>
+                    <div className="flex items-center gap-2 p-2 bg-accent/20 border rounded-lg">
+                      <code className="flex-1 font-mono text-xs truncate">
+                        {user?.user_shareable_id || 'N/A'}
+                      </code>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0"
+                        onClick={() => copyShareableId(user?.user_shareable_id)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Patient Shareable ID */}
+                  {patientData?.shareable_id && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Share for uploads</p>
+                      <div className="flex items-center gap-2 p-2 bg-primary/10 border rounded-lg">
+                        <code className="flex-1 font-mono text-xs truncate text-primary">
+                          {patientData.shareable_id}
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0"
+                          onClick={() => copyShareableId(patientData.shareable_id)}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Subscription Banner */}
+                  {subscription.currentPlan && !subscription.isLoading && (
+                    <SubscriptionBanner
+                      planName={subscription.currentPlan.display_name}
+                      uploadsUsed={subscription.uploadsUsed}
+                      uploadLimit={subscription.currentPlan.upload_limit}
+                    />
+                  )}
+                  
+                  <Button 
+                    onClick={() => navigate('/document-timeline')} 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full"
+                  >
+                    <Clock className="h-4 w-4 mr-2" /> View Timeline
+                  </Button>
                 </CardContent>
-              </Card>
+              )}
+            </Card>
 
+            {/* Mobile Tab Content */}
+            <div className="w-full">
+              <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+                <TabsContent value="summary" className="mt-0" id="tab-content-summary">
+                  <PatientSummary 
+                    summary={summary} 
+                    isLoading={isSummaryLoading} 
+                    error={summaryError}
+                    onRefresh={refreshPatientData}
+                  />
+                </TabsContent>
+
+                <TabsContent value="documents" className="mt-0" id="tab-content-documents">
+                  <div className="space-y-4">
+                    {/* Prescriptions Section */}
+                    <Card>
+                      <CardHeader className="py-3 px-4">
+                        <CardTitle className="text-base">My Prescriptions</CardTitle>
+                      </CardHeader>
+                      <CardContent className="px-4 pb-4">
+                        {prescriptions.length > 0 ? (
+                          <div className="space-y-3">
+                            {prescriptions.map((rx) => (
+                              <Card key={rx.id} className="p-3">
+                                <div className="space-y-2">
+                                  <h3 className="font-semibold text-sm">{rx.prescription_id}</h3>
+                                  <p className="text-xs text-muted-foreground">
+                                    Dr. {rx.doctors?.users?.name || 'Unknown'}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    <Calendar className="h-3 w-3 inline mr-1" />
+                                    {new Date(rx.created_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            No prescriptions yet
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Documents Section */}
+                    <Card>
+                      <CardHeader className="py-3 px-4">
+                        <CardTitle className="text-base">Uploaded Documents</CardTitle>
+                      </CardHeader>
+                      <CardContent className="px-4 pb-4">
+                        {documents.length > 0 ? (
+                          <div className="space-y-3">
+                            {documents.map((doc) => (
+                              <Card key={doc.id} className="p-3">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <h3 className="font-semibold text-sm truncate">{doc.filename}</h3>
+                                    <p className="text-xs text-muted-foreground">
+                                      {formatDocumentType(doc.document_type)} • {formatFileSize(doc.file_size)}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {new Date(doc.uploaded_at).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0 text-destructive"
+                                    onClick={() => handleDeleteDocument(doc.id, doc.filename)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            No documents uploaded yet
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="search" className="mt-0" id="tab-content-search">
+                  {patientData && <EnhancedDocumentSearch patientId={patientData.id} />}
+                </TabsContent>
+
+                <TabsContent value="appointments" className="mt-0" id="tab-content-appointments">
+                  <AppointmentTracker user={user} />
+                </TabsContent>
+
+                <TabsContent value="calendar" className="mt-0" id="tab-content-calendar">
+                  <AppointmentCalendar user={user} />
+                </TabsContent>
+
+                <TabsContent value="book-appointment" className="mt-0" id="tab-content-book-appointment">
+                  <AppointmentBooking user={user} />
+                </TabsContent>
+
+                <TabsContent value="upload" className="mt-0" id="tab-content-upload">
+                  <DocumentUpload onUploadSuccess={onUploadSuccess} />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        ) : (
+          /* Desktop Layout */
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Share2 className="h-5 w-5" />
-                    Patient Shareable ID
+                    <User className="h-5 w-5" />
+                    Your Unique ID
                   </CardTitle>
-                  <CardDescription>Share this to allow document uploads.</CardDescription>
+                  <CardDescription>
+                    Your personal identifier as a {user?.role?.replace('_', ' ')}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center gap-2 p-3 bg-primary/10 border rounded-lg">
-                    <code className="flex-1 font-mono text-sm font-bold text-primary">
-                      {patientData.shareable_id}
+                  <div className="flex items-center gap-2 p-3 bg-accent/20 border rounded-lg">
+                    <code className="flex-1 font-mono text-sm font-bold">
+                      {user?.user_shareable_id || 'N/A'}
                     </code>
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => copyShareableId(patientData.shareable_id)}
+                      onClick={() => copyShareableId(user?.user_shareable_id)}
                     >
                       <Copy className="h-3 w-3" />
                     </Button>
                   </div>
                 </CardContent>
               </Card>
-              
-              {/* Subscription Status Banner */}
-              {subscription.currentPlan && !subscription.isLoading && (
-                <SubscriptionBanner
-                  planName={subscription.currentPlan.display_name}
-                  uploadsUsed={subscription.uploadsUsed}
-                  uploadLimit={subscription.currentPlan.upload_limit}
-                  className="mt-4"
-                />
+
+              {patientData && (
+                <>
+                  <Card>
+                    <CardHeader><CardTitle>Patient Information</CardTitle></CardHeader>
+                    <CardContent className="text-sm space-y-1">
+                      <p><strong>Name:</strong> {patientData.name}</p>
+                      <p><strong>DOB:</strong> {patientData.dob}</p>
+                      <p><strong>Gender:</strong> {patientData.gender}</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Share2 className="h-5 w-5" />
+                        Patient Shareable ID
+                      </CardTitle>
+                      <CardDescription>Share this to allow document uploads.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2 p-3 bg-primary/10 border rounded-lg">
+                        <code className="flex-1 font-mono text-sm font-bold text-primary">
+                          {patientData.shareable_id}
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => copyShareableId(patientData.shareable_id)}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* Subscription Status Banner */}
+                  {subscription.currentPlan && !subscription.isLoading && (
+                    <SubscriptionBanner
+                      planName={subscription.currentPlan.display_name}
+                      uploadsUsed={subscription.uploadsUsed}
+                      uploadLimit={subscription.currentPlan.upload_limit}
+                      className="mt-4"
+                    />
+                  )}
+                </>
               )}
-            </>
-          )}
-        </div>
+            </div>
 
-        <div className="lg:col-span-3">
-          <div className="mb-6">
-            <Button onClick={() => navigate('/document-timeline')} variant="outline">
-              <Clock className="h-4 w-4 mr-2" /> View Timeline
-            </Button>
-          </div>
+            <div className="lg:col-span-3">
+              <div className="mb-6">
+                <Button onClick={() => navigate('/document-timeline')} variant="outline">
+                  <Clock className="h-4 w-4 mr-2" /> View Timeline
+                </Button>
+              </div>
 
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            {!isMobile && (
-              <TabsList className="grid w-full grid-cols-7">
-                <TabsTrigger value="summary"><Bot className="h-4 w-4 mr-1" />Summary</TabsTrigger>
-                <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-1" />Documents</TabsTrigger>
-                <TabsTrigger value="search"><Search className="h-4 w-4 mr-1" />Search</TabsTrigger>
-                <TabsTrigger value="appointments"><Clock className="h-4 w-4 mr-1" />Appointments</TabsTrigger>
-                <TabsTrigger value="calendar"><Calendar className="h-4 w-4 mr-1" />Calendar</TabsTrigger>
-                <TabsTrigger value="book-appointment"><Calendar className="h-4 w-4 mr-1" />Book</TabsTrigger>
-                <TabsTrigger value="upload"><Upload className="h-4 w-4 mr-1" />Upload</TabsTrigger>
-              </TabsList>
-            )}
+              <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+                <TabsList className="grid w-full grid-cols-7">
+                  <TabsTrigger value="summary"><Bot className="h-4 w-4 mr-1" />Summary</TabsTrigger>
+                  <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-1" />Documents</TabsTrigger>
+                  <TabsTrigger value="search"><Search className="h-4 w-4 mr-1" />Search</TabsTrigger>
+                  <TabsTrigger value="appointments"><Clock className="h-4 w-4 mr-1" />Appointments</TabsTrigger>
+                  <TabsTrigger value="calendar"><Calendar className="h-4 w-4 mr-1" />Calendar</TabsTrigger>
+                  <TabsTrigger value="book-appointment"><Calendar className="h-4 w-4 mr-1" />Book</TabsTrigger>
+                  <TabsTrigger value="upload"><Upload className="h-4 w-4 mr-1" />Upload</TabsTrigger>
+                </TabsList>
 
-            <TabsContent value="summary" className="mt-6" id="tab-content-summary">
-              <PatientSummary 
-                summary={summary} 
-                isLoading={isSummaryLoading} 
-                error={summaryError}
-                onRefresh={refreshPatientData}
-              />
-            </TabsContent>
+                <TabsContent value="summary" className="mt-6" id="tab-content-summary">
+                  <PatientSummary 
+                    summary={summary} 
+                    isLoading={isSummaryLoading} 
+                    error={summaryError}
+                    onRefresh={refreshPatientData}
+                  />
+                </TabsContent>
 
-            <TabsContent value="documents" className="mt-6" id="tab-content-documents">
-              <div className="space-y-6">
-                {/* Prescriptions Section */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>My Prescriptions</CardTitle>
-                    <CardDescription>Prescriptions created by your doctors</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {prescriptions.length > 0 ? (
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {prescriptions.map((rx) => (
-                          <Card key={rx.id} className="p-4 flex flex-col justify-between">
-                            <div className="space-y-3">
-                              <h3 className="font-semibold text-sm">{rx.prescription_id}</h3>
-                              <p className="text-xs text-muted-foreground">
-                                Dr. {rx.doctors?.users?.name || 'Unknown'}
-                              </p>
-                              <div className="space-y-1">
-                                <p className="text-xs text-muted-foreground">
-                                  <Calendar className="h-3 w-3 inline mr-1" />
-                                  {new Date(rx.created_at).toLocaleDateString()}
-                                </p>
-                                {rx.diagnosis && (
-                                  <p className="text-xs"><strong>Diagnosis:</strong> {rx.diagnosis}</p>
-                                )}
-                              </div>
-                              {rx.medicines && rx.medicines.length > 0 && (
-                                <div className="space-y-1">
-                                  <p className="text-xs font-semibold">Medicines:</p>
-                                  {rx.medicines.slice(0, 2).map((med: any, i: number) => (
-                                    <p key={i} className="text-xs text-muted-foreground">• {med.name}</p>
-                                  ))}
-                                  {rx.medicines.length > 2 && (
+                <TabsContent value="documents" className="mt-6" id="tab-content-documents">
+                  <div className="space-y-6">
+                    {/* Prescriptions Section */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>My Prescriptions</CardTitle>
+                        <CardDescription>Prescriptions created by your doctors</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {prescriptions.length > 0 ? (
+                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {prescriptions.map((rx) => (
+                              <Card key={rx.id} className="p-4 flex flex-col justify-between">
+                                <div className="space-y-3">
+                                  <h3 className="font-semibold text-sm">{rx.prescription_id}</h3>
+                                  <p className="text-xs text-muted-foreground">
+                                    Dr. {rx.doctors?.users?.name || 'Unknown'}
+                                  </p>
+                                  <div className="space-y-1">
                                     <p className="text-xs text-muted-foreground">
-                                      + {rx.medicines.length - 2} more
+                                      <Calendar className="h-3 w-3 inline mr-1" />
+                                      {new Date(rx.created_at).toLocaleDateString()}
                                     </p>
+                                    {rx.diagnosis && (
+                                      <p className="text-xs"><strong>Diagnosis:</strong> {rx.diagnosis}</p>
+                                    )}
+                                  </div>
+                                  {rx.medicines && rx.medicines.length > 0 && (
+                                    <div className="space-y-1">
+                                      <p className="text-xs font-semibold">Medicines:</p>
+                                      {rx.medicines.slice(0, 2).map((med: any, i: number) => (
+                                        <p key={i} className="text-xs text-muted-foreground">• {med.name}</p>
+                                      ))}
+                                      {rx.medicines.length > 2 && (
+                                        <p className="text-xs text-muted-foreground">
+                                          + {rx.medicines.length - 2} more
+                                        </p>
+                                      )}
+                                    </div>
                                   )}
                                 </div>
-                              )}
-                            </div>
-                            <div className="flex gap-2 mt-4">
-                              <Button 
-                                size="sm" 
-                                variant="outline"
-                                onClick={() => {
-                                  // Open prescription detail view
-                                  const win = window.open('', '_blank');
-                                  if (win) {
-                                    win.document.write(`
-                                      <html>
-                                        <head>
-                                          <title>Prescription ${rx.prescription_id}</title>
-                                          <style>
-                                            body { font-family: Arial, sans-serif; padding: 40px; }
-                                            h1 { color: #333; }
-                                            .section { margin: 20px 0; }
-                                            .medicine { padding: 10px; border-left: 3px solid #4CAF50; margin: 10px 0; }
-                                          </style>
-                                        </head>
-                                        <body>
-                                          <h1>Prescription: ${rx.prescription_id}</h1>
-                                          <div class="section">
-                                            <p><strong>Date:</strong> ${new Date(rx.created_at).toLocaleDateString()}</p>
-                                            <p><strong>Doctor:</strong> Dr. ${rx.doctors?.users?.name || 'Unknown'}</p>
-                                            ${rx.diagnosis ? `<p><strong>Diagnosis:</strong> ${rx.diagnosis}</p>` : ''}
-                                          </div>
-                                          <div class="section">
-                                            <h2>Medicines</h2>
-                                            ${rx.medicines.map((med: any) => `
-                                              <div class="medicine">
-                                                <p><strong>${med.name}</strong></p>
-                                                <p>Dose: ${med.dose}</p>
-                                                <p>Frequency: ${med.frequency}</p>
-                                                ${med.duration ? `<p>Duration: ${med.duration}</p>` : ''}
-                                                ${med.instructions ? `<p>Instructions: ${med.instructions}</p>` : ''}
+                                <div className="flex gap-2 mt-4">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => {
+                                      const win = window.open('', '_blank');
+                                      if (win) {
+                                        win.document.write(`
+                                          <html>
+                                            <head>
+                                              <title>Prescription ${rx.prescription_id}</title>
+                                              <style>
+                                                body { font-family: Arial, sans-serif; padding: 40px; }
+                                                h1 { color: #333; }
+                                                .section { margin: 20px 0; }
+                                                .medicine { padding: 10px; border-left: 3px solid #4CAF50; margin: 10px 0; }
+                                              </style>
+                                            </head>
+                                            <body>
+                                              <h1>Prescription: ${rx.prescription_id}</h1>
+                                              <div class="section">
+                                                <p><strong>Date:</strong> ${new Date(rx.created_at).toLocaleDateString()}</p>
+                                                <p><strong>Doctor:</strong> Dr. ${rx.doctors?.users?.name || 'Unknown'}</p>
+                                                ${rx.diagnosis ? `<p><strong>Diagnosis:</strong> ${rx.diagnosis}</p>` : ''}
                                               </div>
-                                            `).join('')}
-                                          </div>
-                                          ${rx.advice ? `
-                                            <div class="section">
-                                              <h2>Advice</h2>
-                                              <p>${rx.advice}</p>
-                                            </div>
-                                          ` : ''}
-                                        </body>
-                                      </html>
-                                    `);
-                                  }
-                                }}
-                              >
-                                <FileText className="h-4 w-4 mr-2" />View
-                              </Button>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <h3 className="text-lg font-medium mb-2">No prescriptions yet</h3>
-                        <p>Prescriptions from your doctors will appear here.</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Documents Section */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>My Documents</CardTitle>
-                    <CardDescription>Your uploaded medical documents</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {documents.length > 0 ? (
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {documents.map((doc) => (
-                          <Card key={doc.id} className="p-4 flex flex-col justify-between">
-                            <div className="space-y-3">
-                              <h3 className="font-semibold text-sm truncate" title={doc.filename}>{doc.filename}</h3>
-                              <p className="text-xs text-muted-foreground">{formatDocumentType(doc.document_type)}</p>
-                              <div className="space-y-1">
-                                <p className="text-xs text-muted-foreground"><Calendar className="h-3 w-3 inline mr-1" />{new Date(doc.uploaded_at).toLocaleDateString()}</p>
-                                <p className="text-xs text-muted-foreground">Size: {formatFileSize(doc.file_size)}</p>
-                                {doc.content_confidence && <p className="text-xs text-green-600 dark:text-green-400">✓ AI Analyzed ({Math.round(doc.content_confidence * 100)}% confidence)</p>}
-                              </div>
-                              {doc.content_keywords?.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {doc.content_keywords.slice(0, 3).map((kw: string, i: number) => <Badge key={i} variant="outline" className="text-xs">{kw}</Badge>)}
+                                              <div class="section">
+                                                <h2>Medicines</h2>
+                                                ${rx.medicines.map((med: any) => `
+                                                  <div class="medicine">
+                                                    <p><strong>${med.name}</strong></p>
+                                                    <p>Dose: ${med.dose}</p>
+                                                    <p>Frequency: ${med.frequency}</p>
+                                                    ${med.duration ? `<p>Duration: ${med.duration}</p>` : ''}
+                                                    ${med.instructions ? `<p>Instructions: ${med.instructions}</p>` : ''}
+                                                  </div>
+                                                `).join('')}
+                                              </div>
+                                              ${rx.advice ? `
+                                                <div class="section">
+                                                  <h2>Advice</h2>
+                                                  <p>${rx.advice}</p>
+                                                </div>
+                                              ` : ''}
+                                            </body>
+                                          </html>
+                                        `);
+                                      }
+                                    }}
+                                  >
+                                    <FileText className="h-4 w-4 mr-2" />View
+                                  </Button>
                                 </div>
-                              )}
-                            </div>
-                            <div className="flex gap-2 mt-4">
-                              <Button size="sm" variant="outline" onClick={async () => {
-                                 const { data } = await supabase.storage.from('medical-documents').createSignedUrl(doc.file_path, 3600);
-                                 if (data?.signedUrl) window.open(data.signedUrl, '_blank');
-                              }}><Download className="h-4 w-4 mr-2" />View</Button>
-                              <DocumentSummaryDialog document={doc}>
-                                <Button size="sm" variant="outline" title="View AI summary"><Bot className="h-4 w-4 mr-2" />Summary</Button>
-                              </DocumentSummaryDialog>
-                              <Button size="sm" variant="destructive" onClick={() => handleDeleteDocument(doc.id, doc.filename)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12 text-muted-foreground">
-                        <FileText className="h-12 w-12 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium mb-2">No documents found</h3>
-                        <p>Upload a document to get started.</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-8">
+                            No prescriptions yet. Your doctor's prescriptions will appear here.
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
 
-            <TabsContent value="search" className="mt-6" id="tab-content-search">
-              <EnhancedDocumentSearch 
-                patientId={patientData?.id} 
-              />
-            </TabsContent>
+                    {/* Uploaded Documents Section */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Uploaded Documents</CardTitle>
+                        <CardDescription>Your medical documents and records</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {loading ? (
+                          <p className="text-sm text-muted-foreground text-center py-8">Loading documents...</p>
+                        ) : documents.length > 0 ? (
+                          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {documents.map((doc) => (
+                              <Card key={doc.id} className="p-4 flex flex-col justify-between">
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-primary" />
+                                    <h3 className="font-semibold text-sm truncate flex-1">{doc.filename}</h3>
+                                  </div>
+                                  <Badge variant="outline" className="text-xs">
+                                    {formatDocumentType(doc.document_type)}
+                                  </Badge>
+                                  <p className="text-xs text-muted-foreground">
+                                    {formatFileSize(doc.file_size)} • {new Date(doc.uploaded_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <div className="flex gap-2 mt-4">
+                                  <DocumentSummaryDialog document={doc}>
+                                    <Button size="sm" variant="outline">
+                                      <Bot className="h-4 w-4 mr-1" /> AI Summary
+                                    </Button>
+                                  </DocumentSummaryDialog>
+                                  <Button 
+                                    size="sm" 
+                                    variant="destructive"
+                                    onClick={() => handleDeleteDocument(doc.id, doc.filename)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </Card>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-8">
+                            No documents uploaded yet. Use the Upload tab to add your medical records.
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </TabsContent>
 
-            <TabsContent value="appointments" className="mt-6" id="tab-content-appointments">
-              <AppointmentTracker user={user} />
-            </TabsContent>
+                <TabsContent value="search" className="mt-6" id="tab-content-search">
+                  <EnhancedDocumentSearch patientId={patientData?.id} />
+                </TabsContent>
 
-            <TabsContent value="calendar" className="mt-6" id="tab-content-calendar">
-              <AppointmentCalendar user={user} />
-            </TabsContent>
+                <TabsContent value="appointments" className="mt-6" id="tab-content-appointments">
+                  <AppointmentTracker user={user} />
+                </TabsContent>
 
-            <TabsContent value="book-appointment" className="mt-6" id="tab-content-book-appointment">
-              <AppointmentBooking user={user} />
-            </TabsContent>
-            <TabsContent value="upload" className="mt-6" id="tab-content-upload">
-              <DocumentUpload onUploadSuccess={onUploadSuccess} />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
-      
+                <TabsContent value="calendar" className="mt-6" id="tab-content-calendar">
+                  <AppointmentCalendar user={user} />
+                </TabsContent>
+
+                <TabsContent value="book-appointment" className="mt-6" id="tab-content-book-appointment">
+                  <AppointmentBooking user={user} />
+                </TabsContent>
+                
+                <TabsContent value="upload" className="mt-6" id="tab-content-upload">
+                  <DocumentUpload onUploadSuccess={onUploadSuccess} />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        )}
+        
         {isMobile && <MobileBottomNav activeTab={activeTab} onTabChange={handleTabChange} />}
         
         {patientData?.id && <MediBot patientId={patientData.id} />}
