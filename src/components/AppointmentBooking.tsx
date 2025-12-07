@@ -336,7 +336,7 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full overflow-x-hidden">
       {/* Search and Filter */}
       <Card>
         <CardHeader>
@@ -436,7 +436,7 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
                       Book Appointment
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Book Appointment with Dr. {doctor.users?.name ?? doctor.doctor_id}</DialogTitle>
                       <DialogDescription>
