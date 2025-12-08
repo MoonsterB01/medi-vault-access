@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -20,6 +21,8 @@ const signUpSchema = z.object({
   name: z.string().trim().min(2, { message: "Name must be at least 2 characters" }).max(100).regex(/^[a-zA-Z\s'-]+$/),
   email: z.string().trim().email({ message: "Please enter a valid email address" }).max(255),
   password: z.string().min(8, { message: "Password must be at least 8 characters" }).max(128).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/),
+  gender: z.string().min(1, { message: "Please select your gender" }),
+  dob: z.string().min(1, { message: "Please enter your date of birth" }),
 });
 
 export default function Auth() {
@@ -30,6 +33,8 @@ export default function Auth() {
     email: "",
     password: "",
     name: "",
+    gender: "",
+    dob: "",
   });
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
@@ -47,7 +52,12 @@ export default function Auth() {
         password: validatedData.password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
-          data: { name: validatedData.name, role: 'patient' },
+          data: { 
+            name: validatedData.name, 
+            role: 'patient',
+            gender: validatedData.gender,
+            dob: validatedData.dob,
+          },
         },
       });
       if (error) throw error;
@@ -56,7 +66,7 @@ export default function Auth() {
           title: "Account created successfully!",
           description: "Please check your email to verify your account.",
         });
-        setFormData({ email: "", password: "", name: "" });
+        setFormData({ email: "", password: "", name: "", gender: "", dob: "" });
       }
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -283,6 +293,34 @@ export default function Auth() {
                       <Input id="signup-password" type="password" placeholder="••••••••" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required className={validationErrors.password ? "border-destructive" : ""} />
                       {validationErrors.password && <p className="text-sm text-destructive">{validationErrors.password}</p>}
                       <p className="text-xs text-muted-foreground">Must be at least 8 characters with uppercase, lowercase, and number</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-gender">Gender</Label>
+                      <Select value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })}>
+                        <SelectTrigger className={validationErrors.gender ? "border-destructive" : ""}>
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Male">Male</SelectItem>
+                          <SelectItem value="Female">Female</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                          <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {validationErrors.gender && <p className="text-sm text-destructive">{validationErrors.gender}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-dob">Date of Birth</Label>
+                      <Input 
+                        id="signup-dob" 
+                        type="date" 
+                        value={formData.dob} 
+                        onChange={(e) => setFormData({ ...formData, dob: e.target.value })} 
+                        required 
+                        max={new Date().toISOString().split('T')[0]}
+                        className={validationErrors.dob ? "border-destructive" : ""} 
+                      />
+                      {validationErrors.dob && <p className="text-sm text-destructive">{validationErrors.dob}</p>}
                     </div>
                     <Button type="submit" className="w-full" disabled={loading}>{loading ? "Creating account..." : "Create Patient Account"}</Button>
                   </form>
