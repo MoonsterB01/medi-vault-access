@@ -1,8 +1,16 @@
 import { useState } from "react";
-import { User, Copy, ChevronDown, ChevronUp, Clock, Settings } from "lucide-react";
+import { User, Copy, ChevronDown, ChevronUp, Clock, MoreVertical, LogOut, CreditCard, CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface MobileHeaderProps {
   patientData: any;
@@ -25,6 +33,11 @@ export function MobileHeader({ patientData, user, subscription }: MobileHeaderPr
   const copyShareableId = (id: string) => {
     navigator.clipboard.writeText(id);
     toast({ title: "Copied!", description: "ID copied to clipboard" });
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
   };
 
   return (
@@ -68,6 +81,30 @@ export function MobileHeader({ patientData, user, subscription }: MobileHeaderPr
               <ChevronDown className="h-4 w-4" />
             )}
           </Button>
+          
+          {/* Menu dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => navigate('/patient-dashboard#book-appointment')}>
+                <CalendarPlus className="mr-2 h-4 w-4" />
+                Book Appointment
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/pricing')}>
+                <CreditCard className="mr-2 h-4 w-4" />
+                Plans & Pricing
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
