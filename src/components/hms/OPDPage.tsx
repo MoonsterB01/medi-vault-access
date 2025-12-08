@@ -4,17 +4,21 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import NewOPDVisitDialog from "./NewOPDVisitDialog";
 
 export default function OPDPage({ hospitalData }: { hospitalData: any }) {
   const [visits, setVisits] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchVisits();
+    if (hospitalData?.id) {
+      fetchVisits();
+    }
   }, [hospitalData]);
 
   const fetchVisits = async () => {
     if (!hospitalData?.id) return;
+    setLoading(true);
 
     try {
       const { data, error } = await supabase
@@ -27,9 +31,20 @@ export default function OPDPage({ hospitalData }: { hospitalData: any }) {
       if (error) throw error;
       setVisits(data || []);
     } catch (error: any) {
+      console.error('OPD fetch error:', error);
       toast.error('Failed to load OPD visits');
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (!hospitalData?.id) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-muted-foreground">No hospital data available</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -38,10 +53,7 @@ export default function OPDPage({ hospitalData }: { hospitalData: any }) {
           <h2 className="text-3xl font-bold">OPD Management</h2>
           <p className="text-muted-foreground">Out-Patient Department visits</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          New Visit
-        </Button>
+        <NewOPDVisitDialog hospitalId={hospitalData.id} onSuccess={fetchVisits} />
       </div>
 
       <Card>
@@ -49,32 +61,41 @@ export default function OPDPage({ hospitalData }: { hospitalData: any }) {
           <CardTitle>Recent Visits</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Patient</TableHead>
-                <TableHead>Visit Date</TableHead>
-                <TableHead>Doctor</TableHead>
-                <TableHead>Complaint</TableHead>
-                <TableHead>Follow-up</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visits.map((visit) => (
-                <TableRow key={visit.id}>
-                  <TableCell className="font-medium">{visit.patients?.name}</TableCell>
-                  <TableCell>{new Date(visit.visit_date).toLocaleString()}</TableCell>
-                  <TableCell>{visit.doctors?.users?.name || 'N/A'}</TableCell>
-                  <TableCell className="max-w-xs truncate">{visit.chief_complaint}</TableCell>
-                  <TableCell>{visit.follow_up_date || 'None'}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm">View</Button>
-                  </TableCell>
+          {loading ? (
+            <p className="text-muted-foreground text-center py-8">Loading visits...</p>
+          ) : visits.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">No OPD visits found</p>
+              <p className="text-sm text-muted-foreground">Click "New Visit" to record a visit</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Patient</TableHead>
+                  <TableHead>Visit Date</TableHead>
+                  <TableHead>Doctor</TableHead>
+                  <TableHead>Complaint</TableHead>
+                  <TableHead>Follow-up</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {visits.map((visit) => (
+                  <TableRow key={visit.id}>
+                    <TableCell className="font-medium">{visit.patients?.name || 'Unknown'}</TableCell>
+                    <TableCell>{new Date(visit.visit_date).toLocaleString()}</TableCell>
+                    <TableCell>{visit.doctors?.users?.name || 'N/A'}</TableCell>
+                    <TableCell className="max-w-xs truncate">{visit.chief_complaint || '-'}</TableCell>
+                    <TableCell>{visit.follow_up_date ? new Date(visit.follow_up_date).toLocaleDateString() : 'None'}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm">View</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
