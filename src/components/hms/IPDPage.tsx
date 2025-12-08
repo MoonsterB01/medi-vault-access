@@ -5,17 +5,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus } from "lucide-react";
+import NewIPDAdmissionDialog from "./NewIPDAdmissionDialog";
 
 export default function IPDPage({ hospitalData }: { hospitalData: any }) {
   const [admissions, setAdmissions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchAdmissions();
+    if (hospitalData?.id) {
+      fetchAdmissions();
+    }
   }, [hospitalData]);
 
   const fetchAdmissions = async () => {
     if (!hospitalData?.id) return;
+    setLoading(true);
 
     try {
       const { data, error } = await supabase
@@ -27,9 +31,29 @@ export default function IPDPage({ hospitalData }: { hospitalData: any }) {
       if (error) throw error;
       setAdmissions(data || []);
     } catch (error: any) {
+      console.error('IPD fetch error:', error);
       toast.error('Failed to load IPD admissions');
+    } finally {
+      setLoading(false);
     }
   };
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'admitted': return 'default';
+      case 'discharged': return 'secondary';
+      case 'transferred': return 'outline';
+      default: return 'secondary';
+    }
+  };
+
+  if (!hospitalData?.id) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <p className="text-muted-foreground">No hospital data available</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -38,10 +62,7 @@ export default function IPDPage({ hospitalData }: { hospitalData: any }) {
           <h2 className="text-3xl font-bold">IPD Management</h2>
           <p className="text-muted-foreground">In-Patient Department admissions</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          New Admission
-        </Button>
+        <NewIPDAdmissionDialog hospitalId={hospitalData.id} onSuccess={fetchAdmissions} />
       </div>
 
       <Card>
@@ -49,36 +70,45 @@ export default function IPDPage({ hospitalData }: { hospitalData: any }) {
           <CardTitle>Current Admissions</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Patient</TableHead>
-                <TableHead>Ward/Bed</TableHead>
-                <TableHead>Admission Date</TableHead>
-                <TableHead>Doctor</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {admissions.map((admission) => (
-                <TableRow key={admission.id}>
-                  <TableCell className="font-medium">{admission.patients?.name}</TableCell>
-                  <TableCell>{admission.ward_number} / {admission.bed_number}</TableCell>
-                  <TableCell>{new Date(admission.admission_date).toLocaleDateString()}</TableCell>
-                  <TableCell>{admission.doctors?.users?.name || 'Unassigned'}</TableCell>
-                  <TableCell>
-                    <Badge variant={admission.status === 'admitted' ? 'default' : 'secondary'}>
-                      {admission.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm">View</Button>
-                  </TableCell>
+          {loading ? (
+            <p className="text-muted-foreground text-center py-8">Loading admissions...</p>
+          ) : admissions.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">No IPD admissions found</p>
+              <p className="text-sm text-muted-foreground">Click "New Admission" to add a patient</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Patient</TableHead>
+                  <TableHead>Ward/Bed</TableHead>
+                  <TableHead>Admission Date</TableHead>
+                  <TableHead>Doctor</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {admissions.map((admission) => (
+                  <TableRow key={admission.id}>
+                    <TableCell className="font-medium">{admission.patients?.name || 'Unknown'}</TableCell>
+                    <TableCell>{admission.ward_number || '-'} / {admission.bed_number || '-'}</TableCell>
+                    <TableCell>{new Date(admission.admission_date).toLocaleDateString()}</TableCell>
+                    <TableCell>{admission.doctors?.users?.name || 'Unassigned'}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusVariant(admission.status)}>
+                        {admission.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm">View</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
