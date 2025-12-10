@@ -594,35 +594,35 @@ const PrivacyPolicy = () => {
 
                   <div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">Mailing Address</h3>
-                    <p>MediVault Inc.</p>
+                    <p>MediVault</p>
                     <p>Privacy Department</p>
-                    <p>123 Healthcare Drive, Suite 100</p>
-                    <p>Medical City, HC 12345</p>
-                    <p>United States</p>
+                    <p>India</p>
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">File a Complaint with HHS</h3>
+                    <h3 className="text-lg font-semibold text-foreground mb-2">File a Grievance</h3>
                     <p>If you believe your privacy rights have been violated, you may also file a complaint with:</p>
                     <p className="mt-2">
-                      Office for Civil Rights
+                      National Health Authority (NHA)
                       <br />
-                      U.S. Department of Health and Human Services
+                      Ministry of Health and Family Welfare
                       <br />
-                      200 Independence Avenue, S.W.
+                      Government of India
                       <br />
-                      Washington, D.C. 20201
+                      9th Floor, Tower-l, Jeevan Bharati Building
                       <br />
-                      Phone: 1-877-696-6775
+                      Connaught Place, New Delhi - 110001
+                      <br />
+                      Toll-Free: 14477
                       <br />
                       Website:{" "}
                       <a
-                        href="https://www.hhs.gov/ocr/privacy/hipaa/complaints/"
+                        href="https://nha.gov.in/"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
                       >
-                        www.hhs.gov/ocr/privacy/hipaa/complaints
+                        nha.gov.in
                       </a>
                     </p>
                   </div>
