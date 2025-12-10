@@ -2230,6 +2230,14 @@ export type Database = {
           start_time: string
         }[]
       }
+      get_public_stats: {
+        Args: never
+        Returns: {
+          documents_count: number
+          hospitals_count: number
+          patients_count: number
+        }[]
+      }
       get_user_patient_ids: {
         Args: never
         Returns: {

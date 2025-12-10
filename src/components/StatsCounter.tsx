@@ -21,17 +21,17 @@ export function StatsCounter() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [documentsRes, patientsRes, hospitalsRes] = await Promise.all([
-          supabase.from("documents").select("id", { count: "exact", head: true }),
-          supabase.from("patients").select("id", { count: "exact", head: true }),
-          supabase.from("hospitals").select("id", { count: "exact", head: true }),
-        ]);
-
-        setStats({
-          documentsCount: documentsRes.count || 0,
-          patientsCount: patientsRes.count || 0,
-          hospitalsCount: hospitalsRes.count || 0,
-        });
+        const { data, error } = await supabase.rpc("get_public_stats");
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          setStats({
+            documentsCount: Number(data[0].documents_count) || 0,
+            patientsCount: Number(data[0].patients_count) || 0,
+            hospitalsCount: Number(data[0].hospitals_count) || 0,
+          });
+        }
       } catch (error) {
         console.error("Error fetching stats:", error);
       } finally {
