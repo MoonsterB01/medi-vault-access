@@ -213,8 +213,8 @@ export function DocumentSummaryDialog({ document, children }: DocumentSummaryDia
               </div>
 
               {document.processing_notes && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-800">
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
                     <strong>Processing Notes:</strong> {document.processing_notes}
                   </p>
                 </div>
@@ -314,7 +314,7 @@ export function DocumentSummaryDialog({ document, children }: DocumentSummaryDia
                               // Handle string entities
                               if (typeof entity === 'string') {
                                 return (
-                                  <Badge key={index} variant="outline" className="text-xs bg-blue-50">
+                                  <Badge key={index} variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900/50 dark:text-blue-200">
                                     {entity}
                                   </Badge>
                                 );
@@ -335,7 +335,7 @@ export function DocumentSummaryDialog({ document, children }: DocumentSummaryDia
                               }
                               
                               return (
-                                <Badge key={index} variant="outline" className="text-xs bg-blue-50">
+                                <Badge key={index} variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900/50 dark:text-blue-200">
                                   {displayText}
                                 </Badge>
                               );

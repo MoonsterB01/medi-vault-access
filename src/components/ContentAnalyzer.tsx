@@ -117,9 +117,9 @@ export function ContentAnalyzer({
   };
 
   const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.8) return 'text-green-600';
-    if (confidence >= 0.6) return 'text-yellow-600';
-    return 'text-red-600';
+    if (confidence >= 0.8) return 'text-green-600 dark:text-green-400';
+    if (confidence >= 0.6) return 'text-yellow-600 dark:text-yellow-400';
+    return 'text-red-600 dark:text-red-400';
   };
 
   const getConfidenceLabel = (confidence: number) => {
@@ -260,7 +260,7 @@ export function ContentAnalyzer({
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {analysisResult.entities.doctors.map((doctor: string, index: number) => (
-                          <Badge key={index} variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                          <Badge key={index} variant="secondary" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
                             {doctor}
                           </Badge>
                         ))}
@@ -276,7 +276,7 @@ export function ContentAnalyzer({
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {analysisResult.entities.conditions.map((condition: string, index: number) => (
-                          <Badge key={index} variant="secondary" className="text-xs bg-red-100 text-red-700">
+                          <Badge key={index} variant="secondary" className="text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300">
                             {condition}
                           </Badge>
                         ))}
@@ -292,7 +292,7 @@ export function ContentAnalyzer({
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {analysisResult.entities.medications.map((medication: string, index: number) => (
-                          <Badge key={index} variant="secondary" className="text-xs bg-green-100 text-green-700">
+                          <Badge key={index} variant="secondary" className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
                             {medication}
                           </Badge>
                         ))}
@@ -308,7 +308,7 @@ export function ContentAnalyzer({
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {analysisResult.entities.tests.map((test: string, index: number) => (
-                          <Badge key={index} variant="secondary" className="text-xs bg-purple-100 text-purple-700">
+                          <Badge key={index} variant="secondary" className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300">
                             {test}
                           </Badge>
                         ))}
@@ -340,7 +340,7 @@ export function ContentAnalyzer({
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {analysisResult.entities.facilities.map((facility: string, index: number) => (
-                          <Badge key={index} variant="secondary" className="text-xs bg-orange-100 text-orange-700">
+                          <Badge key={index} variant="secondary" className="text-xs bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300">
                             {facility}
                           </Badge>
                         ))}
