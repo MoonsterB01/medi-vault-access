@@ -233,13 +233,13 @@ export function ExtractTextDialog({ document, children }: ExtractTextDialogProps
                     {Object.entries(document.extracted_entities).map(([entityType, entities]: [string, any]) => (
                       Array.isArray(entities) && entities.length > 0 && (
                         <div key={entityType}>
-                          <h5 className="text-sm font-medium capitalize text-gray-700">{entityType.replace(/([A-Z])/g, ' $1').trim()}:</h5>
+                          <h5 className="text-sm font-medium capitalize text-muted-foreground">{entityType.replace(/([A-Z])/g, ' $1').trim()}:</h5>
                           <div className="flex flex-wrap gap-1 ml-4">
                             {entities.map((entity: any, index: number) => {
                               // Handle string entities
                               if (typeof entity === 'string') {
                                 return (
-                                  <Badge key={index} variant="outline" className="text-xs bg-blue-50">
+                                  <Badge key={index} variant="outline" className="text-xs bg-blue-50 dark:bg-blue-900/50 dark:text-blue-200">
                                     {entity}
                                   </Badge>
                                 );
@@ -249,7 +249,7 @@ export function ExtractTextDialog({ document, children }: ExtractTextDialogProps
                                 // Medications
                                 if (entity.name) {
                                   return (
-                                    <Badge key={index} variant="outline" className="text-xs bg-green-50">
+                                    <Badge key={index} variant="outline" className="text-xs bg-green-50 dark:bg-green-900/50 dark:text-green-200">
                                       {entity.name}
                                       {entity.dose && ` - ${entity.dose}`}
                                       {entity.frequency && ` (${entity.frequency})`}
@@ -262,7 +262,7 @@ export function ExtractTextDialog({ document, children }: ExtractTextDialogProps
                                     <Badge 
                                       key={index} 
                                       variant="outline" 
-                                      className={`text-xs ${entity.isAbnormal ? 'bg-red-50 border-red-300' : 'bg-blue-50'}`}
+                                      className={`text-xs ${entity.isAbnormal ? 'bg-red-50 dark:bg-red-900/50 border-red-300 dark:border-red-700 dark:text-red-200' : 'bg-blue-50 dark:bg-blue-900/50 dark:text-blue-200'}`}
                                     >
                                       {entity.test}: {entity.value}
                                       {entity.unit && ` ${entity.unit}`}
