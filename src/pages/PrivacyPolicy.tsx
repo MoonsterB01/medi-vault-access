@@ -588,7 +588,7 @@ const PrivacyPolicy = () => {
 
                   <div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">General Support</h3>
-                    <p>Email: support@medivault.com</p>
+                    <p>Email: medivault01@gmail.com</p>
                     <p>Response time: Within 24 hours on weekdays</p>
                   </div>
 
