@@ -593,13 +593,6 @@ const PrivacyPolicy = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground mb-2">Mailing Address</h3>
-                    <p>MediVault</p>
-                    <p>Privacy Department</p>
-                    <p>India</p>
-                  </div>
-
-                  <div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">File a Grievance</h3>
                     <p>If you believe your privacy rights have been violated, you may also file a complaint with:</p>
                     <p className="mt-2">
