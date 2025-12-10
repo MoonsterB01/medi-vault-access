@@ -39,15 +39,15 @@ export function ExtractTextDialog({ document, children }: ExtractTextDialogProps
   const getVerificationStatusColor = (status: string) => {
     switch (status) {
       case 'verified_medical':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800';
       case 'user_verified_medical':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800';
       case 'unverified':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700';
       case 'not_medical':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -304,7 +304,7 @@ export function ExtractTextDialog({ document, children }: ExtractTextDialogProps
           {/* No text available */}
           {!document.ocr_extracted_text && !document.extracted_text && (
             <Card>
-              <CardContent className="p-6 text-center text-gray-500">
+              <CardContent className="p-6 text-center text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No extracted text available for this document.</p>
                 <p className="text-sm mt-2">
