@@ -299,7 +299,7 @@ export default function DocumentSearch({ patientId }: DocumentSearchProps) {
                         <FileText className="h-4 w-4" />
                         {doc.filename}
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-muted-foreground">
                         Patient: {doc.patients.name} (ID: {doc.patients.shareable_id})
                       </p>
                       {doc.description && (
@@ -310,7 +310,7 @@ export default function DocumentSearch({ patientId }: DocumentSearchProps) {
                       <Badge variant="outline">
                         {formatDocumentType(doc.document_type)}
                       </Badge>
-                      <div className="flex items-center gap-1 text-sm text-gray-500">
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
                         {new Date(doc.uploaded_at).toLocaleDateString()}
                       </div>
@@ -319,12 +319,12 @@ export default function DocumentSearch({ patientId }: DocumentSearchProps) {
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-muted-foreground">
                         Size: {formatFileSize(doc.file_size)}
                       </span>
                       {doc.tags && doc.tags.length > 0 && (
                         <div className="flex items-center gap-1">
-                          <Tag className="h-4 w-4 text-gray-400" />
+                          <Tag className="h-4 w-4 text-muted-foreground" />
                           <div className="flex gap-1">
                             {doc.tags.map((tag, index) => (
                               <Badge key={index} variant="secondary" className="text-xs">
@@ -350,11 +350,11 @@ export default function DocumentSearch({ patientId }: DocumentSearchProps) {
             </div>
           ) : (
             <div className="text-center py-8">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">
                 No Documents Found
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Try adjusting your search criteria or upload some documents first.
               </p>
             </div>

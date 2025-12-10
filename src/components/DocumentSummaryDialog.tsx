@@ -64,15 +64,15 @@ export function DocumentSummaryDialog({ document, children }: DocumentSummaryDia
   const getVerificationStatusColor = (status: string) => {
     switch (status) {
       case 'verified_medical':
-        return 'bg-green-100 text-green-800 border-green-200';
+        return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800';
       case 'user_verified_medical':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+        return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800';
       case 'unverified':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700';
       case 'not_medical':
-        return 'bg-red-100 text-red-800 border-red-200';
+        return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+        return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -123,14 +123,14 @@ export function DocumentSummaryDialog({ document, children }: DocumentSummaryDia
 
         <div className="space-y-6">
           {/* AI Summary Section */}
-          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 border-blue-200 dark:border-blue-800">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
-                <Bot className="h-5 w-5 text-blue-600" />
+                <Bot className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 AI Document Summary
               </CardTitle>
               {document.summary_confidence && (
-                <Badge variant="outline" className="bg-white">
+                <Badge variant="outline" className="bg-white dark:bg-gray-800">
                   Confidence: {(document.summary_confidence * 100).toFixed(0)}%
                 </Badge>
               )}
@@ -143,7 +143,7 @@ export function DocumentSummaryDialog({ document, children }: DocumentSummaryDia
                 </div>
               ) : aiSummary ? (
                 <div className="space-y-3">
-                  <p className="text-sm leading-relaxed text-gray-700">
+                  <p className="text-sm leading-relaxed text-foreground">
                     {aiSummary}
                   </p>
                   {document.summary_generated_at && (
