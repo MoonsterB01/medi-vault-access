@@ -61,6 +61,10 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				trust: {
+					DEFAULT: 'hsl(var(--trust))',
+					foreground: 'hsl(var(--trust-foreground))'
 				}
 			},
 			borderRadius: {
@@ -70,20 +74,12 @@ export default {
 			},
 			keyframes: {
 				'accordion-down': {
-					from: {
-						height: '0'
-					},
-					to: {
-						height: 'var(--radix-accordion-content-height)'
-					}
+					from: { height: '0' },
+					to: { height: 'var(--radix-accordion-content-height)' }
 				},
 				'accordion-up': {
-					from: {
-						height: 'var(--radix-accordion-content-height)'
-					},
-					to: {
-						height: '0'
-					}
+					from: { height: 'var(--radix-accordion-content-height)' },
+					to: { height: '0' }
 				},
 				"slide-out-left": {
 					"0%": { transform: "translateX(0)", opacity: "1" },
@@ -94,14 +90,64 @@ export default {
 					"100%": { transform: "translateX(0)", opacity: "1" }
 				},
 				"fade-in": {
-					"0%": {
-						opacity: "0",
-						transform: "translateY(10px)"
-					},
-					"100%": {
-						opacity: "1",
-						transform: "translateY(0)"
-					}
+					"0%": { opacity: "0", transform: "translateY(10px)" },
+					"100%": { opacity: "1", transform: "translateY(0)" }
+				},
+				"fade-in-up": {
+					"0%": { opacity: "0", transform: "translateY(20px)" },
+					"100%": { opacity: "1", transform: "translateY(0)" }
+				},
+				"fade-in-down": {
+					"0%": { opacity: "0", transform: "translateY(-20px)" },
+					"100%": { opacity: "1", transform: "translateY(0)" }
+				},
+				"scale-in": {
+					"0%": { transform: "scale(0.95)", opacity: "0" },
+					"100%": { transform: "scale(1)", opacity: "1" }
+				},
+				"float": {
+					"0%, 100%": { transform: "translateY(0)" },
+					"50%": { transform: "translateY(-10px)" }
+				},
+				"float-slow": {
+					"0%, 100%": { transform: "translateY(0) rotate(0deg)" },
+					"50%": { transform: "translateY(-15px) rotate(2deg)" }
+				},
+				"shimmer": {
+					"0%": { backgroundPosition: "-200% 0" },
+					"100%": { backgroundPosition: "200% 0" }
+				},
+				"pulse-soft": {
+					"0%, 100%": { opacity: "1" },
+					"50%": { opacity: "0.7" }
+				},
+				"pulse-glow": {
+					"0%, 100%": { boxShadow: "0 0 5px hsl(var(--primary) / 0.3)" },
+					"50%": { boxShadow: "0 0 20px hsl(var(--primary) / 0.6)" }
+				},
+				"bounce-subtle": {
+					"0%, 100%": { transform: "translateY(0)" },
+					"50%": { transform: "translateY(-5px)" }
+				},
+				"gradient-shift": {
+					"0%, 100%": { backgroundPosition: "0% 50%" },
+					"50%": { backgroundPosition: "100% 50%" }
+				},
+				"spin-slow": {
+					"0%": { transform: "rotate(0deg)" },
+					"100%": { transform: "rotate(360deg)" }
+				},
+				"count-up": {
+					"0%": { transform: "translateY(100%)", opacity: "0" },
+					"100%": { transform: "translateY(0)", opacity: "1" }
+				},
+				"slide-in-right": {
+					"0%": { transform: "translateX(100%)", opacity: "0" },
+					"100%": { transform: "translateX(0)", opacity: "1" }
+				},
+				"ripple": {
+					"0%": { transform: "scale(0)", opacity: "1" },
+					"100%": { transform: "scale(4)", opacity: "0" }
 				}
 			},
 			animation: {
@@ -109,7 +155,21 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				"slide-out-left": "slide-out-left 0.5s ease-in",
 				"slide-in-left": "slide-in-left 0.3s ease-out",
-				"fade-in": "fade-in 0.3s ease-out"
+				"fade-in": "fade-in 0.5s ease-out forwards",
+				"fade-in-up": "fade-in-up 0.6s ease-out forwards",
+				"fade-in-down": "fade-in-down 0.6s ease-out forwards",
+				"scale-in": "scale-in 0.3s ease-out forwards",
+				"float": "float 3s ease-in-out infinite",
+				"float-slow": "float-slow 6s ease-in-out infinite",
+				"shimmer": "shimmer 2s linear infinite",
+				"pulse-soft": "pulse-soft 2s ease-in-out infinite",
+				"pulse-glow": "pulse-glow 2s ease-in-out infinite",
+				"bounce-subtle": "bounce-subtle 2s ease-in-out infinite",
+				"gradient-shift": "gradient-shift 8s ease infinite",
+				"spin-slow": "spin-slow 8s linear infinite",
+				"count-up": "count-up 0.5s ease-out forwards",
+				"slide-in-right": "slide-in-right 0.5s ease-out forwards",
+				"ripple": "ripple 0.6s linear"
 			}
 		}
 	},
