@@ -10,7 +10,7 @@ interface MobileSummaryTabProps {
 
 export function MobileSummaryTab({ summary, isLoading, error, onRefresh }: MobileSummaryTabProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       <PatientSummary 
         summary={summary} 
         isLoading={isLoading} 

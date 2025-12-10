@@ -1,16 +1,15 @@
 import { Button } from "@/components/ui/button";
-import { Shield, Users, Hospital, FileText, Lock, Clock, Bell } from "lucide-react";
+import { Shield, Users, Hospital, FileText, Lock, Clock, Bell, ArrowRight, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
 import PublicLayout from "@/components/PublicLayout";
+import { TrustBadges } from "@/components/TrustBadges";
+import { TestimonialsCarousel } from "@/components/TestimonialsCarousel";
+import { StatsCounter } from "@/components/StatsCounter";
+import { FadeInOnScroll } from "@/components/FadeInOnScroll";
 
-/**
- * @function Index
- * @description The main landing page of the application.
- * @returns {JSX.Element} - The rendered Index page component.
- */
 export default function Index() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
@@ -61,177 +60,268 @@ export default function Index() {
 
   return (
     <PublicLayout>
-      <header className="container mx-auto px-4 py-16 text-center">
-        <div className="flex justify-center mb-6">
-          <img src={logo} alt="MediVault Logo" className="h-24 w-24 object-contain" />
-        </div>
-        <h1 className="text-5xl font-bold mb-4">
-          MediVault
-        </h1>
-        <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-          Secure Digital Medical Records Management for Hospitals and Patients
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button size="lg" className="px-8 py-3" onClick={handleGetStarted}>
-            Get Started
-          </Button>
-          <Button variant="outline" size="lg" className="px-8 py-3" onClick={() => navigate('/how-it-works')}>
-            How It Works
-          </Button>
-          <Button variant="secondary" size="lg" className="px-8 py-3" onClick={() => navigate('/doctor-auth')}>
-            Doctor Portal
-          </Button>
-          <Button variant="secondary" size="lg" className="px-8 py-3" onClick={() => navigate('/hospital-auth')}>
-            Hospital Portal
-          </Button>
-        </div>
-      </header>
-
-      <section className="container mx-auto px-4 py-16">
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          <div className="bg-card rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow">
-            <div className="flex items-center mb-6">
-              <Hospital className="h-12 w-12 text-blue-600 mr-4" />
-              <h2 className="text-2xl font-bold">For Hospitals</h2>
+      {/* Hero Section with animated background */}
+      <header className="relative overflow-hidden">
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 animated-gradient" />
+        
+        {/* Floating decorative elements */}
+        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-float-slow" />
+        
+        <div className="container mx-auto px-4 py-20 text-center relative z-10">
+          {/* Logo with animation */}
+          <div className="flex justify-center mb-6 opacity-0 animate-fade-in">
+            <div className="relative">
+              <img 
+                src={logo} 
+                alt="MediVault Logo" 
+                className="h-24 w-24 object-contain animate-float" 
+              />
+              <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse-soft" />
             </div>
-            <p className="text-muted-foreground mb-6">
-              Securely upload, manage, and share patient medical records with automated notifications and audit trails.
+          </div>
+
+          {/* Title with gradient */}
+          <h1 className="text-5xl md:text-6xl font-bold mb-4 opacity-0 animate-fade-in animate-delay-100">
+            <span className="gradient-text">MediVault</span>
+          </h1>
+
+          {/* Tagline with typing effect simulation */}
+          <div className="opacity-0 animate-fade-in animate-delay-200">
+            <p className="text-xl md:text-2xl text-muted-foreground mb-2 max-w-2xl mx-auto">
+              Secure Digital Medical Records Management
             </p>
-            <ul className="space-y-3 mb-6">
-              <li className="flex items-center">
-                <Lock className="h-5 w-5 text-green-600 mr-3" />
-                <span>HIPAA-compliant security</span>
-              </li>
-              <li className="flex items-center">
-                <FileText className="h-5 w-5 text-green-600 mr-3" />
-                <span>Automated report uploads</span>
-              </li>
-              <li className="flex items-center">
-                <Bell className="h-5 w-5 text-green-600 mr-3" />
-                <span>Real-time notifications</span>
-              </li>
-            </ul>
-            <Button className="w-full" onClick={handleHospitalPortal}>
+            <p className="text-lg text-muted-foreground/80 mb-8 max-w-xl mx-auto">
+              For Hospitals, Doctors, and Patients
+            </p>
+          </div>
+
+          {/* CTA Buttons with animations */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center opacity-0 animate-fade-in animate-delay-300">
+            <Button 
+              size="lg" 
+              className="px-8 py-3 group relative overflow-hidden animate-pulse-glow"
+              onClick={handleGetStarted}
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                Get Started Free
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </span>
+            </Button>
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="px-8 py-3 hover-lift"
+              onClick={() => navigate('/how-it-works')}
+            >
+              How It Works
+            </Button>
+          </div>
+
+          {/* Portal buttons */}
+          <div className="flex flex-wrap gap-3 justify-center mt-6 opacity-0 animate-fade-in animate-delay-400">
+            <Button 
+              variant="secondary" 
+              size="sm"
+              className="hover-scale"
+              onClick={() => navigate('/doctor-auth')}
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Doctor Portal
+            </Button>
+            <Button 
+              variant="secondary" 
+              size="sm"
+              className="hover-scale"
+              onClick={() => navigate('/hospital-auth')}
+            >
+              <Hospital className="h-4 w-4 mr-2" />
               Hospital Portal
             </Button>
           </div>
+        </div>
+      </header>
 
-          <div className="bg-card rounded-xl p-8 shadow-lg hover:shadow-xl transition-shadow">
-            <div className="flex items-center mb-6">
-              <Users className="h-12 w-12 text-blue-600 mr-4" />
-              <h2 className="text-2xl font-bold">For Patients</h2>
+      {/* Stats Counter Section */}
+      <StatsCounter />
+
+      {/* For Hospitals & Patients Section */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          <FadeInOnScroll delay={0}>
+            <div className="bg-card rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group border border-border/50">
+              <div className="flex items-center mb-6">
+                <div className="bg-blue-500/10 p-3 rounded-xl mr-4 group-hover:scale-110 transition-transform duration-300">
+                  <Hospital className="h-10 w-10 text-blue-500" />
+                </div>
+                <h2 className="text-2xl font-bold">For Hospitals</h2>
+              </div>
+              <p className="text-muted-foreground mb-6">
+                Securely upload, manage, and share patient medical records with automated notifications and audit trails.
+              </p>
+              <ul className="space-y-3 mb-6">
+                {[
+                  { icon: Lock, text: "HIPAA-compliant security" },
+                  { icon: FileText, text: "Automated report uploads" },
+                  { icon: Bell, text: "Real-time notifications" },
+                ].map((item, i) => (
+                  <li 
+                    key={i} 
+                    className="flex items-center opacity-0 animate-fade-in"
+                    style={{ animationDelay: `${(i + 1) * 100}ms`, animationFillMode: 'forwards' }}
+                  >
+                    <item.icon className="h-5 w-5 text-trust mr-3" />
+                    <span>{item.text}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button className="w-full group/btn" onClick={handleHospitalPortal}>
+                Hospital Portal
+                <ArrowRight className="ml-2 h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+              </Button>
             </div>
-            <p className="text-muted-foreground mb-6">
-              Access your complete medical history in a secure timeline view with family sharing capabilities.
+          </FadeInOnScroll>
+
+          <FadeInOnScroll delay={150}>
+            <div className="bg-card rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group border border-border/50">
+              <div className="flex items-center mb-6">
+                <div className="bg-purple-500/10 p-3 rounded-xl mr-4 group-hover:scale-110 transition-transform duration-300">
+                  <Users className="h-10 w-10 text-purple-500" />
+                </div>
+                <h2 className="text-2xl font-bold">For Patients</h2>
+              </div>
+              <p className="text-muted-foreground mb-6">
+                Access your complete medical history in a secure timeline view with family sharing capabilities.
+              </p>
+              <ul className="space-y-3 mb-6">
+                {[
+                  { icon: Clock, text: "Timeline view of records" },
+                  { icon: Users, text: "Family access sharing" },
+                  { icon: Shield, text: "Secure document access" },
+                ].map((item, i) => (
+                  <li 
+                    key={i} 
+                    className="flex items-center opacity-0 animate-fade-in"
+                    style={{ animationDelay: `${(i + 1) * 100}ms`, animationFillMode: 'forwards' }}
+                  >
+                    <item.icon className="h-5 w-5 text-trust mr-3" />
+                    <span>{item.text}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button className="w-full group/btn" onClick={handlePatientPortal}>
+                Patient Portal
+                <ArrowRight className="ml-2 h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+              </Button>
+            </div>
+          </FadeInOnScroll>
+        </div>
+      </section>
+
+      {/* Trust Badges Section */}
+      <TrustBadges />
+
+      {/* How It Works Section */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <FadeInOnScroll>
+            <h2 className="text-3xl font-bold text-center mb-12">
+              How MediVault Works
+            </h2>
+          </FadeInOnScroll>
+          
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            {[
+              { step: 1, title: "Secure Upload", desc: "Hospitals upload patient reports directly to secure cloud storage with automated categorization." },
+              { step: 2, title: "Instant Notification", desc: "Patients and authorized family members receive immediate notifications of new records." },
+              { step: 3, title: "Access Anywhere", desc: "View complete medical timeline with severity-based organization and secure document access." },
+            ].map((item, index) => (
+              <FadeInOnScroll key={item.step} delay={index * 150}>
+                <div className="text-center group">
+                  <div className="relative mx-auto mb-6 w-20 h-20">
+                    <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
+                    <div className="relative bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <span className="text-3xl font-bold text-primary">{item.step}</span>
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-semibold mb-3">{item.title}</h3>
+                  <p className="text-muted-foreground">{item.desc}</p>
+                </div>
+              </FadeInOnScroll>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <TestimonialsCarousel />
+
+      {/* Key Features Section */}
+      <section className="container mx-auto px-4 py-16">
+        <FadeInOnScroll>
+          <h2 className="text-3xl font-bold text-center mb-12">
+            Key Features
+          </h2>
+        </FadeInOnScroll>
+        
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { icon: Lock, title: "Bank-Level Security", desc: "End-to-end encryption with role-based access control", color: "text-blue-500", bg: "bg-blue-500/10" },
+            { icon: FileText, title: "Document Management", desc: "Organize by type, date, and severity for easy access", color: "text-purple-500", bg: "bg-purple-500/10" },
+            { icon: Bell, title: "Smart Notifications", desc: "Email and SMS alerts for critical updates", color: "text-orange-500", bg: "bg-orange-500/10" },
+            { icon: Users, title: "Family Sharing", desc: "Grant secure access to family members", color: "text-emerald-500", bg: "bg-emerald-500/10" },
+          ].map((feature, index) => (
+            <FadeInOnScroll key={feature.title} delay={index * 100}>
+              <div className="bg-card p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group border border-border/50">
+                <div className={`${feature.bg} w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                  <feature.icon className={`h-6 w-6 ${feature.color}`} />
+                </div>
+                <h3 className="font-semibold mb-2">{feature.title}</h3>
+                <p className="text-muted-foreground text-sm">{feature.desc}</p>
+              </div>
+            </FadeInOnScroll>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-16 relative overflow-hidden">
+        <div className="absolute inset-0 animated-gradient opacity-30" />
+        <FadeInOnScroll>
+          <div className="container mx-auto px-4 text-center relative z-10">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Ready to Secure Your Medical Records?
+            </h2>
+            <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
+              Join thousands of healthcare providers and patients who trust MediVault
             </p>
-            <ul className="space-y-3 mb-6">
-              <li className="flex items-center">
-                <Clock className="h-5 w-5 text-green-600 mr-3" />
-                <span>Timeline view of records</span>
-              </li>
-              <li className="flex items-center">
-                <Users className="h-5 w-5 text-green-600 mr-3" />
-                <span>Family access sharing</span>
-              </li>
-              <li className="flex items-center">
-                <Shield className="h-5 w-5 text-green-600 mr-3" />
-                <span>Secure document access</span>
-              </li>
-            </ul>
-            <Button className="w-full" onClick={handlePatientPortal}>
-              Patient Portal
+            <Button 
+              size="lg" 
+              className="px-10 py-4 text-lg animate-pulse-glow"
+              onClick={handleGetStarted}
+            >
+              Get Started for Free
+              <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
-        </div>
-      </section>
-
-      <section className="bg-muted/40 py-16">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">
-            How MediVault Works
-          </h2>
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-blue-600">1</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Secure Upload</h3>
-              <p className="text-muted-foreground">
-                Hospitals upload patient reports directly to secure cloud storage with automated categorization.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-blue-600">2</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Instant Notification</h3>
-              <p className="text-muted-foreground">
-                Patients and authorized family members receive immediate notifications of new records.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-blue-600">3</span>
-              </div>
-              <h3 className="text-xl font-semibold mb-3">Access Anywhere</h3>
-              <p className="text-muted-foreground">
-                View complete medical timeline with severity-based organization and secure document access.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="container mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-center mb-12">
-          Key Features
-        </h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-card p-6 rounded-lg shadow-md">
-            <Lock className="h-8 w-8 text-blue-600 mb-4" />
-            <h3 className="font-semibold mb-2">Bank-Level Security</h3>
-            <p className="text-muted-foreground text-sm">
-              End-to-end encryption with role-based access control
-            </p>
-          </div>
-          <div className="bg-card p-6 rounded-lg shadow-md">
-            <FileText className="h-8 w-8 text-blue-600 mb-4" />
-            <h3 className="font-semibold mb-2">Document Management</h3>
-            <p className="text-muted-foreground text-sm">
-              Organize by type, date, and severity for easy access
-            </p>
-          </div>
-          <div className="bg-card p-6 rounded-lg shadow-md">
-            <Bell className="h-8 w-8 text-blue-600 mb-4" />
-            <h3 className="font-semibold mb-2">Smart Notifications</h3>
-            <p className="text-muted-foreground text-sm">
-              Email and SMS alerts for critical updates
-            </p>
-          </div>
-          <div className="bg-card p-6 rounded-lg shadow-md">
-            <Users className="h-8 w-8 text-blue-600 mb-4" />
-            <h3 className="font-semibold mb-2">Family Sharing</h3>
-            <p className="text-muted-foreground text-sm">
-              Grant secure access to family members
-            </p>
-          </div>
-        </div>
+        </FadeInOnScroll>
       </section>
 
       {/* Footer */}
-      <footer className="mt-16 py-8 border-t">
+      <footer className="py-8 border-t bg-card/50">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-center items-center gap-6 text-sm text-muted-foreground">
-            <a href="/faq" className="hover:text-primary transition-colors">
+            <a href="/faq" className="hover:text-primary transition-colors hover-scale">
               FAQ
             </a>
-            <a href="/privacy-policy" className="hover:text-primary transition-colors">
+            <a href="/privacy-policy" className="hover:text-primary transition-colors hover-scale">
               Privacy Policy
             </a>
-            <a href="/how-it-works" className="hover:text-primary transition-colors">
+            <a href="/how-it-works" className="hover:text-primary transition-colors hover-scale">
               How It Works
             </a>
-            <a href="/contact-us" className="hover:text-primary transition-colors">
+            <a href="/contact-us" className="hover:text-primary transition-colors hover-scale">
               Contact Us
             </a>
           </div>

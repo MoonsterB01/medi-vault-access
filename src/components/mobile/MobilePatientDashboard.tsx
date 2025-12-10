@@ -13,6 +13,7 @@ import { MissingInfoDialog } from "@/components/MissingInfoDialog";
 import AppointmentCalendar from "@/components/AppointmentCalendar";
 import AppointmentBooking from "@/components/AppointmentBooking";
 import { PatientSummary as PatientSummaryType } from "@/types/patient-summary";
+import { PulsingDot } from "@/components/PulsingDot";
 
 interface MobilePatientDashboardProps {
   user: any;
@@ -52,18 +53,21 @@ export function MobilePatientDashboard({
   const location = useLocation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("summary");
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     const hash = location.hash.replace('#', '');
     if (hash) {
       setActiveTab(hash);
     }
+    // Trigger entrance animation
+    const timer = setTimeout(() => setIsLoaded(true), 100);
+    return () => clearTimeout(timer);
   }, [location.hash]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     navigate(`#${tab}`, { replace: true });
-    // Scroll to top when changing tabs
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
@@ -111,7 +115,11 @@ export function MobilePatientDashboard({
   };
 
   return (
-    <div className="mobile-dashboard fixed inset-0 flex flex-col bg-background">
+    <div 
+      className={`mobile-dashboard fixed inset-0 flex flex-col bg-background transition-opacity duration-500 ${
+        isLoaded ? 'opacity-100' : 'opacity-0'
+      }`}
+    >
       {/* Missing info dialog */}
       {patientData && missingFields.length > 0 && (
         <MissingInfoDialog
@@ -123,26 +131,45 @@ export function MobilePatientDashboard({
         />
       )}
 
-      {/* Sticky Header */}
-      <MobileHeader
-        patientData={patientData}
-        user={user}
-        subscription={subscription}
-      />
+      {/* Sticky Header with status indicator */}
+      <div className="relative">
+        <MobileHeader
+          patientData={patientData}
+          user={user}
+          subscription={subscription}
+        />
+        {/* Connected status indicator */}
+        <div className="absolute top-3 right-14 flex items-center gap-1.5">
+          <PulsingDot color="green" size="sm" />
+          <span className="text-xs text-muted-foreground">Synced</span>
+        </div>
+      </div>
 
-      {/* Scrollable Content Area */}
+      {/* Scrollable Content Area with animation */}
       <MobileTabContent className="pt-4">
-        {renderTabContent()}
+        <div 
+          className={`transition-all duration-300 ${
+            isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}
+        >
+          {renderTabContent()}
+        </div>
       </MobileTabContent>
 
-      {/* MediBot - positioned above bottom nav */}
+      {/* MediBot */}
       {patientData && <MediBot patientId={patientData.id} />}
 
-      {/* Fixed Bottom Navigation */}
-      <MobileBottomNav
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-      />
+      {/* Fixed Bottom Navigation with animation */}
+      <div 
+        className={`transition-all duration-500 ${
+          isLoaded ? 'translate-y-0' : 'translate-y-full'
+        }`}
+      >
+        <MobileBottomNav
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+        />
+      </div>
     </div>
   );
 }
