@@ -8,9 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Footprints, Flame, Clock, Loader2 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Plus, Footprints, Flame, Clock, Loader2, Activity, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { HealthMetricsSection } from "./HealthMetricsSection";
+import { FitnessScoreSection } from "./FitnessScoreSection";
+import { AIInsightsSection } from "./AIInsightsSection";
 
 interface FitnessRecordTabProps {
   patientId: string;
@@ -27,6 +31,38 @@ interface FitnessRecord {
   notes: string | null;
 }
 
+interface HealthMetrics {
+  bmi: number;
+  bmiCategory: string;
+  idealBodyWeight: number;
+  weightDiff: number;
+  weightStatus: string;
+  bodyFatEstimate: number;
+  bmr: number;
+  dailyCalorieRequirement: number;
+  fitnessScore: number;
+  fitnessScoreLabel: string;
+  scoreBreakdown: any;
+}
+
+interface AIInsights {
+  overallAssessment: string;
+  strengths: string[];
+  areasToImprove: string[];
+  recommendations: { title: string; description: string }[];
+  warningSignsToWatch: string[];
+}
+
+interface ProfileData {
+  heightCm: number;
+  weightKg: number;
+  age: number;
+  gender: string;
+  activityLevel: string;
+  sleepHours: number;
+  restingHeartRate: number | null;
+}
+
 const WORKOUT_TYPES = [
   'Walking', 'Running', 'Cycling', 'Swimming', 'Yoga', 'Gym Workout',
   'Home Exercise', 'Sports', 'Dancing', 'Stretching', 'Other'
@@ -37,6 +73,13 @@ export function FitnessRecordTab({ patientId }: FitnessRecordTabProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Health insights state
+  const [hasProfile, setHasProfile] = useState(false);
+  const [metrics, setMetrics] = useState<HealthMetrics | null>(null);
+  const [insights, setInsights] = useState<AIInsights | null>(null);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
 
   // Form state
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -49,7 +92,107 @@ export function FitnessRecordTab({ patientId }: FitnessRecordTabProps) {
 
   useEffect(() => {
     fetchRecords();
+    checkProfileAndFetchInsights();
   }, [patientId]);
+
+  const checkProfileAndFetchInsights = async () => {
+    try {
+      // Check if wellbeing profile exists
+      const { data: profile, error: profileError } = await supabase
+        .from('wellbeing_profiles')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (profileError || !profile) {
+        setHasProfile(false);
+        return;
+      }
+
+      setHasProfile(true);
+
+      // Check for cached insights
+      const { data: cachedInsight } = await supabase
+        .from('health_insights')
+        .select('*')
+        .eq('patient_id', patientId)
+        .eq('is_current', true)
+        .order('generated_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (cachedInsight) {
+        // Use cached data
+        setMetrics({
+          bmi: cachedInsight.bmi,
+          bmiCategory: cachedInsight.bmi_category,
+          idealBodyWeight: cachedInsight.ideal_body_weight,
+          weightDiff: profile.weight_kg - cachedInsight.ideal_body_weight,
+          weightStatus: profile.weight_kg > cachedInsight.ideal_body_weight 
+            ? `${(profile.weight_kg - cachedInsight.ideal_body_weight).toFixed(1)} kg over ideal`
+            : profile.weight_kg < cachedInsight.ideal_body_weight
+              ? `${(cachedInsight.ideal_body_weight - profile.weight_kg).toFixed(1)} kg under ideal`
+              : 'At ideal weight',
+          bodyFatEstimate: cachedInsight.body_fat_estimate,
+          bmr: cachedInsight.bmr,
+          dailyCalorieRequirement: cachedInsight.daily_calorie_requirement,
+          fitnessScore: cachedInsight.fitness_score,
+          fitnessScoreLabel: getScoreLabel(cachedInsight.fitness_score),
+          scoreBreakdown: cachedInsight.score_breakdown,
+        });
+        setInsights(cachedInsight.ai_insights as unknown as AIInsights);
+        setProfileData({
+          heightCm: profile.height_cm,
+          weightKg: profile.weight_kg,
+          age: profile.age,
+          gender: profile.gender,
+          activityLevel: profile.activity_level,
+          sleepHours: profile.sleep_hours,
+          restingHeartRate: profile.resting_heart_rate,
+        });
+      } else {
+        // Generate new insights
+        await generateHealthInsights();
+      }
+    } catch (error) {
+      console.error('Error checking profile:', error);
+    }
+  };
+
+  const getScoreLabel = (score: number): string => {
+    if (score >= 90) return 'Excellent';
+    if (score >= 75) return 'Good';
+    if (score >= 60) return 'Average';
+    if (score >= 45) return 'Below Average';
+    return 'Needs Improvement';
+  };
+
+  const generateHealthInsights = async () => {
+    setIsGeneratingInsights(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-health-insights', {
+        body: { patientId },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setMetrics(data.metrics);
+        setInsights(data.insights);
+        setProfileData(data.profile);
+        toast.success('Health insights generated successfully!');
+      } else {
+        throw new Error(data.error || 'Failed to generate insights');
+      }
+    } catch (error: any) {
+      console.error('Error generating health insights:', error);
+      toast.error(error.message || 'Failed to generate health insights');
+    } finally {
+      setIsGeneratingInsights(false);
+    }
+  };
 
   const fetchRecords = async () => {
     setIsLoading(true);
@@ -130,30 +273,86 @@ export function FitnessRecordTab({ patientId }: FitnessRecordTabProps) {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Weekly Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-4 text-center">
-            <Footprints className="h-8 w-8 mx-auto text-primary mb-2" />
-            <p className="text-2xl font-bold">{weeklyStats.totalSteps.toLocaleString()}</p>
-            <p className="text-sm text-muted-foreground">Steps (7 days)</p>
+    <div className="space-y-6">
+      {/* Health Overview Section */}
+      {hasProfile ? (
+        <>
+          {/* Health Metrics */}
+          {metrics && profileData && (
+            <HealthMetricsSection 
+              metrics={metrics} 
+              currentWeight={profileData.weightKg}
+              gender={profileData.gender}
+            />
+          )}
+
+          <Separator />
+
+          {/* Fitness Score */}
+          {metrics && metrics.scoreBreakdown && (
+            <FitnessScoreSection 
+              score={metrics.fitnessScore} 
+              scoreBreakdown={metrics.scoreBreakdown}
+            />
+          )}
+
+          <Separator />
+
+          {/* AI Insights */}
+          <AIInsightsSection 
+            insights={insights}
+            isGenerating={isGeneratingInsights}
+            onRegenerate={generateHealthInsights}
+          />
+
+          <Separator />
+        </>
+      ) : (
+        <Card className="border-dashed border-primary/50 bg-primary/5">
+          <CardContent className="py-8 text-center">
+            <AlertCircle className="h-12 w-12 mx-auto text-primary/50 mb-4" />
+            <p className="text-lg font-medium mb-2">Complete Your Profile First</p>
+            <p className="text-muted-foreground mb-4">
+              To see your health metrics, fitness score, and AI-powered insights,
+              please complete your wellbeing profile in the Diet Plan tab.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Go to <span className="font-medium">Diet Plan</span> tab → Set up your profile
+            </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-4 text-center">
-            <Flame className="h-8 w-8 mx-auto text-orange-500 mb-2" />
-            <p className="text-2xl font-bold">{weeklyStats.totalCalories.toLocaleString()}</p>
-            <p className="text-sm text-muted-foreground">Calories (7 days)</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 text-center">
-            <Clock className="h-8 w-8 mx-auto text-green-500 mb-2" />
-            <p className="text-2xl font-bold">{weeklyStats.totalMinutes}</p>
-            <p className="text-sm text-muted-foreground">Minutes (7 days)</p>
-          </CardContent>
-        </Card>
+      )}
+
+      {/* Weekly Activity Stats */}
+      <div className="space-y-4">
+        <h3 className="font-semibold text-lg flex items-center gap-2">
+          <Activity className="h-5 w-5 text-primary" />
+          Weekly Activity Summary
+        </h3>
+        
+        <div className="grid grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="pt-4 text-center">
+              <Footprints className="h-8 w-8 mx-auto text-primary mb-2" />
+              <p className="text-2xl font-bold">{weeklyStats.totalSteps.toLocaleString()}</p>
+              <p className="text-sm text-muted-foreground">Steps (7 days)</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 text-center">
+              <Flame className="h-8 w-8 mx-auto text-orange-500 mb-2" />
+              <p className="text-2xl font-bold">{weeklyStats.totalCalories.toLocaleString()}</p>
+              <p className="text-sm text-muted-foreground">Calories (7 days)</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4 text-center">
+              <Clock className="h-8 w-8 mx-auto text-green-500 mb-2" />
+              <p className="text-2xl font-bold">{weeklyStats.totalMinutes}</p>
+              <p className="text-sm text-muted-foreground">Minutes (7 days)</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Add Record Button */}
