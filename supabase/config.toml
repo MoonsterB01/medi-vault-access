@@ -65,3 +65,6 @@ verify_jwt = true
 
 [functions.verify-razorpay-payment]
 verify_jwt = true
+
+[functions.generate-diet-plan]
+verify_jwt = true
