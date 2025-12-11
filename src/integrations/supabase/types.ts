@@ -444,6 +444,57 @@ export type Database = {
           },
         ]
       }
+      diet_plans: {
+        Row: {
+          ai_model_used: string | null
+          created_at: string
+          generated_at: string
+          id: string
+          is_active: boolean | null
+          patient_id: string
+          plan_data: Json
+          profile_id: string | null
+          week_start_date: string
+        }
+        Insert: {
+          ai_model_used?: string | null
+          created_at?: string
+          generated_at?: string
+          id?: string
+          is_active?: boolean | null
+          patient_id: string
+          plan_data: Json
+          profile_id?: string | null
+          week_start_date: string
+        }
+        Update: {
+          ai_model_used?: string | null
+          created_at?: string
+          generated_at?: string
+          id?: string
+          is_active?: boolean | null
+          patient_id?: string
+          plan_data?: Json
+          profile_id?: string | null
+          week_start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diet_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diet_plans_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "wellbeing_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       doctor_patient_relationships: {
         Row: {
           created_at: string
@@ -837,6 +888,92 @@ export type Database = {
           last_seen_at?: string | null
           original_filename?: string
           upload_count?: number | null
+        }
+        Relationships: []
+      }
+      fitness_records: {
+        Row: {
+          calories_burned: number | null
+          created_at: string
+          distance_km: number | null
+          id: string
+          notes: string | null
+          patient_id: string
+          record_date: string
+          steps: number | null
+          workout_duration_minutes: number | null
+          workout_type: string | null
+        }
+        Insert: {
+          calories_burned?: number | null
+          created_at?: string
+          distance_km?: number | null
+          id?: string
+          notes?: string | null
+          patient_id: string
+          record_date: string
+          steps?: number | null
+          workout_duration_minutes?: number | null
+          workout_type?: string | null
+        }
+        Update: {
+          calories_burned?: number | null
+          created_at?: string
+          distance_km?: number | null
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          record_date?: string
+          steps?: number | null
+          workout_duration_minutes?: number | null
+          workout_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fitness_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      home_remedies: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          ingredients: Json | null
+          instructions: string | null
+          is_verified: boolean | null
+          precautions: string | null
+          tags: string[] | null
+          title: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          ingredients?: Json | null
+          instructions?: string | null
+          is_verified?: boolean | null
+          precautions?: string | null
+          tags?: string[] | null
+          title: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          ingredients?: Json | null
+          instructions?: string | null
+          is_verified?: boolean | null
+          precautions?: string | null
+          tags?: string[] | null
+          title?: string
         }
         Relationships: []
       }
@@ -1275,6 +1412,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "medications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      medicine_tracking: {
+        Row: {
+          created_at: string
+          date: string
+          dosage: string | null
+          frequency: string | null
+          id: string
+          medicine_name: string
+          notes: string | null
+          patient_id: string
+          scheduled_times: string[] | null
+          status: string | null
+          taken_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          dosage?: string | null
+          frequency?: string | null
+          id?: string
+          medicine_name: string
+          notes?: string | null
+          patient_id: string
+          scheduled_times?: string[] | null
+          status?: string | null
+          taken_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          dosage?: string | null
+          frequency?: string | null
+          id?: string
+          medicine_name?: string
+          notes?: string | null
+          patient_id?: string
+          scheduled_times?: string[] | null
+          status?: string | null
+          taken_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medicine_tracking_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
@@ -2160,6 +2347,77 @@ export type Database = {
             foreignKeyName: "visits_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wellbeing_profiles: {
+        Row: {
+          activity_level: string | null
+          additional_notes: string | null
+          age: number | null
+          created_at: string
+          cuisine_preferences: string[] | null
+          daily_calorie_target: number | null
+          dietary_preferences: Json | null
+          food_allergies: string[] | null
+          gender: string | null
+          health_goals: string[] | null
+          height_cm: number | null
+          id: string
+          meal_frequency: number | null
+          patient_id: string
+          resting_heart_rate: number | null
+          sleep_hours: number | null
+          updated_at: string
+          weight_kg: number | null
+        }
+        Insert: {
+          activity_level?: string | null
+          additional_notes?: string | null
+          age?: number | null
+          created_at?: string
+          cuisine_preferences?: string[] | null
+          daily_calorie_target?: number | null
+          dietary_preferences?: Json | null
+          food_allergies?: string[] | null
+          gender?: string | null
+          health_goals?: string[] | null
+          height_cm?: number | null
+          id?: string
+          meal_frequency?: number | null
+          patient_id: string
+          resting_heart_rate?: number | null
+          sleep_hours?: number | null
+          updated_at?: string
+          weight_kg?: number | null
+        }
+        Update: {
+          activity_level?: string | null
+          additional_notes?: string | null
+          age?: number | null
+          created_at?: string
+          cuisine_preferences?: string[] | null
+          daily_calorie_target?: number | null
+          dietary_preferences?: Json | null
+          food_allergies?: string[] | null
+          gender?: string | null
+          health_goals?: string[] | null
+          height_cm?: number | null
+          id?: string
+          meal_frequency?: number | null
+          patient_id?: string
+          resting_heart_rate?: number | null
+          sleep_hours?: number | null
+          updated_at?: string
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wellbeing_profiles_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: true
             referencedRelation: "patients"
             referencedColumns: ["id"]
           },
