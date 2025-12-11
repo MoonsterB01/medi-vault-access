@@ -1,4 +1,4 @@
-import { Bot, FileText, Search, Calendar, Upload } from "lucide-react";
+import { Bot, FileText, Search, Calendar, Upload, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MobileBottomNavProps {
@@ -10,7 +10,7 @@ export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps
   const mainTabs = [
     { value: "summary", icon: Bot, label: "Summary" },
     { value: "documents", icon: FileText, label: "Docs" },
-    { value: "search", icon: Search, label: "Search" },
+    { value: "wellbeing", icon: Heart, label: "Wellbeing" },
     { value: "appointments", icon: Calendar, label: "Appts" },
     { value: "upload", icon: Upload, label: "Upload" },
   ];

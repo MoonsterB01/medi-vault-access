@@ -12,6 +12,7 @@ import { MediBot } from "@/components/MediBot";
 import { MissingInfoDialog } from "@/components/MissingInfoDialog";
 import AppointmentCalendar from "@/components/AppointmentCalendar";
 import AppointmentBooking from "@/components/AppointmentBooking";
+import { WellbeingPage } from "@/components/wellbeing/WellbeingPage";
 import { PatientSummary as PatientSummaryType } from "@/types/patient-summary";
 import { PulsingDot } from "@/components/PulsingDot";
 
@@ -93,6 +94,10 @@ export function MobilePatientDashboard({
       case 'search':
         return patientData ? (
           <MobileSearchTab patientId={patientData.id} />
+        ) : null;
+      case 'wellbeing':
+        return patientData ? (
+          <WellbeingPage patientId={patientData.id} />
         ) : null;
       case 'appointments':
         return <MobileAppointmentsTab user={user} />;
