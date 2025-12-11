@@ -1,5 +1,8 @@
 project_id = "qiqepumdtaozjzfjbggl"
 
+[functions.generate-health-insights]
+verify_jwt = true
+
 [functions.ai-document-vision]
 verify_jwt = true
 

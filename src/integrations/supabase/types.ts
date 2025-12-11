@@ -938,6 +938,78 @@ export type Database = {
           },
         ]
       }
+      health_insights: {
+        Row: {
+          ai_insights: Json | null
+          ai_model_used: string | null
+          bmi: number | null
+          bmi_category: string | null
+          bmr: number | null
+          body_fat_estimate: number | null
+          created_at: string | null
+          daily_calorie_requirement: number | null
+          fitness_score: number | null
+          generated_at: string | null
+          id: string
+          ideal_body_weight: number | null
+          is_current: boolean | null
+          patient_id: string
+          profile_id: string | null
+          score_breakdown: Json | null
+        }
+        Insert: {
+          ai_insights?: Json | null
+          ai_model_used?: string | null
+          bmi?: number | null
+          bmi_category?: string | null
+          bmr?: number | null
+          body_fat_estimate?: number | null
+          created_at?: string | null
+          daily_calorie_requirement?: number | null
+          fitness_score?: number | null
+          generated_at?: string | null
+          id?: string
+          ideal_body_weight?: number | null
+          is_current?: boolean | null
+          patient_id: string
+          profile_id?: string | null
+          score_breakdown?: Json | null
+        }
+        Update: {
+          ai_insights?: Json | null
+          ai_model_used?: string | null
+          bmi?: number | null
+          bmi_category?: string | null
+          bmr?: number | null
+          body_fat_estimate?: number | null
+          created_at?: string | null
+          daily_calorie_requirement?: number | null
+          fitness_score?: number | null
+          generated_at?: string | null
+          id?: string
+          ideal_body_weight?: number | null
+          is_current?: boolean | null
+          patient_id?: string
+          profile_id?: string | null
+          score_breakdown?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_insights_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "health_insights_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "wellbeing_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       home_remedies: {
         Row: {
           category: string
