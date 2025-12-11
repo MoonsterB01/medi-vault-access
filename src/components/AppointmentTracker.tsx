@@ -9,9 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Calendar, Clock, User, Stethoscope, CheckCircle, XCircle, RotateCcw, AlertCircle, MessageSquare } from "lucide-react";
+import { Calendar, Clock, User, Stethoscope, CheckCircle, XCircle, RotateCcw, AlertCircle, MessageSquare, CalendarDays, List } from "lucide-react";
 import { format } from "date-fns";
 import { withErrorBoundary } from "@/components/ErrorBoundary";
+import AppointmentCalendar from "@/components/AppointmentCalendar";
 
 /**
  * @interface Appointment
@@ -47,9 +48,11 @@ interface Appointment {
  * @interface AppointmentTrackerProps
  * @description Defines the props for the AppointmentTracker component.
  * @property {any} user - The user object.
+ * @property {boolean} showCalendarButton - Whether to show the calendar toggle button.
  */
 interface AppointmentTrackerProps {
   user: any;
+  showCalendarButton?: boolean;
 }
 
 /**
@@ -58,12 +61,13 @@ interface AppointmentTrackerProps {
  * @param {AppointmentTrackerProps} props - The props for the component.
  * @returns {JSX.Element} - The rendered AppointmentTracker component.
  */
-const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
+const AppointmentTracker = ({ user, showCalendarButton = false }: AppointmentTrackerProps) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [patientNotes, setPatientNotes] = useState("");
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -298,6 +302,37 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
 
   return (
     <div className="space-y-4 md:space-y-6 w-full max-w-full overflow-hidden">
+      {/* View Toggle Button */}
+      {showCalendarButton && (
+        <div className="flex justify-end">
+          <div className="inline-flex rounded-lg border bg-muted p-1">
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className="gap-2"
+            >
+              <List className="h-4 w-4" />
+              List
+            </Button>
+            <Button
+              variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('calendar')}
+              className="gap-2"
+            >
+              <CalendarDays className="h-4 w-4" />
+              Calendar
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Calendar View */}
+      {viewMode === 'calendar' && showCalendarButton ? (
+        <AppointmentCalendar user={user} />
+      ) : (
+        <>
       {/* Summary Cards - 2 columns on mobile, 4 on desktop */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
         <Card>
@@ -589,6 +624,8 @@ const AppointmentTracker = ({ user }: AppointmentTrackerProps) => {
           )}
         </DialogContent>
       </Dialog>
+      </>
+      )}
     </div>
   );
 };
