@@ -112,6 +112,7 @@ export type Database = {
           cancellation_reason: string | null
           cancelled_by: string | null
           chief_complaint: string | null
+          confirmation_deadline: string | null
           confirmed_by: string | null
           created_at: string
           created_by: string
@@ -135,6 +136,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_by?: string | null
           chief_complaint?: string | null
+          confirmation_deadline?: string | null
           confirmed_by?: string | null
           created_at?: string
           created_by: string
@@ -158,6 +160,7 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_by?: string | null
           chief_complaint?: string | null
+          confirmation_deadline?: string | null
           confirmed_by?: string | null
           created_at?: string
           created_by?: string
@@ -2542,6 +2545,15 @@ export type Database = {
       extract_patient_id_from_path: {
         Args: { file_path: string }
         Returns: string
+      }
+      find_next_available_slot: {
+        Args: { p_doctor_id: string; p_min_date?: string }
+        Returns: {
+          end_time: string
+          slot_date: string
+          slot_id: string
+          start_time: string
+        }[]
       }
       generate_appointment_id: { Args: never; Returns: string }
       generate_doctor_id: { Args: never; Returns: string }

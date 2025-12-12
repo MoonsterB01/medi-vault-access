@@ -13,8 +13,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Search, Calendar as CalendarIcon, Clock, Star, MapPin, Stethoscope } from "lucide-react";
-import { format, addDays, startOfDay } from "date-fns";
+import { format, addDays } from "date-fns";
 import { withErrorBoundary } from "@/components/ErrorBoundary";
+import { isSlotInPast, isSlotClosingSoon, isDateDisabledIST, isTodayIST, formatDateToString } from "@/lib/timeUtils";
 
 /**
  * @interface Doctor
@@ -480,7 +481,7 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
                                 selected={selectedDate}
                                 onSelect={setSelectedDate}
                                 disabled={(date) => 
-                                  date < startOfDay(new Date()) || 
+                                  isDateDisabledIST(date) || 
                                   date > addDays(new Date(), 30)
                                 }
                                 initialFocus
@@ -501,21 +502,39 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
                             </div>
                           ) : (
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[120px] md:max-h-[200px] overflow-y-auto border rounded-md p-2">
-                              {availableSlots.map((slot) => (
-                                <Button
-                                  key={slot.start_time}
-                                  type="button"
-                                  variant={selectedTime === slot.start_time ? "default" : "outline"}
-                                  onClick={() => setSelectedTime(slot.start_time)}
-                                  className="w-full flex flex-col h-auto py-1.5 md:py-2 text-xs"
-                                >
-                                  <Clock className="h-3 w-3 md:h-4 md:w-4" />
-                                  <span>{slot.start_time}</span>
-                                  <Badge variant="secondary" className="text-[10px]">
-                                    {slot.current_bookings}/{slot.max_appointments}
-                                  </Badge>
-                                </Button>
-                              ))}
+                              {availableSlots
+                                .filter((slot) => {
+                                  // Additional client-side filtering for IST
+                                  if (selectedDate && isTodayIST(selectedDate)) {
+                                    return !isSlotInPast(formatDateToString(selectedDate), slot.start_time);
+                                  }
+                                  return true;
+                                })
+                                .map((slot) => {
+                                  const closingSoon = selectedDate && isTodayIST(selectedDate) && 
+                                    isSlotClosingSoon(formatDateToString(selectedDate), slot.start_time, 30);
+                                  
+                                  return (
+                                    <Button
+                                      key={slot.start_time}
+                                      type="button"
+                                      variant={selectedTime === slot.start_time ? "default" : "outline"}
+                                      onClick={() => setSelectedTime(slot.start_time)}
+                                      className={`w-full flex flex-col h-auto py-1.5 md:py-2 text-xs relative ${closingSoon ? 'border-orange-400' : ''}`}
+                                    >
+                                      {closingSoon && (
+                                        <Badge variant="destructive" className="absolute -top-2 -right-2 text-[8px] px-1">
+                                          Soon
+                                        </Badge>
+                                      )}
+                                      <Clock className="h-3 w-3 md:h-4 md:w-4" />
+                                      <span>{slot.start_time}</span>
+                                      <Badge variant="secondary" className="text-[10px]">
+                                        {slot.current_bookings}/{slot.max_appointments}
+                                      </Badge>
+                                    </Button>
+                                  );
+                                })}
                             </div>
                           )}
                         </div>

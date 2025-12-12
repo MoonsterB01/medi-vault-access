@@ -43,6 +43,18 @@ serve(async (req) => {
       return createErrorResponse(requestId, 400, 'missing_required_fields', 'doctor_id, patient_id, appointment_date, appointment_time, and created_by are required', origin);
     }
 
+    // Validate appointment is not in the past (IST)
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + now.getTimezoneOffset() * 60000 + istOffset);
+    const istDateStr = istNow.toISOString().split('T')[0];
+    const istTimeStr = istNow.toTimeString().slice(0, 8);
+    
+    if (appointment_date < istDateStr || 
+        (appointment_date === istDateStr && appointment_time <= istTimeStr)) {
+      return createErrorResponse(requestId, 400, 'slot_in_past', 'Cannot book appointments for past time slots', origin);
+    }
+
     const { data: slotCheck, error: slotError } = await supabaseClient.rpc('check_slot_availability', {
       p_doctor_id: doctor_id, p_slot_date: appointment_date, p_start_time: appointment_time
     });
