@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { toast } from "sonner";
 import { Search, Calendar as CalendarIcon, Clock, UserPlus, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
+import { isSlotInPast, isSlotClosingSoon, isDateDisabledIST, isTodayIST, formatDateToString } from "@/lib/timeUtils";
 
 interface Doctor {
   id: string;
@@ -286,7 +287,7 @@ export default function HospitalAppointmentBooking({ hospitalData }: { hospitalD
                     mode="single"
                     selected={selectedDate}
                     onSelect={setSelectedDate}
-                    disabled={(date) => date < new Date()}
+                    disabled={(date) => isDateDisabledIST(date)}
                   />
                 </PopoverContent>
               </Popover>
@@ -314,19 +315,37 @@ export default function HospitalAppointmentBooking({ hospitalData }: { hospitalD
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                {availableSlots.map((slot) => (
-                  <Button
-                    key={slot.slot_id}
-                    variant={selectedSlot?.slot_id === slot.slot_id ? "default" : "outline"}
-                    className="flex flex-col h-auto p-3"
-                    onClick={() => setSelectedSlot(slot)}
-                  >
-                    <span className="font-semibold">{slot.start_time}</span>
-                    <Badge variant="secondary" className="mt-1 text-xs">
-                      {slot.current_bookings}/{slot.max_appointments}
-                    </Badge>
-                  </Button>
-                ))}
+                {availableSlots
+                  .filter((slot) => {
+                    // Client-side IST filtering for today
+                    if (selectedDate && isTodayIST(selectedDate)) {
+                      return !isSlotInPast(formatDateToString(selectedDate), slot.start_time);
+                    }
+                    return true;
+                  })
+                  .map((slot) => {
+                    const closingSoon = selectedDate && isTodayIST(selectedDate) && 
+                      isSlotClosingSoon(formatDateToString(selectedDate), slot.start_time, 30);
+                    
+                    return (
+                      <Button
+                        key={slot.slot_id}
+                        variant={selectedSlot?.slot_id === slot.slot_id ? "default" : "outline"}
+                        className={`flex flex-col h-auto p-3 relative ${closingSoon ? 'border-orange-400' : ''}`}
+                        onClick={() => setSelectedSlot(slot)}
+                      >
+                        {closingSoon && (
+                          <Badge variant="destructive" className="absolute -top-2 -right-2 text-[8px] px-1">
+                            Soon
+                          </Badge>
+                        )}
+                        <span className="font-semibold">{slot.start_time}</span>
+                        <Badge variant="secondary" className="mt-1 text-xs">
+                          {slot.current_bookings}/{slot.max_appointments}
+                        </Badge>
+                      </Button>
+                    );
+                  })}
               </div>
             )}
           </CardContent>
