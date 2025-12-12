@@ -155,8 +155,8 @@ export default function SlotCalendarView({
     setDragOverTime(null);
   };
 
-  const conflictCount = slots.filter((s) => s.isConflict && !s.isExisting).length;
-  const hasConflicts = conflictCount > 0;
+  const newSlotsCount = slots.filter((s) => !s.isExisting).length;
+  const existingSlotsCount = slots.filter((s) => s.isExisting).length;
 
   return (
     <Card>
@@ -164,20 +164,18 @@ export default function SlotCalendarView({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             Slot Calendar View
-            {hasConflicts ? (
-              <Badge variant="destructive" className="gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {conflictCount} Conflicts
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="gap-1">
-                <CheckCircle className="h-3 w-3" />
-                No Conflicts
+            <Badge variant="secondary" className="gap-1">
+              <CheckCircle className="h-3 w-3" />
+              {newSlotsCount} new slots
+            </Badge>
+            {existingSlotsCount > 0 && (
+              <Badge variant="outline" className="gap-1">
+                {existingSlotsCount} existing
               </Badge>
             )}
           </CardTitle>
-          <Button onClick={onSave} disabled={hasConflicts}>
-            Save All Slots
+          <Button onClick={onSave} disabled={newSlotsCount === 0}>
+            Save {newSlotsCount} Slot{newSlotsCount !== 1 ? 's' : ''}
           </Button>
         </div>
         <div className="flex gap-4 text-sm text-muted-foreground">
@@ -187,11 +185,7 @@ export default function SlotCalendarView({
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-secondary border-2 border-secondary-foreground rounded" />
-            <span>New Slots</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-destructive/20 border-2 border-destructive rounded" />
-            <span>Conflicts</span>
+            <span>New Slots (drag to reposition)</span>
           </div>
         </div>
       </CardHeader>
