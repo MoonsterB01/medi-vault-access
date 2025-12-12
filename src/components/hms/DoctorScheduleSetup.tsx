@@ -122,7 +122,7 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
         id: s.id,
       }));
 
-      // Check for conflicts
+      // Auto-resolve conflicts by filtering out new slots that overlap with existing ones
       const toMin = (t: string) => {
         const [h, m] = t.split(':').map(Number);
         return h * 60 + m;
@@ -130,20 +130,29 @@ export default function DoctorScheduleSetup({ hospitalData }: { hospitalData: an
       const overlaps = (aStart: string, aEnd: string, bStart: string, bEnd: string) =>
         toMin(aStart) < toMin(bEnd) && toMin(aEnd) > toMin(bStart);
 
-      const allSlots = [...existing, ...slots];
-      const slotsWithConflicts = allSlots.map(slot => ({
+      // Filter out new slots that conflict with existing slots
+      const nonConflictingNewSlots = slots.filter(newSlot => {
+        return !existing.some(existingSlot => 
+          existingSlot.date === newSlot.date &&
+          overlaps(newSlot.start_time, newSlot.end_time, existingSlot.start_time, existingSlot.end_time)
+        );
+      });
+
+      const allSlots = [...existing, ...nonConflictingNewSlots];
+      
+      // Mark slots (no conflicts since we auto-resolved)
+      const slotsWithStatus = allSlots.map(slot => ({
         ...slot,
-        isConflict: allSlots.some(
-          other => 
-            other !== slot && 
-            other.date === slot.date && 
-            !slot.isExisting &&
-            overlaps(slot.start_time, slot.end_time, other.start_time, other.end_time)
-        ),
+        isConflict: false,
       }));
 
-      setCalendarSlots(slotsWithConflicts);
+      setCalendarSlots(slotsWithStatus);
       setShowCalendar(true);
+      
+      const conflictsResolved = slots.length - nonConflictingNewSlots.length;
+      if (conflictsResolved > 0) {
+        toast.info(`${conflictsResolved} conflicting slot(s) were automatically skipped`);
+      }
     }
 
     setPreviewSlots(slots.slice(0, 10)); // Show first 10 as preview
