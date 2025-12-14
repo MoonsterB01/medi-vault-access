@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Shield, Users, Hospital, FileText, Lock, Clock, Bell, ArrowRight, Sparkles } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
@@ -9,7 +9,9 @@ import { TrustBadges } from "@/components/TrustBadges";
 import { TestimonialsCarousel } from "@/components/TestimonialsCarousel";
 import { StatsCounter } from "@/components/StatsCounter";
 import { FadeInOnScroll } from "@/components/FadeInOnScroll";
-
+import { PartnerLogos } from "@/components/trust/PartnerLogos";
+import { DataSecurityVisual } from "@/components/trust/DataSecurityVisual";
+import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
 export default function Index() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
@@ -127,6 +129,9 @@ export default function Index() {
         </div>
       </header>
 
+      {/* Partner Logos */}
+      <PartnerLogos />
+
       {/* Stats Counter Section */}
       <StatsCounter />
 
@@ -206,6 +211,9 @@ export default function Index() {
 
       {/* Trust Badges Section */}
       <TrustBadges />
+
+      {/* Data Security Visual */}
+      <DataSecurityVisual />
 
       {/* How It Works Section */}
       <section className="py-16">
@@ -311,38 +319,27 @@ export default function Index() {
           <div className="container mx-auto px-4 text-center relative z-10">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Secure Your Medical Records?</h2>
             <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Join several healthcare providers and patients who trust MediVault
+              Join 10,000+ healthcare providers and patients who trust MediVault with their medical data
             </p>
-            <Button size="lg" className="px-10 py-4 text-lg animate-pulse-glow" onClick={handleGetStarted}>
-              Get Started for Free
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+              <Button size="lg" className="px-10 py-4 text-lg animate-pulse-glow" onClick={handleGetStarted}>
+                Get Started for Free
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => navigate("/security")}>
+                <Shield className="mr-2 h-5 w-5" />
+                View Security Details
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              No credit card required • Free plan available • HIPAA compliant
+            </p>
           </div>
         </FadeInOnScroll>
       </section>
 
-      {/* Footer */}
-      <footer className="py-8 border-t bg-card/50">
-        <div className="container mx-auto px-6">
-          <div className="flex flex-col md:flex-row justify-center items-center gap-6 text-sm text-muted-foreground">
-            <a href="/faq" className="hover:text-primary transition-colors hover-scale">
-              FAQ
-            </a>
-            <a href="/privacy-policy" className="hover:text-primary transition-colors hover-scale">
-              Privacy Policy
-            </a>
-            <a href="/how-it-works" className="hover:text-primary transition-colors hover-scale">
-              How It Works
-            </a>
-            <a href="/contact-us" className="hover:text-primary transition-colors hover-scale">
-              Contact Us
-            </a>
-          </div>
-          <p className="text-center text-xs text-muted-foreground mt-4">
-            © {new Date().getFullYear()} MediVault. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      {/* Enhanced Footer */}
+      <EnhancedFooter />
     </PublicLayout>
   );
 }
