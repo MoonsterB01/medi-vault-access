@@ -1,40 +1,30 @@
-import { Linkedin, Mail, Shield, GraduationCap } from "lucide-react";
+import { Linkedin, Mail, Shield } from "lucide-react";
 import { FadeInOnScroll } from "../FadeInOnScroll";
 import { Button } from "../ui/button";
+import mrigankPhoto from "@/assets/team/mrigank.jpg";
+import akshPhoto from "@/assets/team/aksh.jpg";
+import aryavPhoto from "@/assets/team/aryav.jpg";
 
-// Real team members - add actual photo URLs when available
 const teamMembers = [
   {
-    name: "Dr. Mrigank Agarwal",
+    name: "Mrigank Agarwal",
     role: "Co-Founder & CEO",
-    credentials: "MBBS, IIM-A",
-    bio: "Healthcare technology expert with 10+ years experience in digital health",
-    initials: "MA",
+    photo: mrigankPhoto,
     email: "mrigankagarwal810@gmail.com",
     linkedin: "#",
-    color: "bg-blue-500",
-    // TODO: Add real photo URL: photoUrl: "/team/mrigank.jpg"
   },
   {
     name: "Aksh Gaur",
     role: "Co-Founder & CTO",
-    credentials: "B.Tech, NIT",
-    bio: "Full-stack developer specializing in secure healthcare applications",
-    initials: "AG",
+    photo: akshPhoto,
     email: "akshgaur23@gmail.com",
     linkedin: "#",
-    color: "bg-purple-500",
-    // TODO: Add real photo URL: photoUrl: "/team/aksh.jpg"
   },
   {
-    name: "Dr. Pradeep Agarwal",
+    name: "Aryav Barmecha",
     role: "Chief Medical Officer",
-    credentials: "MBBS, MD",
-    bio: "Senior physician ensuring clinical accuracy and compliance",
-    initials: "PA",
+    photo: aryavPhoto,
     linkedin: "#",
-    color: "bg-emerald-500",
-    // TODO: Add real photo URL: photoUrl: "/team/pradeep.jpg"
   },
 ];
 
@@ -58,24 +48,21 @@ export function TeamSection() {
         </FadeInOnScroll>
 
         {/* Core Team */}
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto mb-16">
+        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {teamMembers.map((member, index) => (
             <FadeInOnScroll key={member.name} delay={index * 100}>
               <div className="bg-card rounded-2xl p-6 border border-border/50 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 text-center group">
-                {/* Avatar */}
-                <div className={`w-24 h-24 ${member.color} rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition-transform shadow-lg`}>
-                  <span className="text-2xl font-bold text-white">{member.initials}</span>
+                {/* Photo */}
+                <div className="w-28 h-28 rounded-full mx-auto mb-4 overflow-hidden group-hover:scale-105 transition-transform shadow-lg ring-4 ring-primary/20">
+                  <img 
+                    src={member.photo} 
+                    alt={member.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 
                 <h3 className="text-xl font-semibold mb-1">{member.name}</h3>
-                <p className="text-primary font-medium text-sm mb-1">{member.role}</p>
-                
-                <div className="inline-flex items-center gap-1 text-xs text-muted-foreground mb-3">
-                  <GraduationCap className="h-3 w-3" />
-                  {member.credentials}
-                </div>
-                
-                <p className="text-sm text-muted-foreground mb-4">{member.bio}</p>
+                <p className="text-primary font-medium text-sm mb-4">{member.role}</p>
                 
                 {/* Social links */}
                 <div className="flex justify-center gap-2">
