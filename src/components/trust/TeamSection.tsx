@@ -1,30 +1,30 @@
 import { Linkedin, Mail, Shield } from "lucide-react";
 import { FadeInOnScroll } from "../FadeInOnScroll";
 import { Button } from "../ui/button";
-import mrigankPhoto from "@/assets/team/mrigank.jpg";
-import akshPhoto from "@/assets/team/aksh.jpg";
-import aryavPhoto from "@/assets/team/aryav.jpg";
 
 const teamMembers = [
   {
     name: "Mrigank Agarwal",
     role: "Co-Founder & CEO",
-    photo: mrigankPhoto,
+    initials: "MA",
     email: "mrigankagarwal810@gmail.com",
     linkedin: "#",
+    color: "bg-blue-500",
   },
   {
     name: "Aksh Gaur",
     role: "Co-Founder & CTO",
-    photo: akshPhoto,
+    initials: "AG",
     email: "akshgaur23@gmail.com",
     linkedin: "#",
+    color: "bg-purple-500",
   },
   {
     name: "Aryav Barmecha",
     role: "Chief Medical Officer",
-    photo: aryavPhoto,
+    initials: "AB",
     linkedin: "#",
+    color: "bg-emerald-500",
   },
 ];
 
@@ -52,13 +52,9 @@ export function TeamSection() {
           {teamMembers.map((member, index) => (
             <FadeInOnScroll key={member.name} delay={index * 100}>
               <div className="bg-card rounded-2xl p-6 border border-border/50 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 text-center group">
-                {/* Photo */}
-                <div className="w-28 h-28 rounded-full mx-auto mb-4 overflow-hidden group-hover:scale-105 transition-transform shadow-lg ring-4 ring-primary/20">
-                  <img 
-                    src={member.photo} 
-                    alt={member.name}
-                    className="w-full h-full object-cover"
-                  />
+                {/* Avatar */}
+                <div className={`w-24 h-24 ${member.color} rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition-transform shadow-lg`}>
+                  <span className="text-2xl font-bold text-white">{member.initials}</span>
                 </div>
                 
                 <h3 className="text-xl font-semibold mb-1">{member.name}</h3>

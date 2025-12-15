@@ -11,6 +11,7 @@ import { FadeInOnScroll } from "@/components/FadeInOnScroll";
 import { DataSecurityVisual } from "@/components/trust/DataSecurityVisual";
 import { TeamSection } from "@/components/trust/TeamSection";
 import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
+import { TrustedBySection } from "@/components/trust/TrustedBySection";
 export default function Index() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
@@ -128,10 +129,11 @@ export default function Index() {
         </div>
       </header>
 
+      {/* Trusted By Section with human imagery */}
+      <TrustedBySection />
+
       {/* Stats Counter Section */}
       <StatsCounter />
-
-      {/* For Hospitals & Patients Section */}
       <section className="container mx-auto px-4 py-16">
         <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
           <FadeInOnScroll delay={0}>
