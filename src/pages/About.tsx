@@ -1,6 +1,5 @@
 import PublicLayout from "@/components/PublicLayout";
 import { TeamSection } from "@/components/trust/TeamSection";
-import { MediaMentions } from "@/components/trust/MediaMentions";
 import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
 import { FadeInOnScroll } from "@/components/FadeInOnScroll";
 import { Target, Heart, Shield, Lightbulb, Users, Globe } from "lucide-react";
@@ -29,11 +28,9 @@ const values = [
 ];
 
 const milestones = [
-  { year: "2022", event: "MediVault founded with a vision to digitize India's healthcare" },
-  { year: "2023", event: "Launched beta with 10 partner hospitals" },
-  { year: "2023", event: "Achieved HIPAA compliance certification" },
-  { year: "2024", event: "Crossed 10,000+ active patients" },
-  { year: "2024", event: "Expanded to 50+ healthcare institutions" },
+  { year: "2024", event: "MediVault founded with a vision to digitize India's healthcare" },
+  { year: "2024", event: "Launched platform with focus on security and privacy" },
+  { year: "2024", event: "Building partnerships with healthcare providers" },
 ];
 
 export default function About() {
@@ -162,9 +159,6 @@ export default function About() {
 
       {/* Team Section */}
       <TeamSection />
-
-      {/* Media Mentions */}
-      <MediaMentions />
 
       <EnhancedFooter />
     </PublicLayout>

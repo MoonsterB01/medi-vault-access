@@ -6,11 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
 import PublicLayout from "@/components/PublicLayout";
 import { TrustBadges } from "@/components/TrustBadges";
-import { TestimonialsCarousel } from "@/components/TestimonialsCarousel";
 import { StatsCounter } from "@/components/StatsCounter";
 import { FadeInOnScroll } from "@/components/FadeInOnScroll";
-import { PartnerLogos } from "@/components/trust/PartnerLogos";
 import { DataSecurityVisual } from "@/components/trust/DataSecurityVisual";
+import { TeamSection } from "@/components/trust/TeamSection";
 import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
 export default function Index() {
   const navigate = useNavigate();
@@ -128,9 +127,6 @@ export default function Index() {
           </div>
         </div>
       </header>
-
-      {/* Partner Logos */}
-      <PartnerLogos />
 
       {/* Stats Counter Section */}
       <StatsCounter />
@@ -257,8 +253,8 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <TestimonialsCarousel />
+      {/* Team Section - Real team with real photos */}
+      <TeamSection />
 
       {/* Key Features Section */}
       <section className="container mx-auto px-4 py-16">
@@ -319,7 +315,7 @@ export default function Index() {
           <div className="container mx-auto px-4 text-center relative z-10">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Secure Your Medical Records?</h2>
             <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Join 10,000+ healthcare providers and patients who trust MediVault with their medical data
+              Start managing your health records securely today
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
               <Button size="lg" className="px-10 py-4 text-lg animate-pulse-glow" onClick={handleGetStarted}>

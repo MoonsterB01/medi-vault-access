@@ -2,6 +2,7 @@ import { Linkedin, Mail, Shield, GraduationCap } from "lucide-react";
 import { FadeInOnScroll } from "../FadeInOnScroll";
 import { Button } from "../ui/button";
 
+// Real team members - add actual photo URLs when available
 const teamMembers = [
   {
     name: "Dr. Mrigank Agarwal",
@@ -12,6 +13,7 @@ const teamMembers = [
     email: "mrigankagarwal810@gmail.com",
     linkedin: "#",
     color: "bg-blue-500",
+    // TODO: Add real photo URL: photoUrl: "/team/mrigank.jpg"
   },
   {
     name: "Aksh Gaur",
@@ -22,6 +24,7 @@ const teamMembers = [
     email: "akshgaur23@gmail.com",
     linkedin: "#",
     color: "bg-purple-500",
+    // TODO: Add real photo URL: photoUrl: "/team/aksh.jpg"
   },
   {
     name: "Dr. Pradeep Agarwal",
@@ -31,13 +34,8 @@ const teamMembers = [
     initials: "PA",
     linkedin: "#",
     color: "bg-emerald-500",
+    // TODO: Add real photo URL: photoUrl: "/team/pradeep.jpg"
   },
-];
-
-const advisors = [
-  { name: "Healthcare Security Expert", org: "Ex-Apollo CIO" },
-  { name: "Data Privacy Consultant", org: "HIPAA Specialist" },
-  { name: "Digital Health Advisor", org: "Ex-Practo" },
 ];
 
 export function TeamSection() {
@@ -98,21 +96,6 @@ export function TeamSection() {
             </FadeInOnScroll>
           ))}
         </div>
-
-        {/* Advisors */}
-        <FadeInOnScroll delay={400}>
-          <div className="max-w-3xl mx-auto">
-            <h3 className="text-center font-semibold mb-6 text-muted-foreground">Our Advisors</h3>
-            <div className="grid grid-cols-3 gap-4">
-              {advisors.map((advisor) => (
-                <div key={advisor.name} className="text-center p-4 bg-card/50 rounded-xl border border-border/30">
-                  <p className="font-medium text-sm">{advisor.name}</p>
-                  <p className="text-xs text-muted-foreground">{advisor.org}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </FadeInOnScroll>
       </div>
     </section>
   );
