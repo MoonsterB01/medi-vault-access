@@ -12,6 +12,15 @@ import { DataSecurityVisual } from "@/components/trust/DataSecurityVisual";
 import { TeamSection } from "@/components/trust/TeamSection";
 import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
 import { TrustedBySection } from "@/components/trust/TrustedBySection";
+
+// Declare the custom element for TypeScript
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'elevenlabs-convai': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & { 'agent-id': string }, HTMLElement>;
+    }
+  }
+}
 export default function Index() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
@@ -28,6 +37,26 @@ export default function Index() {
       }
     };
     checkUser();
+  }, []);
+
+  // Load ElevenLabs widget script only on home page
+  useEffect(() => {
+    const scriptId = 'elevenlabs-widget-script';
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://unpkg.com/@elevenlabs/convai-widget-embed@beta';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+
+    return () => {
+      // Clean up widget when leaving the page
+      const widget = document.querySelector('elevenlabs-convai');
+      if (widget) {
+        widget.remove();
+      }
+    };
   }, []);
 
   const handleGetStarted = () => {
@@ -338,6 +367,9 @@ export default function Index() {
 
       {/* Enhanced Footer */}
       <EnhancedFooter />
+      
+      {/* ElevenLabs Help Bot - Only on home page */}
+      <elevenlabs-convai agent-id="agent_1501kcejxw9we0mv6wcxv0s9vf3f"></elevenlabs-convai>
     </PublicLayout>
   );
 }
