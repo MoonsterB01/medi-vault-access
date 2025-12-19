@@ -15,15 +15,19 @@ export function ChatAssistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [displayedContent, setDisplayedContent] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fullContentRef = useRef("");
+  const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, displayedContent]);
 
   // Focus input when opened
   useEffect(() => {
@@ -31,6 +35,23 @@ export function ChatAssistant() {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  // Typewriter effect
+  useEffect(() => {
+    if (isTyping && displayedContent.length < fullContentRef.current.length) {
+      typingIntervalRef.current = setTimeout(() => {
+        setDisplayedContent(fullContentRef.current.slice(0, displayedContent.length + 1));
+      }, 15); // Adjust speed here (lower = faster)
+    } else if (displayedContent.length >= fullContentRef.current.length && isTyping) {
+      setIsTyping(false);
+    }
+
+    return () => {
+      if (typingIntervalRef.current) {
+        clearTimeout(typingIntervalRef.current);
+      }
+    };
+  }, [displayedContent, isTyping]);
 
   const sendMessage = useCallback(async () => {
     const trimmedInput = input.trim();
@@ -40,6 +61,8 @@ export function ChatAssistant() {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
+    setDisplayedContent("");
+    fullContentRef.current = "";
 
     try {
       const response = await fetch(
@@ -64,15 +87,11 @@ export function ChatAssistant() {
         throw new Error(`Request failed: ${response.status}`);
       }
 
-      // Handle streaming response
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No response body");
 
       const decoder = new TextDecoder();
-      let assistantContent = "";
-
-      // Add empty assistant message
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      setIsTyping(true);
 
       let buffer = "";
       while (true) {
@@ -81,7 +100,6 @@ export function ChatAssistant() {
 
         buffer += decoder.decode(value, { stream: true });
 
-        // Process complete lines
         let newlineIndex;
         while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
           const line = buffer.slice(0, newlineIndex);
@@ -95,24 +113,23 @@ export function ChatAssistant() {
               const parsed = JSON.parse(jsonStr);
               const content = parsed.choices?.[0]?.delta?.content;
               if (content) {
-                assistantContent += content;
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = {
-                    role: "assistant",
-                    content: assistantContent,
-                  };
-                  return updated;
-                });
+                fullContentRef.current += content;
               }
             } catch {
-              // Ignore parse errors for incomplete JSON
+              // Ignore parse errors
             }
           }
         }
       }
+
+      // Finalize message after stream ends
+      const finalContent = fullContentRef.current;
+      if (finalContent) {
+        setMessages((prev) => [...prev, { role: "assistant", content: finalContent }]);
+      }
     } catch (error) {
       console.error("Chat error:", error);
+      setIsTyping(false);
       setMessages((prev) => [
         ...prev,
         {
@@ -237,16 +254,32 @@ export function ChatAssistant() {
                       )}
                     >
                       <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                        {message.content || (
-                          <span className="flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Thinking...
-                          </span>
-                        )}
+                        {message.content}
                       </p>
                     </div>
                   </div>
                 ))}
+                {/* Typewriter effect for current response */}
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[85%] rounded-2xl px-4 py-2.5 bg-muted rounded-bl-md">
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                        {displayedContent}
+                        <span className="inline-block w-0.5 h-4 bg-foreground/70 ml-0.5 animate-pulse" />
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {isLoading && !isTyping && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[85%] rounded-2xl px-4 py-2.5 bg-muted rounded-bl-md">
+                      <span className="flex items-center gap-2 text-sm">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Thinking...
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </ScrollArea>
