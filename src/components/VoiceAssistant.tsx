@@ -1,9 +1,10 @@
 import { useConversation } from "@elevenlabs/react";
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, Loader2, Phone, PhoneOff } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Loader2, Phone, PhoneOff, Mic } from "lucide-react";
 import { toast } from "sonner";
+
+const ELEVENLABS_AGENT_ID = "agent_1501kcejxw9we0mv6wcxv0s9vf3f";
 
 export function VoiceAssistant() {
   const [isConnecting, setIsConnecting] = useState(false);
@@ -31,22 +32,9 @@ export function VoiceAssistant() {
       // Request microphone permission
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Get token from edge function
-      const { data, error } = await supabase.functions.invoke(
-        "elevenlabs-conversation-token"
-      );
-
-      if (error) {
-        throw new Error(error.message || "Failed to get conversation token");
-      }
-
-      if (!data?.token) {
-        throw new Error("No token received");
-      }
-
-      // Start the conversation with WebRTC
+      // Start the conversation directly with agent ID (public agent)
       await conversation.startSession({
-        conversationToken: data.token,
+        agentId: ELEVENLABS_AGENT_ID,
         connectionType: "webrtc",
       });
     } catch (error) {
