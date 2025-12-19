@@ -74,3 +74,9 @@ verify_jwt = true
 
 [functions.generate-diet-plan]
 verify_jwt = true
+
+[functions.medibot-assistant]
+verify_jwt = false
+
+[functions.elevenlabs-conversation-token]
+verify_jwt = false
