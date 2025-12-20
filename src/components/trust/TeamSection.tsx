@@ -39,7 +39,7 @@ export function TeamSection() {
               <span className="text-sm font-medium">Meet Our Team</span>
             </div>
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              The People Behind MediVault
+              The People Behind Medilock
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               A team of healthcare professionals, security experts, and technologists committed to protecting your health data

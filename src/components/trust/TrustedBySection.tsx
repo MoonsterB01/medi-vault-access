@@ -12,7 +12,7 @@ export function TrustedBySection() {
               <div className="rounded-2xl overflow-hidden shadow-2xl">
                 <img 
                   src={trustHeroImage} 
-                  alt="Healthcare professionals and patients using MediVault"
+                  alt="Families organizing their medical documents with Medilock"
                   className="w-full h-auto object-cover"
                 />
               </div>
@@ -25,8 +25,8 @@ export function TrustedBySection() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-semibold text-sm">100% Secure</p>
-                    <p className="text-xs text-muted-foreground">End-to-end encrypted</p>
+                    <p className="font-semibold text-sm">Safe & Private</p>
+                    <p className="text-xs text-muted-foreground">You control your data</p>
                   </div>
                 </div>
               </div>
@@ -35,10 +35,10 @@ export function TrustedBySection() {
             {/* Content */}
             <div className="order-1 lg:order-2">
               <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                Trusted by Healthcare Professionals & Patients
+                Made for Indian Families
               </h2>
               <p className="text-lg text-muted-foreground mb-6">
-                MediVault brings together doctors, hospitals, and patients on a single secure platform. Your medical records are always accessible, organized, and protected.
+                Medilock helps families keep medical documents organized and accessible. Whether it's your child's vaccination records, a parent's test reports, or your own prescriptions — find everything in one place.
               </p>
               
               <div className="space-y-4">
@@ -48,7 +48,7 @@ export function TrustedBySection() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <p className="text-muted-foreground">Share records instantly with any healthcare provider</p>
+                  <p className="text-muted-foreground">Upload prescriptions, test reports, and scans easily</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -56,7 +56,7 @@ export function TrustedBySection() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <p className="text-muted-foreground">AI-powered organization keeps everything searchable</p>
+                  <p className="text-muted-foreground">Search and find any document in seconds</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -64,7 +64,7 @@ export function TrustedBySection() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <p className="text-muted-foreground">Your data stays private - you control who sees it</p>
+                  <p className="text-muted-foreground">Your data stays private — we never share or sell it</p>
                 </div>
               </div>
             </div>
