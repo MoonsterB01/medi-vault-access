@@ -1,4 +1,4 @@
-import { Shield, Lock, Mail, Phone, MapPin, Heart, ExternalLink } from "lucide-react";
+import { Shield, Mail, Phone, MapPin, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import logo from "@/assets/logo.png";
 
@@ -11,22 +11,15 @@ export function EnhancedFooter() {
           {/* Brand Column */}
           <div className="md:col-span-1">
             <div className="flex items-center gap-3 mb-4">
-              <img src={logo} alt="MediVault" className="h-10 w-10" />
-              <span className="text-xl font-bold">MediVault</span>
+              <img src={logo} alt="Medilock" className="h-10 w-10" />
+              <span className="text-xl font-bold">Medilock</span>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              Secure digital medical records management for hospitals, doctors, and patients.
+              A simple way for families to organize medical documents.
             </p>
-            <div className="flex gap-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-trust/10 text-trust text-xs font-medium">
-                <Shield className="h-3 w-3" />
-                HIPAA Compliant
-              </div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                <Lock className="h-3 w-3" />
-                256-bit SSL
-              </div>
-            </div>
+            <p className="text-xs text-muted-foreground italic">
+              Medilock does not provide medical advice.
+            </p>
           </div>
 
           {/* Quick Links */}
@@ -71,14 +64,8 @@ export function EnhancedFooter() {
                 </Link>
               </li>
               <li>
-                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
                   Terms of Service
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-                  HIPAA Compliance
-                  <ExternalLink className="h-3 w-3" />
                 </a>
               </li>
             </ul>
@@ -91,8 +78,8 @@ export function EnhancedFooter() {
               <li className="flex items-start gap-2">
                 <Mail className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                 <div>
-                  <a href="mailto:support@medivault.health" className="text-muted-foreground hover:text-foreground transition-colors">
-                    support@medivault.health
+                  <a href="mailto:support@medilock.in" className="text-muted-foreground hover:text-foreground transition-colors">
+                    support@medilock.in
                   </a>
                 </div>
               </li>
@@ -127,18 +114,16 @@ export function EnhancedFooter() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-xs text-muted-foreground text-center md:text-left">
-              © {new Date().getFullYear()} MediVault Health Technologies Pvt. Ltd. All rights reserved.
+              © {new Date().getFullYear()} Medilock. All rights reserved.
             </p>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               Made with <Heart className="h-3 w-3 text-destructive inline mx-1" /> in India
             </div>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
-                <div className="w-2 h-2 bg-trust rounded-full" />
-                99.9% Uptime
+                <Shield className="h-3 w-3 text-trust" />
+                Your data is private
               </span>
-              <span>|</span>
-              <span>SOC 2 Certified</span>
             </div>
           </div>
         </div>

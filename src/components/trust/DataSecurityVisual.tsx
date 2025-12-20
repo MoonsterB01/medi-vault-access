@@ -1,42 +1,35 @@
-import { Shield, Lock, Server, Key, Eye, FileCheck, Database, Cloud } from "lucide-react";
+import { Shield, Lock, Database, Cloud, FileCheck } from "lucide-react";
 import { FadeInOnScroll } from "../FadeInOnScroll";
 
 const securityLayers = [
   {
     icon: Lock,
-    title: "End-to-End Encryption",
-    description: "AES-256 encryption for data at rest and TLS 1.3 for data in transit",
+    title: "Secure Storage",
+    description: "Your files are protected with strong encryption",
     color: "text-blue-500",
     bgColor: "bg-blue-500/10",
   },
   {
-    icon: Key,
-    title: "Zero-Knowledge Architecture",
-    description: "Your encryption keys are never stored on our servers",
+    icon: Shield,
+    title: "Privacy First",
+    description: "We never look at, share, or sell your data",
     color: "text-purple-500",
     bgColor: "bg-purple-500/10",
   },
   {
-    icon: Server,
-    title: "SOC 2 Type II Certified",
-    description: "Annual third-party security audits and penetration testing",
+    icon: Database,
+    title: "Reliable Backup",
+    description: "Your documents are safely backed up",
     color: "text-emerald-500",
     bgColor: "bg-emerald-500/10",
   },
   {
-    icon: Eye,
-    title: "Role-Based Access Control",
-    description: "Granular permissions ensure only authorized users see your data",
+    icon: Cloud,
+    title: "Access Control",
+    description: "Only you decide who can see your files",
     color: "text-orange-500",
     bgColor: "bg-orange-500/10",
   },
-];
-
-const complianceItems = [
-  { label: "HIPAA", description: "US Healthcare Compliance" },
-  { label: "GDPR", description: "EU Data Protection" },
-  { label: "ISO 27001", description: "Information Security" },
-  { label: "DISHA", description: "India Digital Health" },
 ];
 
 export function DataSecurityVisual() {
@@ -51,13 +44,13 @@ export function DataSecurityVisual() {
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-trust/10 text-trust mb-4">
               <Shield className="h-4 w-4" />
-              <span className="text-sm font-medium">Security First Architecture</span>
+              <span className="text-sm font-medium">Your Privacy Matters</span>
             </div>
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              How We Protect Your Data
+              How We Keep Your Data Safe
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Multiple layers of security ensure your medical records remain private and protected
+              Simple security you can trust — no complicated jargon
             </p>
           </div>
         </FadeInOnScroll>
@@ -76,23 +69,23 @@ export function DataSecurityVisual() {
                     <FileCheck className="h-8 w-8 text-primary" />
                   </div>
                   <h4 className="font-semibold text-sm mb-1">1. Upload</h4>
-                  <p className="text-xs text-muted-foreground">Document encrypted locally before upload</p>
+                  <p className="text-xs text-muted-foreground">You upload your document</p>
                 </div>
                 
                 <div className="text-center relative z-10">
                   <div className="w-16 h-16 rounded-2xl bg-trust/10 border-2 border-trust/30 flex items-center justify-center mx-auto mb-3">
                     <Lock className="h-8 w-8 text-trust" />
                   </div>
-                  <h4 className="font-semibold text-sm mb-1">2. Transit</h4>
-                  <p className="text-xs text-muted-foreground">TLS 1.3 encrypted connection</p>
+                  <h4 className="font-semibold text-sm mb-1">2. Protect</h4>
+                  <p className="text-xs text-muted-foreground">We encrypt it securely</p>
                 </div>
                 
                 <div className="text-center relative z-10">
                   <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border-2 border-purple-500/30 flex items-center justify-center mx-auto mb-3">
                     <Database className="h-8 w-8 text-purple-500" />
                   </div>
-                  <h4 className="font-semibold text-sm mb-1">3. Storage</h4>
-                  <p className="text-xs text-muted-foreground">AES-256 encrypted at rest</p>
+                  <h4 className="font-semibold text-sm mb-1">3. Store</h4>
+                  <p className="text-xs text-muted-foreground">Safely kept in the cloud</p>
                 </div>
                 
                 <div className="text-center relative z-10">
@@ -100,7 +93,7 @@ export function DataSecurityVisual() {
                     <Cloud className="h-8 w-8 text-orange-500" />
                   </div>
                   <h4 className="font-semibold text-sm mb-1">4. Access</h4>
-                  <p className="text-xs text-muted-foreground">Role-based permissions & audit logs</p>
+                  <p className="text-xs text-muted-foreground">Only you can view it</p>
                 </div>
               </div>
             </div>
@@ -108,7 +101,7 @@ export function DataSecurityVisual() {
         </div>
 
         {/* Security features grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
           {securityLayers.map((layer, index) => (
             <FadeInOnScroll key={layer.title} delay={150 + index * 100}>
               <div className="bg-card rounded-xl p-6 border border-border/50 shadow-sm hover:shadow-md transition-shadow group">
@@ -121,21 +114,6 @@ export function DataSecurityVisual() {
             </FadeInOnScroll>
           ))}
         </div>
-
-        {/* Compliance badges */}
-        <FadeInOnScroll delay={500}>
-          <div className="bg-muted/30 rounded-2xl p-8 max-w-4xl mx-auto">
-            <h3 className="text-center font-semibold mb-6">Compliance & Certifications</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {complianceItems.map((item) => (
-                <div key={item.label} className="text-center p-4 bg-card rounded-xl border border-border/50">
-                  <div className="text-2xl font-bold text-primary mb-1">{item.label}</div>
-                  <p className="text-xs text-muted-foreground">{item.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </FadeInOnScroll>
       </div>
     </section>
   );
