@@ -12,6 +12,7 @@ import { TeamSection } from "@/components/trust/TeamSection";
 import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
 import { TrustedBySection } from "@/components/trust/TrustedBySection";
 import { VoiceAssistant } from "@/components/VoiceAssistant";
+import { ChatAssistant } from "@/components/ChatAssistant";
 
 export default function Index() {
   const navigate = useNavigate();
@@ -301,6 +302,9 @@ export default function Index() {
       
       {/* ElevenLabs Voice Assistant - Only on home page */}
       <VoiceAssistant />
+      
+      {/* Chat Assistant - Only on home page */}
+      <ChatAssistant />
     </PublicLayout>
   );
 }

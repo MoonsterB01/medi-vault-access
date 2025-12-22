@@ -25,7 +25,7 @@ import Pricing from "./pages/Pricing";
 import Security from "./pages/Security";
 import About from "./pages/About";
 import HeroBanner from "./components/HeroBanner";
-import { ChatAssistant } from "./components/ChatAssistant";
+
 
 const queryClient = new QueryClient();
 
@@ -66,8 +66,6 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
         
-        {/* Global Chat Assistant - Available on all pages */}
-        <ChatAssistant />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
