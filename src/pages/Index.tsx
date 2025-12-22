@@ -110,6 +110,26 @@ export default function Index() {
             </Button>
           </div>
 
+          {/* Portal Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6 opacity-0 animate-fade-in animate-delay-400">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => navigate("/doctor-auth")}
+            >
+              Doctor Portal
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => navigate("/hospital-auth")}
+            >
+              Hospital Portal
+            </Button>
+          </div>
+
           {/* Disclaimer */}
           <p className="mt-6 text-sm text-muted-foreground opacity-0 animate-fade-in animate-delay-400">
             Medilock does not provide medical advice.
