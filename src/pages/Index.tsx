@@ -33,7 +33,7 @@ export default function Index() {
   }, []);
 
   const handleTryNow = () => {
-    navigate("/public-upload");
+    navigate("/patient-dashboard");
   };
 
   const handleGetStarted = () => {
