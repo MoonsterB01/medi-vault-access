@@ -1,5 +1,4 @@
 import PublicLayout from "@/components/PublicLayout";
-import { DataSecurityVisual } from "@/components/trust/DataSecurityVisual";
 import { Shield, Lock, Server, Eye, FileCheck, AlertTriangle, CheckCircle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FadeInOnScroll } from "@/components/FadeInOnScroll";
@@ -101,9 +100,6 @@ export default function Security() {
           </FadeInOnScroll>
         </div>
       </section>
-
-      {/* Security Visual */}
-      <DataSecurityVisual />
 
       {/* Detailed Security Practices */}
       <section className="py-16 bg-muted/30">

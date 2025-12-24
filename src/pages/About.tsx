@@ -1,5 +1,4 @@
 import PublicLayout from "@/components/PublicLayout";
-import { TeamSection } from "@/components/trust/TeamSection";
 import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
 import { FadeInOnScroll } from "@/components/FadeInOnScroll";
 import { Target, Heart, Shield, Lightbulb, Users, Globe } from "lucide-react";
@@ -156,9 +155,6 @@ export default function About() {
           </div>
         </div>
       </section>
-
-      {/* Team Section */}
-      <TeamSection />
 
       <EnhancedFooter />
     </PublicLayout>

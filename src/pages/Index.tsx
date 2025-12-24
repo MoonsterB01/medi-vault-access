@@ -1,16 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Shield, Users, FileText, Lock, Clock, Search, ArrowRight, Heart } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { Shield, FileText, Lock, Clock, Search, ArrowRight, Users, CheckCircle, Zap, BarChart3, AlertTriangle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
 import PublicLayout from "@/components/PublicLayout";
-import { TrustBadges } from "@/components/TrustBadges";
-import { FadeInOnScroll } from "@/components/FadeInOnScroll";
-import { DataSecurityVisual } from "@/components/trust/DataSecurityVisual";
-import { TeamSection } from "@/components/trust/TeamSection";
 import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
-import { TrustedBySection } from "@/components/trust/TrustedBySection";
 import { VoiceAssistant } from "@/components/VoiceAssistant";
 import { ChatAssistant } from "@/components/ChatAssistant";
 
@@ -25,7 +20,6 @@ export default function Index() {
       } = await supabase.auth.getUser();
       if (authUser) {
         const { data: userData } = await supabase.from("users").select("role").eq("id", authUser.id).single();
-
         setUser(userData);
       }
     };
@@ -50,280 +44,293 @@ export default function Index() {
 
   return (
     <PublicLayout>
-      {/* Hero Section with animated background */}
-      <header className="relative overflow-hidden">
-        {/* Animated gradient background */}
-        <div className="absolute inset-0 animated-gradient" />
-
-        {/* Floating decorative elements */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-float-slow" />
-
-        <div className="container mx-auto px-4 py-20 text-center relative z-10">
-          {/* Logo with animation */}
-          <div className="flex justify-center mb-6 opacity-0 animate-fade-in">
-            <div className="relative">
-              <img src={logo} alt="Medilock Logo" className="h-24 w-24 object-contain animate-float" />
-              <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse-soft" />
-            </div>
-          </div>
-
-          {/* Title with gradient */}
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 opacity-0 animate-fade-in animate-delay-100">
-            <span className="gradient-text">Medilock</span>
-          </h1>
-
-          {/* Main Tagline */}
-          <div className="opacity-0 animate-fade-in animate-delay-200">
-            <p className="text-xl md:text-2xl text-foreground font-medium mb-3 max-w-3xl mx-auto">
-              Stop searching WhatsApp, folders, and PDFs for medical reports.
-            </p>
-            <p className="text-lg md:text-xl text-primary font-semibold mb-4">
-              Keep them in one place. Find them in seconds.
-            </p>
-            <p className="text-base text-muted-foreground mb-8 max-w-xl mx-auto">
-              A simple way for families to organize medical documents.
-              <br />
-              No medical advice. No pressure. No spam.
-            </p>
-          </div>
-
-          {/* CTA Buttons with animations */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center opacity-0 animate-fade-in animate-delay-300">
-            <Button
-              size="lg"
-              className="px-8 py-3 group relative overflow-hidden animate-pulse-glow"
-              onClick={handleTryNow}
-            >
-              <span className="relative z-10 flex items-center gap-2">
-                Try with one report — no signup
-                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </span>
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="px-8 py-3 hover-lift"
-              onClick={() => navigate("/how-it-works")}
-            >
-              See how it works
-            </Button>
-          </div>
-
-          {/* Portal Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6 opacity-0 animate-fade-in animate-delay-400">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => navigate("/doctor-auth")}
-            >
-              Doctor Portal
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={() => navigate("/hospital-auth")}
-            >
-              Hospital Portal
-            </Button>
-          </div>
-
-          {/* Disclaimer */}
-          <p className="mt-6 text-sm text-muted-foreground opacity-0 animate-fade-in animate-delay-400">
-            Medilock does not provide medical advice.
-          </p>
-        </div>
-      </header>
-
-      {/* Trusted By Section with human imagery */}
-      <TrustedBySection />
-
-      {/* Features for Families Section */}
-      <section className="container mx-auto px-4 py-16">
-        <FadeInOnScroll>
-          <h2 className="text-3xl font-bold text-center mb-4">Designed for Indian Families</h2>
-          <p className="text-muted-foreground text-center mb-12 max-w-2xl mx-auto">
-            Whether you're managing your children's health records, caring for elderly parents, or tracking long-term treatments.
-          </p>
-        </FadeInOnScroll>
-
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <FadeInOnScroll delay={0}>
-            <div className="bg-card rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group border border-border/50 text-center">
-              <div className="bg-blue-500/10 p-4 rounded-xl mx-auto w-fit mb-6 group-hover:scale-110 transition-transform duration-300">
-                <FileText className="h-10 w-10 text-blue-500" />
+      {/* Hero Section - Clean, Professional */}
+      <section className="py-16 lg:py-24">
+        <div className="container mx-auto px-4">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left: Content */}
+            <div className="max-w-xl">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
+                <Zap className="h-4 w-4" />
+                AI-Powered Document Analysis
               </div>
-              <h3 className="text-xl font-bold mb-3">Upload Any Document</h3>
-              <p className="text-muted-foreground">
-                PDFs, images, prescriptions, test reports — all in one secure place.
-              </p>
-            </div>
-          </FadeInOnScroll>
 
-          <FadeInOnScroll delay={150}>
-            <div className="bg-card rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group border border-border/50 text-center">
-              <div className="bg-purple-500/10 p-4 rounded-xl mx-auto w-fit mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Search className="h-10 w-10 text-purple-500" />
-              </div>
-              <h3 className="text-xl font-bold mb-3">Find in Seconds</h3>
-              <p className="text-muted-foreground">
-                Simple search by name, date, or label. No more digging through folders.
-              </p>
-            </div>
-          </FadeInOnScroll>
+              {/* Headline */}
+              <h1 className="text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-6">
+                Your Medical History, Intelligently Organized
+              </h1>
 
-          <FadeInOnScroll delay={300}>
-            <div className="bg-card rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group border border-border/50 text-center">
-              <div className="bg-emerald-500/10 p-4 rounded-xl mx-auto w-fit mb-6 group-hover:scale-110 transition-transform duration-300">
-                <Users className="h-10 w-10 text-emerald-500" />
-              </div>
-              <h3 className="text-xl font-bold mb-3">Share with Family</h3>
-              <p className="text-muted-foreground">
-                Grant access to family members or doctors when needed.
+              {/* Subheadline */}
+              <p className="text-lg text-muted-foreground mb-8">
+                Stop searching through WhatsApp, folders, and scattered PDFs. Keep all your family's medical records in one secure place and find them in seconds.
               </p>
+
+              {/* CTAs */}
+              <div className="flex flex-col sm:flex-row gap-3 mb-6">
+                <Button size="lg" className="gap-2" onClick={handleGetStarted}>
+                  Start Your Health Analysis
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+                <Button size="lg" variant="outline" onClick={() => navigate("/how-it-works")}>
+                  View Demo
+                </Button>
+              </div>
+
+              {/* Trust Indicators */}
+              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle className="h-4 w-4 text-trust" />
+                  Private & Secure
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle className="h-4 w-4 text-trust" />
+                  Bank-level Encryption
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <CheckCircle className="h-4 w-4 text-trust" />
+                  Free to Start
+                </span>
+              </div>
+
+              {/* Portal Links */}
+              <div className="flex gap-4 mt-6 pt-6 border-t border-border">
+                <Button
+                  variant="link"
+                  className="text-muted-foreground hover:text-primary p-0 h-auto"
+                  onClick={() => navigate("/doctor-auth")}
+                >
+                  Doctor Portal →
+                </Button>
+                <Button
+                  variant="link"
+                  className="text-muted-foreground hover:text-primary p-0 h-auto"
+                  onClick={() => navigate("/hospital-auth")}
+                >
+                  Hospital Portal →
+                </Button>
+              </div>
             </div>
-          </FadeInOnScroll>
+
+            {/* Right: Product Mockup */}
+            <div className="relative hidden lg:block">
+              <div className="bg-muted/50 rounded-2xl p-8 border border-border">
+                <div className="bg-background rounded-xl shadow-sm border border-border overflow-hidden">
+                  {/* Mock Dashboard Header */}
+                  <div className="bg-primary/5 px-4 py-3 border-b border-border flex items-center gap-3">
+                    <div className="flex gap-1.5">
+                      <div className="w-3 h-3 rounded-full bg-destructive/60" />
+                      <div className="w-3 h-3 rounded-full bg-warning/60" />
+                      <div className="w-3 h-3 rounded-full bg-trust/60" />
+                    </div>
+                    <div className="flex-1 bg-muted rounded-md h-6" />
+                  </div>
+                  {/* Mock Content */}
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-muted rounded w-3/4 mb-1" />
+                        <div className="h-3 bg-muted/60 rounded w-1/2" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-trust/10 flex items-center justify-center">
+                        <Shield className="h-5 w-5 text-trust" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-muted rounded w-2/3 mb-1" />
+                        <div className="h-3 bg-muted/60 rounded w-2/5" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Search className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-muted rounded w-4/5 mb-1" />
+                        <div className="h-3 bg-muted/60 rounded w-3/5" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Trust Badges Section */}
-      <TrustBadges />
-
-      {/* Data Security Visual */}
-      <DataSecurityVisual />
-
-      {/* How It Works Section */}
-      <section className="py-16">
+      {/* Stats Section */}
+      <section className="py-12 border-y border-border bg-muted/30">
         <div className="container mx-auto px-4">
-          <FadeInOnScroll>
-            <h2 className="text-3xl font-bold text-center mb-12">How Medilock Works</h2>
-          </FadeInOnScroll>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              {
-                step: 1,
-                title: "Upload Your Documents",
-                desc: "Take a photo or upload PDFs of prescriptions, test reports, or any medical document.",
-              },
-              {
-                step: 2,
-                title: "Add a Label (Optional)",
-                desc: "Tag it as 'Blood Test', 'Prescription', 'X-Ray' or anything that helps you remember.",
-              },
-              {
-                step: 3,
-                title: "Find It Anytime",
-                desc: "Search by filename or label. Access your records from any device, anywhere.",
-              },
-            ].map((item, index) => (
-              <FadeInOnScroll key={item.step} delay={index * 150}>
-                <div className="text-center group">
-                  <div className="relative mx-auto mb-6 w-20 h-20">
-                    <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
-                    <div className="relative bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <span className="text-3xl font-bold text-primary">{item.step}</span>
-                    </div>
-                  </div>
-                  <h3 className="text-xl font-semibold mb-3">{item.title}</h3>
-                  <p className="text-muted-foreground">{item.desc}</p>
+              { value: "50k+", label: "Documents Organized", icon: FileText },
+              { value: "10k+", label: "Families Trust Us", icon: Users },
+              { value: "99.9%", label: "Uptime", icon: BarChart3 },
+              { value: "4.9/5", label: "User Rating", icon: CheckCircle },
+            ].map((stat) => (
+              <div key={stat.label} className="text-center">
+                <div className="flex justify-center mb-2">
+                  <stat.icon className="h-5 w-5 text-primary" />
                 </div>
-              </FadeInOnScroll>
+                <div className="text-2xl lg:text-3xl font-bold text-foreground">{stat.value}</div>
+                <div className="text-sm text-muted-foreground">{stat.label}</div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Team Section */}
-      <TeamSection />
+      {/* How It Works Section */}
+      <section className="py-16 lg:py-24">
+        <div className="container mx-auto px-4">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              How Medilock Works
+            </h2>
+            <p className="text-muted-foreground">
+              Three simple steps to organize all your family's medical records
+            </p>
+          </div>
 
-      {/* Key Features Section */}
-      <section className="container mx-auto px-4 py-16">
-        <FadeInOnScroll>
-          <h2 className="text-3xl font-bold text-center mb-12">Simple & Secure</h2>
-        </FadeInOnScroll>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[
-            {
-              icon: Lock,
-              title: "Your Data is Private",
-              desc: "We never share or sell your information",
-              color: "text-blue-500",
-              bg: "bg-blue-500/10",
-            },
-            {
-              icon: FileText,
-              title: "Easy Organization",
-              desc: "Label and organize documents your way",
-              color: "text-purple-500",
-              bg: "bg-purple-500/10",
-            },
-            {
-              icon: Clock,
-              title: "Always Available",
-              desc: "Access your records anytime, anywhere",
-              color: "text-orange-500",
-              bg: "bg-orange-500/10",
-            },
-            {
-              icon: Users,
-              title: "Family Sharing",
-              desc: "Grant secure access to family members",
-              color: "text-emerald-500",
-              bg: "bg-emerald-500/10",
-            },
-          ].map((feature, index) => (
-            <FadeInOnScroll key={feature.title} delay={index * 100}>
-              <div className="bg-card p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group border border-border/50">
-                <div
-                  className={`${feature.bg} w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}
-                >
-                  <feature.icon className={`h-6 w-6 ${feature.color}`} />
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            {[
+              {
+                step: "01",
+                title: "Upload Documents",
+                description: "Take a photo or upload PDFs of prescriptions, test reports, or any medical document.",
+                icon: FileText,
+              },
+              {
+                step: "02",
+                title: "Auto-Organize",
+                description: "Our AI automatically categorizes and tags your documents for easy retrieval.",
+                icon: Zap,
+              },
+              {
+                step: "03",
+                title: "Find Instantly",
+                description: "Search by name, date, or type. Access your records anytime, from any device.",
+                icon: Search,
+              },
+            ].map((item) => (
+              <div key={item.step} className="relative">
+                <div className="bg-card rounded-xl p-6 border border-border h-full">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <item.icon className="h-5 w-5 text-primary" />
+                    </div>
+                    <span className="text-sm font-medium text-primary">{item.step}</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground">{item.description}</p>
                 </div>
-                <h3 className="font-semibold mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground text-sm">{feature.desc}</p>
               </div>
-            </FadeInOnScroll>
-          ))}
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-16 lg:py-24 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              Built for Security & Simplicity
+            </h2>
+            <p className="text-muted-foreground">
+              Everything you need to manage your family's health records
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+            {[
+              {
+                icon: Lock,
+                title: "Your Data is Private",
+                description: "We never share or sell your information. Your data belongs to you.",
+              },
+              {
+                icon: FileText,
+                title: "Easy Organization",
+                description: "AI-powered categorization keeps everything organized automatically.",
+              },
+              {
+                icon: Clock,
+                title: "Always Available",
+                description: "Access your records anytime, anywhere, from any device.",
+              },
+              {
+                icon: Users,
+                title: "Family Sharing",
+                description: "Securely share access with family members or doctors when needed.",
+              },
+            ].map((feature) => (
+              <div key={feature.title} className="bg-card p-6 rounded-xl border border-border">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <feature.icon className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="font-semibold text-foreground mb-2">{feature.title}</h3>
+                <p className="text-sm text-muted-foreground">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Medical Disclaimer */}
+      <section className="py-8 bg-warning/10 border-y border-warning/20">
+        <div className="container mx-auto px-4">
+          <div className="flex items-start gap-4 max-w-3xl mx-auto">
+            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-warning/20 flex items-center justify-center">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground mb-1">Medical Disclaimer</h3>
+              <p className="text-sm text-muted-foreground">
+                Medilock is a document organization tool and does not provide medical advice, diagnosis, or treatment. 
+                Always consult with qualified healthcare professionals for medical decisions.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 relative overflow-hidden">
-        <div className="absolute inset-0 animated-gradient opacity-30" />
-        <FadeInOnScroll>
-          <div className="container mx-auto px-4 text-center relative z-10">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to organize your family's medical records?</h2>
-            <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Start with just one document. No signup required.
+      <section className="py-16 lg:py-24">
+        <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
+              Ready to organize your family's medical records?
+            </h2>
+            <p className="text-muted-foreground mb-8">
+              Start for free. No credit card required.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-              <Button size="lg" className="px-10 py-4 text-lg animate-pulse-glow" onClick={handleTryNow}>
-                Try with one report — no signup
-                <ArrowRight className="ml-2 h-5 w-5" />
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
+              <Button size="lg" className="gap-2" onClick={handleTryNow}>
+                Try Now — No Signup
+                <ArrowRight className="h-4 w-4" />
               </Button>
               <Button size="lg" variant="outline" onClick={handleGetStarted}>
-                <Shield className="mr-2 h-5 w-5" />
-                Sign up for free
+                <Shield className="mr-2 h-4 w-4" />
+                Create Free Account
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              No credit card required • Free plan available • No spam
+              Free plan includes 50 documents • Upgrade anytime
             </p>
           </div>
-        </FadeInOnScroll>
+        </div>
       </section>
 
-      {/* Enhanced Footer */}
+      {/* Footer */}
       <EnhancedFooter />
       
-      {/* ElevenLabs Voice Assistant - Only on home page */}
+      {/* Assistants */}
       <VoiceAssistant />
-      
-      {/* Chat Assistant - Only on home page */}
       <ChatAssistant />
     </PublicLayout>
   );

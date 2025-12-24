@@ -2,9 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Professional Design System - Clean, minimal, healthcare-focused */
 
 @layer base {
   :root {
@@ -40,6 +38,9 @@ All colors MUST be HSL.
 
     --trust: 142 76% 36%;
     --trust-foreground: 0 0% 100%;
+
+    --warning: 45 93% 47%;
+    --warning-foreground: 0 0% 100%;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -83,6 +84,9 @@ All colors MUST be HSL.
     --trust: 142 70% 45%;
     --trust-foreground: 0 0% 100%;
 
+    --warning: 45 93% 47%;
+    --warning-foreground: 0 0% 0%;
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -101,19 +105,11 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply text-foreground;
-  }
-
-  html.light body {
-    @apply bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50;
-  }
-
-  html.dark body {
-    @apply bg-background;
+    @apply bg-background text-foreground;
   }
 }
 
-/* Animation utilities */
+/* Clean utility classes */
 @layer utilities {
   .animate-delay-100 {
     animation-delay: 100ms;
@@ -127,65 +123,18 @@ All colors MUST be HSL.
   .animate-delay-400 {
     animation-delay: 400ms;
   }
-  .animate-delay-500 {
-    animation-delay: 500ms;
-  }
-  .animate-delay-600 {
-    animation-delay: 600ms;
-  }
-  .animate-delay-700 {
-    animation-delay: 700ms;
-  }
-  .animate-delay-800 {
-    animation-delay: 800ms;
-  }
-
-  .hover-lift {
-    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lg;
-  }
-
-  .hover-scale {
-    @apply transition-transform duration-200 hover:scale-105;
-  }
 
   .glass-effect {
     @apply backdrop-blur-md bg-card/80 border border-border/50;
   }
 
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/80;
   }
 
-  .shimmer-bg {
-    background: linear-gradient(
-      90deg,
-      hsl(var(--muted)) 0%,
-      hsl(var(--muted) / 0.5) 50%,
-      hsl(var(--muted)) 100%
-    );
-    background-size: 200% 100%;
-    @apply animate-shimmer;
-  }
-
-  .glow-primary {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
-  }
-
-  .gradient-border {
-    position: relative;
-    background: hsl(var(--card));
-    border-radius: var(--radius);
-  }
-
-  .gradient-border::before {
-    content: "";
-    position: absolute;
-    inset: -2px;
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--trust)), hsl(var(--primary)));
-    border-radius: calc(var(--radius) + 2px);
-    z-index: -1;
-    background-size: 200% 200%;
-    animation: gradient-shift 4s ease infinite;
+  /* Professional section background */
+  .section-muted {
+    @apply bg-muted/30;
   }
 }
 
@@ -199,7 +148,6 @@ All colors MUST be HSL.
     height: 100%;
   }
   
-  /* Prevent body scroll when mobile dashboard is active */
   body:has(.mobile-dashboard) {
     overflow: hidden !important;
     position: fixed;
@@ -215,18 +163,15 @@ All colors MUST be HSL.
     padding-top: env(safe-area-inset-top);
   }
   
-  /* Mobile dashboard layout */
   .mobile-dashboard {
     height: 100dvh;
     height: -webkit-fill-available;
   }
   
-  /* Prevent any element from causing horizontal scroll */
   * {
     max-width: 100vw;
   }
   
-  /* Force cards to respect container width */
   [class*="Card"],
   [class*="card"] {
     max-width: 100%;
@@ -246,29 +191,4 @@ All colors MUST be HSL.
 /* Touch scrolling */
 .-webkit-overflow-scrolling-touch {
   -webkit-overflow-scrolling: touch;
-}
-
-/* Animated gradient background */
-.animated-gradient {
-  background: linear-gradient(
-    -45deg,
-    hsl(var(--primary) / 0.1),
-    hsl(221 83% 53% / 0.15),
-    hsl(262 83% 58% / 0.1),
-    hsl(var(--trust) / 0.1)
-  );
-  background-size: 400% 400%;
-  animation: gradient-shift 15s ease infinite;
-}
-
-/* Card entrance animation */
-.card-enter {
-  opacity: 0;
-  transform: translateY(20px);
-}
-
-.card-enter-active {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.4s ease-out, transform 0.4s ease-out;
 }
