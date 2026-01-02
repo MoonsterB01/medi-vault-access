@@ -24,6 +24,7 @@ import HMSDashboard from "./pages/HMSDashboard";
 import Pricing from "./pages/Pricing";
 import Security from "./pages/Security";
 import About from "./pages/About";
+import Settings from "./pages/Settings";
 import HeroBanner from "./components/HeroBanner";
 
 
@@ -61,6 +62,7 @@ const App = () => (
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/security" element={<Security />} />
           <Route path="/about" element={<About />} />
+          <Route path="/settings" element={<AppLayout userRole="patient"><Settings /></AppLayout>} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   FileText,
   Search,
@@ -13,6 +13,8 @@ import {
   Phone,
   CreditCard,
   Heart,
+  Settings,
+  LogOut,
 } from "lucide-react";
 import {
   Sidebar,
@@ -23,8 +25,14 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/integrations/supabase/client";
+import logo from "@/assets/logo.png";
 
 const patientMenuItems = [
   { title: "Summary", url: "/patient-dashboard#summary", icon: FileText, tab: "summary" },
@@ -35,7 +43,11 @@ const patientMenuItems = [
   { title: "Upload Documents", url: "/patient-dashboard#upload", icon: Upload, tab: "upload" },
   { title: "Well-being", url: "/patient-dashboard#wellbeing", icon: Heart, tab: "wellbeing" },
   { title: "Family Access", url: "/patient-dashboard#family", icon: Users, tab: "family" },
+];
+
+const patientSecondaryItems = [
   { title: "Plans & Pricing", url: "/pricing", icon: CreditCard, tab: "pricing" },
+  { title: "Settings", url: "/settings", icon: Settings, tab: "settings" },
   { title: "Contact Us", url: "/contact-us", icon: Phone, tab: "contact-us" },
 ];
 
@@ -44,6 +56,7 @@ const doctorMenuItems = [
   { title: "Dashboard", url: "/doctor-dashboard#dashboard", icon: LayoutDashboard, tab: "dashboard" },
   { title: "My Patients", url: "/doctor-dashboard#patients", icon: Users, tab: "patients" },
   { title: "Appointments", url: "/doctor-dashboard#appointments", icon: Calendar, tab: "appointments" },
+  { title: "Settings", url: "/settings", icon: Settings, tab: "settings" },
   { title: "Contact Us", url: "/contact-us", icon: Phone, tab: "contact-us" },
 ];
 
@@ -55,6 +68,7 @@ const hospitalStaffMenuItems = [
   { title: "Doctors", url: "/hospital-dashboard#doctors", icon: Stethoscope, tab: "doctors" },
   { title: "Appointments", url: "/hospital-dashboard#appointments", icon: Calendar, tab: "appointments" },
   { title: "Add Record", url: "/hospital-dashboard#add-record", icon: FilePlus, tab: "add-record" },
+  { title: "Settings", url: "/settings", icon: Settings, tab: "settings" },
   { title: "Contact Us", url: "/contact-us", icon: Phone, tab: "contact-us" },
 ];
 
@@ -98,6 +112,7 @@ const getMenuItems = (role: AppSidebarProps['userRole']) => {
  */
 export function AppSidebar({ user, patientData, userRole }: AppSidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isMobile, setOpenMobile } = useSidebar();
 
   const handleLinkClick = () => {
@@ -106,47 +121,68 @@ export function AppSidebar({ user, patientData, userRole }: AppSidebarProps) {
     }
   };
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
+
   const menuItems = getMenuItems(userRole);
+  const secondaryItems = userRole === 'patient' ? patientSecondaryItems : [];
+
+  const isItemActive = (item: { url: string; tab: string }) => {
+    const itemPath = item.url.split("#")[0];
+    const hasHash = item.url.includes("#");
+
+    if (hasHash) {
+      if (location.pathname === itemPath) {
+        const currentTabInHash = location.hash.substring(1);
+        const defaultTab = getMenuItems(userRole)[0]?.tab || "";
+        const activeTab = currentTabInHash || defaultTab;
+        return activeTab === item.tab;
+      }
+    } else {
+      return location.pathname === item.url;
+    }
+    return false;
+  };
 
   return (
-    <Sidebar className="w-64" collapsible="icon">
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>
-            Navigation
+    <Sidebar className="w-64 border-r border-border" collapsible="icon">
+      <SidebarContent className="bg-sidebar">
+        {/* Branding */}
+        <div className="p-4 flex items-center gap-3">
+          <img src={logo} alt="Medilock" className="h-8 w-8" />
+          <div className="flex flex-col">
+            <span className="font-semibold text-sm text-sidebar-foreground">Medilock</span>
+            <span className="text-xs text-muted-foreground">Health Portal</span>
+          </div>
+        </div>
+
+        <Separator className="mx-4 w-auto" />
+
+        {/* Main Navigation */}
+        <SidebarGroup className="px-2 py-2">
+          <SidebarGroupLabel className="text-xs font-medium text-muted-foreground px-2 mb-1">
+            Main Menu
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => {
-                const itemPath = item.url.split("#")[0];
-                const hasHash = item.url.includes("#");
-
-                let isActive = false;
-                if (hasHash) {
-                  if (location.pathname === itemPath) {
-                    const currentTabInHash = location.hash.substring(1);
-                    const defaultTab = getMenuItems(userRole)[0]?.tab || "";
-                    const activeTab = currentTabInHash || defaultTab;
-                    isActive = activeTab === item.tab;
-                  }
-                } else {
-                  isActive = location.pathname === item.url;
-                }
-
+                const isActive = isItemActive(item);
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild>
                       <a
                         href={item.url}
                         onClick={handleLinkClick}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                           isActive
                             ? "bg-primary text-primary-foreground"
-                            : "hover:bg-accent"
+                            : "text-sidebar-foreground hover:bg-sidebar-accent"
                         }`}
                       >
                         <item.icon className="h-4 w-4 flex-shrink-0" />
-                        <span className="text-sm">{item.title}</span>
+                        <span>{item.title}</span>
                       </a>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -155,7 +191,71 @@ export function AppSidebar({ user, patientData, userRole }: AppSidebarProps) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Secondary Navigation */}
+        {secondaryItems.length > 0 && (
+          <>
+            <Separator className="mx-4 w-auto" />
+            <SidebarGroup className="px-2 py-2">
+              <SidebarGroupLabel className="text-xs font-medium text-muted-foreground px-2 mb-1">
+                Account
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {secondaryItems.map((item) => {
+                    const isActive = isItemActive(item);
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild>
+                          <a
+                            href={item.url}
+                            onClick={handleLinkClick}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                              isActive
+                                ? "bg-primary text-primary-foreground"
+                                : "text-sidebar-foreground hover:bg-sidebar-accent"
+                            }`}
+                          >
+                            <item.icon className="h-4 w-4 flex-shrink-0" />
+                            <span>{item.title}</span>
+                          </a>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
+
+      {/* User Profile Footer */}
+      <SidebarFooter className="border-t border-sidebar-border p-3">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-9 w-9">
+            <AvatarFallback className="bg-primary/10 text-primary text-sm">
+              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-sidebar-foreground truncate">
+              {user?.name || 'User'}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">
+              {patientData?.shareable_id || 'Free Plan'}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            onClick={handleSignOut}
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
+      </SidebarFooter>
     </Sidebar>
   );
 }

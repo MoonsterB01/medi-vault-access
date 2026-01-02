@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { User, LogOut } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import NotificationCenter from "@/components/NotificationCenter";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -33,7 +30,6 @@ export default function AppLayout({ children, userRole }: AppLayoutProps) {
   const [user, setUser] = useState<any>(null);
   const [patientData, setPatientData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -70,11 +66,6 @@ export default function AppLayout({ children, userRole }: AppLayoutProps) {
     checkUserAndPatientData();
   }, [navigate]);
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
-  };
-
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -96,24 +87,13 @@ export default function AppLayout({ children, userRole }: AppLayoutProps) {
           <AppSidebar user={user} patientData={patientData} userRole={userRole} />
 
           <div className="flex-1 flex flex-col">
-            <header className="h-16 flex items-center justify-between px-6 bg-card border-b shadow-sm">
-              <div className="flex items-center gap-4">
+            <header className="h-14 flex items-center justify-between px-4 bg-background border-b border-border">
+              <div className="flex items-center gap-3">
                 <SidebarTrigger />
-                <div className="flex items-center gap-3">
-                  <User className="h-6 w-6 text-primary" />
-                  <div>
-                    <h1 className="text-xl font-semibold">MediVault</h1>
-                    <p className="text-sm text-muted-foreground">Welcome, {user?.name}</p>
-                  </div>
-                </div>
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
                 <NotificationCenter user={user} />
                 <ThemeToggle />
-                <Button onClick={handleSignOut} variant="outline" size="sm">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </Button>
               </div>
             </header>
 
