@@ -8,10 +8,13 @@ import PublicLayout from "@/components/PublicLayout";
 import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
 import { VoiceAssistant } from "@/components/VoiceAssistant";
 import { ChatAssistant } from "@/components/ChatAssistant";
+import { usePublicStats, formatStatNumber } from "@/hooks/usePublicStats";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Index() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const stats = usePublicStats();
 
   useEffect(() => {
     const checkUser = async () => {
@@ -167,16 +170,20 @@ export default function Index() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { value: "50k+", label: "Documents Organized", icon: FileText },
-              { value: "10k+", label: "Families Trust Us", icon: Users },
+              { value: stats.isLoading ? null : formatStatNumber(stats.documentsCount), label: "Documents Organized", icon: FileText },
+              { value: stats.isLoading ? null : formatStatNumber(stats.patientsCount), label: "Families Trust Us", icon: Users },
               { value: "99.9%", label: "Uptime", icon: BarChart3 },
-              { value: "4.9/5", label: "User Rating", icon: CheckCircle },
+              { value: stats.isLoading ? null : formatStatNumber(stats.hospitalsCount || 4), label: "Healthcare Partners", icon: CheckCircle },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="flex justify-center mb-2">
                   <stat.icon className="h-5 w-5 text-primary" />
                 </div>
-                <div className="text-2xl lg:text-3xl font-bold text-foreground">{stat.value}</div>
+                {stat.value === null ? (
+                  <Skeleton className="h-8 w-16 mx-auto mb-1" />
+                ) : (
+                  <div className="text-2xl lg:text-3xl font-bold text-foreground">{stat.value}</div>
+                )}
                 <div className="text-sm text-muted-foreground">{stat.label}</div>
               </div>
             ))}
