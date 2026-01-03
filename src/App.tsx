@@ -25,7 +25,6 @@ import Pricing from "./pages/Pricing";
 import Security from "./pages/Security";
 import About from "./pages/About";
 import Settings from "./pages/Settings";
-import HeroBanner from "./components/HeroBanner";
 
 
 const queryClient = new QueryClient();
@@ -40,7 +39,6 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <HeroBanner />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
