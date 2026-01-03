@@ -146,19 +146,24 @@ export function AppSidebar({ user, patientData, userRole }: AppSidebarProps) {
     return false;
   };
 
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
+
   return (
-    <Sidebar className="w-64 border-r border-border" collapsible="icon">
+    <Sidebar className="border-r border-border" collapsible="icon">
       <SidebarContent className="bg-sidebar">
         {/* Branding */}
-        <div className="p-4 flex items-center gap-3">
-          <img src={logo} alt="Medilock" className="h-8 w-8" />
-          <div className="flex flex-col">
-            <span className="font-semibold text-sm text-sidebar-foreground">Medilock</span>
-            <span className="text-xs text-muted-foreground">Health Portal</span>
-          </div>
+        <div className={`p-4 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+          <img src={logo} alt="Medilock" className="h-8 w-8 flex-shrink-0" />
+          {!isCollapsed && (
+            <div className="flex flex-col">
+              <span className="font-semibold text-sm text-sidebar-foreground">Medilock</span>
+              <span className="text-xs text-muted-foreground">Health Portal</span>
+            </div>
+          )}
         </div>
 
-        <Separator className="mx-4 w-auto" />
+        {!isCollapsed && <Separator className="mx-4 w-auto" />}
 
         {/* Main Navigation */}
         <SidebarGroup className="px-2 py-2">
@@ -232,28 +237,32 @@ export function AppSidebar({ user, patientData, userRole }: AppSidebarProps) {
 
       {/* User Profile Footer */}
       <SidebarFooter className="border-t border-sidebar-border p-3">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-9 w-9">
+        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+          <Avatar className="h-9 w-9 flex-shrink-0">
             <AvatarFallback className="bg-primary/10 text-primary text-sm">
               {user?.name?.charAt(0)?.toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">
-              {user?.name || 'User'}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">
-              {patientData?.shareable_id || 'Free Plan'}
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-            onClick={handleSignOut}
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          {!isCollapsed && (
+            <>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-sidebar-foreground truncate">
+                  {user?.name || 'User'}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {patientData?.shareable_id || 'Free Plan'}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0"
+                onClick={handleSignOut}
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
       </SidebarFooter>
     </Sidebar>

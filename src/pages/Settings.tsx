@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useSubscription } from "@/hooks/use-subscription";
@@ -22,7 +22,8 @@ import {
   Loader2,
   Heart,
   Calendar,
-  HardDrive
+  HardDrive,
+  Upload
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,12 +36,22 @@ type SettingsSection = 'profile' | 'security' | 'notifications' | 'billing' | 'd
 export default function Settings({ user }: SettingsProps) {
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile');
   const [loading, setLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
   const [patientData, setPatientData] = useState<any>(null);
+  const [healthScore, setHealthScore] = useState<number | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     dob: '',
+  });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   });
   const [preferences, setPreferences] = useState({
     allowAIAnalysis: true,
@@ -55,8 +66,34 @@ export default function Settings({ user }: SettingsProps) {
   useEffect(() => {
     if (user) {
       fetchPatientData();
+      fetchHealthScore();
     }
   }, [user]);
+
+  const fetchHealthScore = async () => {
+    try {
+      const { data: patient } = await supabase
+        .from('patients')
+        .select('id')
+        .eq('created_by', user.id)
+        .maybeSingle();
+
+      if (patient) {
+        const { data: insight } = await supabase
+          .from('health_insights')
+          .select('fitness_score')
+          .eq('patient_id', patient.id)
+          .eq('is_current', true)
+          .maybeSingle();
+
+        if (insight?.fitness_score) {
+          setHealthScore(insight.fitness_score);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching health score:', error);
+    }
+  };
 
   const fetchPatientData = async () => {
     try {
@@ -108,6 +145,112 @@ export default function Settings({ user }: SettingsProps) {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure your new passwords match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Password Updated",
+        description: "Your password has been changed successfully.",
+      });
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (error: any) {
+      toast({
+        title: "Password Update Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !patientData?.id) return;
+
+    setAvatarLoading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${patientData.id}/avatar.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      setAvatarUrl(publicUrl + '?t=' + Date.now());
+
+      toast({
+        title: "Avatar Updated",
+        description: "Your profile picture has been updated.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Could not upload avatar. Storage bucket may not exist.",
+        variant: "destructive",
+      });
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!patientData?.id) return;
+
+    setAvatarLoading(true);
+    try {
+      const { error } = await supabase.storage
+        .from('avatars')
+        .remove([`${patientData.id}/avatar.png`, `${patientData.id}/avatar.jpg`, `${patientData.id}/avatar.jpeg`]);
+
+      if (error) throw error;
+
+      setAvatarUrl(null);
+      toast({
+        title: "Avatar Removed",
+        description: "Your profile picture has been removed.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Remove Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setAvatarLoading(false);
     }
   };
 
@@ -173,20 +316,44 @@ export default function Settings({ user }: SettingsProps) {
                   <div className="flex items-start gap-6">
                     <div className="flex flex-col items-center gap-2">
                       <Avatar className="h-24 w-24 border-2 border-border">
+                        {avatarUrl && <AvatarImage src={avatarUrl} alt="Profile" />}
                         <AvatarFallback className="text-2xl bg-primary/10 text-primary">
                           {formData.name?.charAt(0)?.toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                      />
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm">Change</Button>
-                        <Button variant="ghost" size="sm" className="text-muted-foreground">Remove</Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={avatarLoading}
+                        >
+                          {avatarLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
+                          Change
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-muted-foreground"
+                          onClick={handleRemoveAvatar}
+                          disabled={avatarLoading || !avatarUrl}
+                        >
+                          Remove
+                        </Button>
                       </div>
                     </div>
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary" className="gap-1">
                           <Heart className="h-3 w-3" />
-                          Health Score: 85
+                          Health Score: {healthScore ?? 'N/A'}
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground flex items-center gap-1">
@@ -306,18 +473,38 @@ export default function Settings({ user }: SettingsProps) {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="current-password">Current Password</Label>
-                  <Input id="current-password" type="password" placeholder="Enter current password" />
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="new-password">New Password</Label>
-                  <Input id="new-password" type="password" placeholder="Enter new password" />
+                  <Input 
+                    id="new-password" 
+                    type="password" 
+                    placeholder="Enter new password"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirm-password">Confirm New Password</Label>
-                  <Input id="confirm-password" type="password" placeholder="Confirm new password" />
+                  <Input 
+                    id="confirm-password" 
+                    type="password" 
+                    placeholder="Confirm new password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  />
                 </div>
-                <Button>Update Password</Button>
+                <Button 
+                  onClick={handlePasswordChange} 
+                  disabled={passwordLoading || !passwordData.newPassword || !passwordData.confirmPassword}
+                >
+                  {passwordLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Password'
+                  )}
+                </Button>
               </CardContent>
             </Card>
           )}
