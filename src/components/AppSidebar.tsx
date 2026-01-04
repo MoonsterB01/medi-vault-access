@@ -154,10 +154,10 @@ export function AppSidebar({ user, patientData, userRole }: AppSidebarProps) {
       <SidebarContent className="bg-sidebar">
         {/* Branding */}
         <div className={`p-4 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
-          <img src={logo} alt="Medilock" className="h-8 w-8 flex-shrink-0" />
+          <img src={logo} alt="MediVault" className="h-8 w-8 flex-shrink-0" />
           {!isCollapsed && (
             <div className="flex flex-col">
-              <span className="font-semibold text-sm text-sidebar-foreground">Medilock</span>
+              <span className="font-semibold text-sm text-sidebar-foreground">MediVault</span>
               <span className="text-xs text-muted-foreground">Health Portal</span>
             </div>
           )}
