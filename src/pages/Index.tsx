@@ -196,7 +196,7 @@ export default function Index() {
         <div className="container mx-auto px-4">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <h2 className="text-3xl font-bold text-foreground mb-4">
-              How Medilock Works
+              How MediVault Works
             </h2>
             <p className="text-muted-foreground">
               Three simple steps to organize all your family's medical records
@@ -298,7 +298,7 @@ export default function Index() {
             <div>
               <h3 className="font-semibold text-foreground mb-1">Medical Disclaimer</h3>
               <p className="text-sm text-muted-foreground">
-                Medilock is a document organization tool and does not provide medical advice, diagnosis, or treatment. 
+                MediVault is a document organization tool and does not provide medical advice, diagnosis, or treatment. 
                 Always consult with qualified healthcare professionals for medical decisions.
               </p>
             </div>

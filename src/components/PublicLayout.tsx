@@ -41,8 +41,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               className="flex items-center gap-2 cursor-pointer" 
               onClick={() => navigate('/')}
             >
-              <img src={logo} alt="Medilock Logo" className="h-8 w-8 object-contain" />
-              <span className="text-xl font-semibold text-foreground">Medilock</span>
+              <img src={logo} alt="MediVault Logo" className="h-8 w-8 object-contain" />
+              <span className="text-xl font-semibold text-foreground">MediVault</span>
             </div>
 
             {/* Desktop Navigation */}
