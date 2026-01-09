@@ -7,13 +7,32 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Classify query type
+function classifyQuery(message: string): 'patient' | 'web' | 'mixed' {
+  const patientKeywords = ['my', 'me', 'i ', 'mine', 'records', 'documents', 'diagnosis', 'medication', 'prescription', 'report', 'lab', 'test result', 'uploaded', 'history'];
+  const messageLower = message.toLowerCase();
+  
+  const hasPatientContext = patientKeywords.some(keyword => messageLower.includes(keyword));
+  const isGeneralQuestion = messageLower.includes('what is') || messageLower.includes('what are') || messageLower.includes('how to') || messageLower.includes('explain') || messageLower.includes('tell me about');
+  
+  if (hasPatientContext && isGeneralQuestion) return 'mixed';
+  if (hasPatientContext) return 'patient';
+  return 'web';
+}
+
+// Generate a short title from the first message
+function generateTitle(message: string): string {
+  const words = message.trim().split(/\s+/).slice(0, 5).join(' ');
+  return words.length > 30 ? words.substring(0, 30) + '...' : words;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { message, patientId } = await req.json();
+    const { message, patientId, conversationId, useWebSearch } = await req.json();
 
     // Validate input format
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
@@ -23,18 +42,9 @@ serve(async (req) => {
       );
     }
 
-    if (message.length > 500) {
+    if (message.length > 1000) {
       return new Response(
-        JSON.stringify({ error: 'Message too long (max 500 characters)' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate message content (alphanumeric, spaces, basic punctuation only)
-    const messageRegex = /^[a-zA-Z0-9\s.,!?'"-]+$/;
-    if (!messageRegex.test(message)) {
-      return new Response(
-        JSON.stringify({ error: 'Message contains invalid characters' }),
+        JSON.stringify({ error: 'Message too long (max 1000 characters)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -88,96 +98,146 @@ serve(async (req) => {
       });
     }
 
-    // Fetch comprehensive patient context
-    const [patientData, documentsData, diagnosesData, medicationsData, labsData, summaryData] = 
-      await Promise.all([
-        supabase.from("patients").select("*").eq("id", patientId).single(),
-        supabase.from("documents").select("id, filename, ai_summary, extracted_text, uploaded_at").eq("patient_id", patientId).order("uploaded_at", { ascending: false }).limit(10),
-        supabase.from("diagnoses").select("*").eq("patient_id", patientId).eq("hidden_by_user", false),
-        supabase.from("medications").select("*").eq("patient_id", patientId).eq("hidden_by_user", false),
-        supabase.from("labs").select("*").eq("patient_id", patientId).order("date", { ascending: false }).limit(20),
-        supabase.from("patient_summaries").select("summary").eq("patient_id", patientId).single(),
-      ]);
+    // Handle conversation - create new if not provided
+    let activeConversationId = conversationId;
+    let isNewConversation = false;
+    
+    if (!activeConversationId) {
+      const { data: newConv, error: convError } = await supabase
+        .from("chat_conversations")
+        .insert({
+          user_id: user.id,
+          patient_id: patientId,
+          title: generateTitle(message)
+        })
+        .select()
+        .single();
 
-    // Build medical context
-    const patient = patientData.data;
-    const documents = documentsData.data || [];
-    const diagnoses = diagnosesData.data || [];
-    const medications = medicationsData.data || [];
-    const labs = labsData.data || [];
-    const summary = summaryData.data?.summary;
+      if (convError) {
+        console.error("Error creating conversation:", convError);
+        throw new Error("Failed to create conversation");
+      }
+      
+      activeConversationId = newConv.id;
+      isNewConversation = true;
+    }
 
-    const patientAge = patient?.dob ? new Date().getFullYear() - new Date(patient.dob).getFullYear() : "Unknown";
+    // Classify the query
+    const queryType = useWebSearch ? 'web' : classifyQuery(message);
+    console.log(`Query classified as: ${queryType}`);
 
-    let medicalContext = `PATIENT INFORMATION:
+    // Fetch patient context for patient/mixed queries
+    let medicalContext = "";
+    
+    if (queryType === 'patient' || queryType === 'mixed') {
+      const [patientData, documentsData, diagnosesData, medicationsData, labsData, summaryData] = 
+        await Promise.all([
+          supabase.from("patients").select("*").eq("id", patientId).single(),
+          supabase.from("documents").select("id, filename, ai_summary, extracted_text, uploaded_at").eq("patient_id", patientId).order("uploaded_at", { ascending: false }).limit(10),
+          supabase.from("diagnoses").select("*").eq("patient_id", patientId).eq("hidden_by_user", false),
+          supabase.from("medications").select("*").eq("patient_id", patientId).eq("hidden_by_user", false),
+          supabase.from("labs").select("*").eq("patient_id", patientId).order("date", { ascending: false }).limit(20),
+          supabase.from("patient_summaries").select("summary").eq("patient_id", patientId).single(),
+        ]);
+
+      const patient = patientData.data;
+      const documents = documentsData.data || [];
+      const diagnoses = diagnosesData.data || [];
+      const medications = medicationsData.data || [];
+      const labs = labsData.data || [];
+      const summary = summaryData.data?.summary;
+
+      const patientAge = patient?.dob ? new Date().getFullYear() - new Date(patient.dob).getFullYear() : "Unknown";
+
+      medicalContext = `PATIENT INFORMATION:
 Name: ${patient?.name || "Unknown"}
 Age: ${patientAge}
 Gender: ${patient?.gender || "Unknown"}
 Blood Group: ${patient?.blood_group || "Unknown"}
 Allergies: ${patient?.allergies && patient.allergies.length > 0 ? patient.allergies.join(", ") : "None recorded"}
-Emergency Contact: ${patient?.emergency_contact ? `${patient.emergency_contact.name} (${patient.emergency_contact.phone})` : "None recorded"}
 Medical Notes: ${patient?.medical_notes || "None"}
 
 `;
 
-    // Add AI patient summary if available
-    if (summary) {
-      medicalContext += `PATIENT SUMMARY:\n${JSON.stringify(summary, null, 2)}\n\n`;
+      if (summary) {
+        medicalContext += `PATIENT SUMMARY:\n${JSON.stringify(summary, null, 2)}\n\n`;
+      }
+
+      if (documents.length > 0) {
+        medicalContext += `MEDICAL DOCUMENTS (${documents.length} available):\n`;
+        documents.forEach((doc, idx) => {
+          medicalContext += `${idx + 1}. ${doc.filename} (${new Date(doc.uploaded_at).toLocaleDateString()})\n`;
+          if (doc.ai_summary) {
+            medicalContext += `   Summary: ${doc.ai_summary}\n`;
+          }
+        });
+        medicalContext += "\n";
+      }
+
+      if (diagnoses.length > 0) {
+        medicalContext += `DIAGNOSES:\n`;
+        diagnoses.forEach((d) => {
+          medicalContext += `- ${d.name} (${d.status || "active"})\n`;
+        });
+        medicalContext += "\n";
+      }
+
+      if (medications.length > 0) {
+        medicalContext += `MEDICATIONS:\n`;
+        medications.forEach((m) => {
+          medicalContext += `- ${m.name}${m.dose ? ` ${m.dose}` : ""}${m.frequency ? ` ${m.frequency}` : ""} (${m.status || "active"})\n`;
+        });
+        medicalContext += "\n";
+      }
+
+      if (labs.length > 0) {
+        medicalContext += `RECENT LAB RESULTS:\n`;
+        labs.slice(0, 10).forEach((lab) => {
+          medicalContext += `- ${lab.test_name}: ${lab.value} (${lab.date ? new Date(lab.date).toLocaleDateString() : "No date"})\n`;
+        });
+        medicalContext += "\n";
+      }
     }
 
-    // Add document summaries
-    if (documents.length > 0) {
-      medicalContext += `MEDICAL DOCUMENTS (${documents.length} available):\n`;
-      documents.forEach((doc, idx) => {
-        medicalContext += `${idx + 1}. ${doc.filename} (${new Date(doc.uploaded_at).toLocaleDateString()})\n`;
-        if (doc.ai_summary) {
-          medicalContext += `   Summary: ${doc.ai_summary}\n`;
-        }
-      });
-      medicalContext += "\n";
-    }
-
-    // Add diagnoses
-    if (diagnoses.length > 0) {
-      medicalContext += `DIAGNOSES:\n`;
-      diagnoses.forEach((d) => {
-        medicalContext += `- ${d.name} (${d.status || "active"})\n`;
-      });
-      medicalContext += "\n";
-    }
-
-    // Add medications
-    if (medications.length > 0) {
-      medicalContext += `MEDICATIONS:\n`;
-      medications.forEach((m) => {
-        medicalContext += `- ${m.name}${m.dose ? ` ${m.dose}` : ""}${m.frequency ? ` ${m.frequency}` : ""} (${m.status || "active"})\n`;
-      });
-      medicalContext += "\n";
-    }
-
-    // Add recent labs
-    if (labs.length > 0) {
-      medicalContext += `RECENT LAB RESULTS:\n`;
-      labs.slice(0, 10).forEach((lab) => {
-        medicalContext += `- ${lab.test_name || lab.test}: ${lab.value} (${lab.date ? new Date(lab.date).toLocaleDateString() : "No date"})\n`;
-      });
-      medicalContext += "\n";
-    }
-
-    // Fetch conversation history (last 20 messages)
+    // Fetch conversation history (last 20 messages from this conversation)
     const { data: historyData } = await supabase
       .from("chat_messages")
       .select("role, content")
-      .eq("patient_id", patientId)
+      .eq("conversation_id", activeConversationId)
       .order("created_at", { ascending: true })
       .limit(20);
 
     const conversationHistory = historyData || [];
 
-    // Build system prompt
-    const systemPrompt = `You are MediBot, a helpful AI health assistant for ${patient?.name || "the patient"}.
+    // Build system prompt based on query type
+    let systemPrompt = "";
+    
+    if (queryType === 'web') {
+      systemPrompt = `You are MediBot, a helpful AI health assistant with access to current medical knowledge and web information.
 
-You have access to the patient's complete medical records including documents, diagnoses, medications, lab results, and visit history.
+Your role is to:
+1. Provide accurate, up-to-date health and medical information
+2. Explain medical terms and conditions in simple, understandable language
+3. Discuss general health topics, symptoms, treatments, and preventive care
+4. Search and synthesize information from reliable medical sources
+
+IMPORTANT GUIDELINES:
+- Provide factual, evidence-based information
+- Use clear, accessible language
+- Always recommend consulting healthcare professionals for personal medical advice
+- For urgent symptoms (chest pain, severe bleeding, difficulty breathing), immediately advise seeking emergency medical attention
+- Include relevant context and explanations
+- When answering general health questions, provide comprehensive but concise information
+
+You have web search capabilities to provide current, accurate medical information.`;
+
+    } else if (queryType === 'patient') {
+      systemPrompt = `You are MediBot, a helpful AI health assistant with access to the patient's complete medical records.
+
+You have access to their documents, diagnoses, medications, lab results, and visit history.
+
+AVAILABLE MEDICAL CONTEXT:
+${medicalContext}
 
 IMPORTANT GUIDELINES:
 - Be empathetic, clear, and patient-focused
@@ -185,18 +245,34 @@ IMPORTANT GUIDELINES:
 - Reference specific documents when answering (e.g., "According to your discharge summary from March 2024...")
 - ALWAYS remind users that you're an AI assistant and cannot replace professional medical advice
 - For urgent symptoms (chest pain, severe bleeding, difficulty breathing), immediately advise seeking emergency medical attention
-- Respect patient privacy and confidentiality
 - If you don't have enough information to answer accurately, say so
+- Respect patient privacy and confidentiality`;
 
-AVAILABLE MEDICAL CONTEXT:
+    } else {
+      // Mixed query - combine both
+      systemPrompt = `You are MediBot, a helpful AI health assistant with access to both the patient's medical records AND current web-based medical knowledge.
+
+AVAILABLE PATIENT MEDICAL CONTEXT:
 ${medicalContext}
 
-Answer the patient's questions accurately based on their medical records.`;
+CAPABILITIES:
+- You can reference the patient's specific medical history, documents, and records
+- You can also provide general medical information from current knowledge
+- When relevant, combine patient-specific data with general medical knowledge
+
+IMPORTANT GUIDELINES:
+- Be empathetic, clear, and patient-focused
+- When answering, clearly distinguish between patient-specific information and general medical knowledge
+- Reference specific patient documents when relevant
+- ALWAYS remind users that you're an AI assistant and cannot replace professional medical advice
+- For urgent symptoms, immediately advise seeking emergency medical attention`;
+    }
 
     // Save user message
     await supabase.from("chat_messages").insert({
       user_id: user.id,
       patient_id: patientId,
+      conversation_id: activeConversationId,
       role: "user",
       content: message,
     });
@@ -247,12 +323,24 @@ Answer the patient's questions accurately based on their medical records.`;
     await supabase.from("chat_messages").insert({
       user_id: user.id,
       patient_id: patientId,
+      conversation_id: activeConversationId,
       role: "assistant",
       content: assistantResponse,
     });
 
+    // Update conversation timestamp
+    await supabase
+      .from("chat_conversations")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", activeConversationId);
+
     return new Response(
-      JSON.stringify({ response: assistantResponse }),
+      JSON.stringify({ 
+        response: assistantResponse,
+        conversationId: activeConversationId,
+        isNewConversation,
+        queryType
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
