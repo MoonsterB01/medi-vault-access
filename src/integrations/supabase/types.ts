@@ -1267,44 +1267,65 @@ export type Database = {
       }
       lab_orders: {
         Row: {
+          collected_by: string | null
+          completed_at: string | null
           created_at: string | null
           doctor_id: string | null
           hospital_id: string
           id: string
           notes: string | null
           order_date: string | null
+          order_number: string | null
           patient_id: string
+          priority: string | null
+          processing_started_at: string | null
           report_url: string | null
           results: Json | null
+          sample_collected_at: string | null
           status: string | null
+          technician_id: string | null
           tests: Json | null
           updated_at: string | null
         }
         Insert: {
+          collected_by?: string | null
+          completed_at?: string | null
           created_at?: string | null
           doctor_id?: string | null
           hospital_id: string
           id?: string
           notes?: string | null
           order_date?: string | null
+          order_number?: string | null
           patient_id: string
+          priority?: string | null
+          processing_started_at?: string | null
           report_url?: string | null
           results?: Json | null
+          sample_collected_at?: string | null
           status?: string | null
+          technician_id?: string | null
           tests?: Json | null
           updated_at?: string | null
         }
         Update: {
+          collected_by?: string | null
+          completed_at?: string | null
           created_at?: string | null
           doctor_id?: string | null
           hospital_id?: string
           id?: string
           notes?: string | null
           order_date?: string | null
+          order_number?: string | null
           patient_id?: string
+          priority?: string | null
+          processing_started_at?: string | null
           report_url?: string | null
           results?: Json | null
+          sample_collected_at?: string | null
           status?: string | null
+          technician_id?: string | null
           tests?: Json | null
           updated_at?: string | null
         }
