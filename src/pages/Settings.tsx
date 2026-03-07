@@ -676,7 +676,111 @@ export default function Settings({ user }: SettingsProps) {
             </>
           )}
 
-          {/* Danger Zone Section */}
+          {/* WhatsApp Integration Section */}
+          {activeSection === 'whatsapp' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageCircle className="h-5 w-5" />
+                  WhatsApp Integration
+                </CardTitle>
+                <CardDescription>
+                  Link your WhatsApp to upload medical files and chat with MediBot directly from WhatsApp
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {whatsappLink?.verified ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                      <CheckCircle2 className="h-5 w-5 text-primary" />
+                      <div className="flex-1">
+                        <p className="font-medium text-foreground">WhatsApp Connected</p>
+                        <p className="text-sm text-muted-foreground">
+                          Linked to: +{whatsappLink.phone_number}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleUnlinkWhatsApp}
+                        disabled={whatsappLoading}
+                      >
+                        <Unlink className="h-4 w-4 mr-1" />
+                        Unlink
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">What you can do:</h4>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>📄 Send or forward medical files (PDFs, images) to upload them</li>
+                        <li>💬 Ask questions about your health records</li>
+                        <li>📋 Request summaries of your reports</li>
+                      </ul>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="wa-phone">WhatsApp Phone Number</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Enter with country code (e.g., 919876543210)
+                      </p>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="wa-phone"
+                            className="pl-9"
+                            placeholder="919876543210"
+                            value={whatsappPhone}
+                            onChange={(e) => setWhatsappPhone(e.target.value.replace(/\D/g, ''))}
+                            maxLength={15}
+                          />
+                        </div>
+                        <Button
+                          onClick={handleSendWhatsAppOtp}
+                          disabled={whatsappLoading || whatsappPhone.length < 10}
+                        >
+                          {whatsappLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            'Get OTP'
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {whatsappOtpSent && (
+                      <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+                        <p className="text-sm font-medium">Next Steps:</p>
+                        <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
+                          <li>Open WhatsApp on your phone</li>
+                          <li>Send a message to the MediBot number</li>
+                          <li>Type: <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono">link YOUR_OTP</code></li>
+                          <li>The OTP expires in 10 minutes</li>
+                        </ol>
+                      </div>
+                    )}
+
+                    <Separator />
+
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-sm">How it works:</h4>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>1. Enter your WhatsApp number and generate an OTP</li>
+                        <li>2. Send the OTP to MediBot on WhatsApp to verify</li>
+                        <li>3. Once linked, forward medical files directly to MediBot</li>
+                        <li>4. Files appear in your MediVault dashboard automatically</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+
           {activeSection === 'danger' && (
             <Card className="border-destructive/50">
               <CardHeader>
