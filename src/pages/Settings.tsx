@@ -23,7 +23,11 @@ import {
   Heart,
   Calendar,
   HardDrive,
-  Upload
+  Upload,
+  MessageCircle,
+  Phone,
+  CheckCircle2,
+  Unlink
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
