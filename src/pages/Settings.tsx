@@ -35,7 +35,7 @@ interface SettingsProps {
   user?: any;
 }
 
-type SettingsSection = 'profile' | 'security' | 'notifications' | 'billing' | 'danger';
+type SettingsSection = 'profile' | 'security' | 'notifications' | 'billing' | 'whatsapp' | 'danger';
 
 export default function Settings({ user }: SettingsProps) {
   const [activeSection, setActiveSection] = useState<SettingsSection>('profile');
@@ -258,11 +258,90 @@ export default function Settings({ user }: SettingsProps) {
     }
   };
 
+  // WhatsApp linking state
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [whatsappOtp, setWhatsappOtp] = useState('');
+  const [whatsappLink, setWhatsappLink] = useState<any>(null);
+  const [whatsappLoading, setWhatsappLoading] = useState(false);
+  const [whatsappOtpSent, setWhatsappOtpSent] = useState(false);
+
+  useEffect(() => {
+    if (user) fetchWhatsAppLink();
+  }, [user]);
+
+  const fetchWhatsAppLink = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('whatsapp_links')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (data) setWhatsappLink(data);
+  };
+
+  const handleSendWhatsAppOtp = async () => {
+    if (!user || !whatsappPhone) return;
+    setWhatsappLoading(true);
+    try {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+      // Upsert the link record
+      const { error } = await supabase
+        .from('whatsapp_links')
+        .upsert({
+          user_id: user.id,
+          phone_number: whatsappPhone,
+          verified: false,
+          otp_code: otp,
+          otp_expires_at: expiresAt,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+
+      if (error) throw error;
+
+      setWhatsappOtpSent(true);
+      toast({
+        title: "OTP Generated",
+        description: `Your OTP is: ${otp}. Send "link ${otp}" to MediBot on WhatsApp within 10 minutes.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setWhatsappLoading(false);
+    }
+  };
+
+  const handleUnlinkWhatsApp = async () => {
+    if (!user) return;
+    setWhatsappLoading(true);
+    try {
+      const { error } = await supabase
+        .from('whatsapp_links')
+        .delete()
+        .eq('user_id', user.id);
+      if (error) throw error;
+      setWhatsappLink(null);
+      setWhatsappOtpSent(false);
+      setWhatsappPhone('');
+      toast({ title: "Unlinked", description: "WhatsApp has been disconnected from your account." });
+    } catch (error: any) {
+      toast({ title: "Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setWhatsappLoading(false);
+    }
+  };
+
   const sections = [
     { id: 'profile' as const, label: 'Profile', icon: User },
     { id: 'security' as const, label: 'Password & Security', icon: Shield },
     { id: 'notifications' as const, label: 'Notifications', icon: Bell },
     { id: 'billing' as const, label: 'Billing & Storage', icon: CreditCard },
+    { id: 'whatsapp' as const, label: 'WhatsApp Integration', icon: MessageCircle },
     { id: 'danger' as const, label: 'Danger Zone', icon: AlertTriangle },
   ];
 
