@@ -2564,6 +2564,39 @@ export type Database = {
           },
         ]
       }
+      whatsapp_links: {
+        Row: {
+          created_at: string
+          id: string
+          otp_code: string | null
+          otp_expires_at: string | null
+          phone_number: string
+          updated_at: string
+          user_id: string
+          verified: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          otp_code?: string | null
+          otp_expires_at?: string | null
+          phone_number: string
+          updated_at?: string
+          user_id: string
+          verified?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          otp_code?: string | null
+          otp_expires_at?: string | null
+          phone_number?: string
+          updated_at?: string
+          user_id?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
