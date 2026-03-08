@@ -52,7 +52,7 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-// Extract text from file using Gemini Vision (for images) or text extraction (for PDFs)
+// Extract text from file using Gemini Vision via signed URL (avoids memory issues)
 async function extractTextFromStorage(
   supabaseClient: any,
   filePath: string,
@@ -65,32 +65,19 @@ async function extractTextFromStorage(
   }
 
   try {
-    // Download file from storage - limit to 3MB to avoid memory issues
-    const { data: fileData, error: downloadError } = await supabaseClient.storage
+    // Generate a signed URL instead of downloading the file
+    const { data: signedUrlData, error: signedUrlError } = await supabaseClient.storage
       .from('medical-documents')
-      .download(filePath);
+      .createSignedUrl(filePath, 600); // 10 min expiry
 
-    if (downloadError || !fileData) {
-      console.error('File download error:', downloadError);
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      console.error('Signed URL error:', signedUrlError);
       return null;
     }
 
-    const arrayBuffer = await fileData.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-    console.log(`Downloaded file: ${bytes.length} bytes, type: ${contentType}`);
+    const signedUrl = signedUrlData.signedUrl;
+    console.log(`Using signed URL for OCR (type: ${contentType})`);
 
-    // Reject files over 15MB to avoid memory issues (Gemini supports up to 20MB inline)
-    const MAX_BYTES = 15 * 1024 * 1024;
-    if (bytes.length > MAX_BYTES) {
-      console.error(`File too large for OCR: ${bytes.length} bytes`);
-      return null;
-    }
-
-    // IMPORTANT: Do NOT truncate PDFs - it corrupts the file structure
-    const base64Data = uint8ArrayToBase64(bytes);
-    console.log(`Base64 encoded: ${base64Data.length} chars`);
-
-    // Use appropriate mime type for the vision API
     const mimeForApi = contentType.startsWith('image/') ? contentType : 'application/pdf';
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -108,7 +95,7 @@ async function extractTextFromStorage(
               {
                 type: 'image_url',
                 image_url: {
-                  url: `data:${mimeForApi};base64,${base64Data}`,
+                  url: signedUrl,
                 },
               },
               {
