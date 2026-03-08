@@ -79,15 +79,15 @@ async function extractTextFromStorage(
     const bytes = new Uint8Array(arrayBuffer);
     console.log(`Downloaded file: ${bytes.length} bytes, type: ${contentType}`);
 
-    // For very large files (>3MB), only process first portion
-    const MAX_BYTES = 3 * 1024 * 1024; // 3MB limit for base64 in memory
-    const processBytes = bytes.length > MAX_BYTES ? bytes.subarray(0, MAX_BYTES) : bytes;
-    
+    // Reject files over 15MB to avoid memory issues (Gemini supports up to 20MB inline)
+    const MAX_BYTES = 15 * 1024 * 1024;
     if (bytes.length > MAX_BYTES) {
-      console.log(`File truncated from ${bytes.length} to ${MAX_BYTES} bytes for OCR`);
+      console.error(`File too large for OCR: ${bytes.length} bytes`);
+      return null;
     }
 
-    const base64Data = uint8ArrayToBase64(processBytes);
+    // IMPORTANT: Do NOT truncate PDFs - it corrupts the file structure
+    const base64Data = uint8ArrayToBase64(bytes);
     console.log(`Base64 encoded: ${base64Data.length} chars`);
 
     // Use appropriate mime type for the vision API
