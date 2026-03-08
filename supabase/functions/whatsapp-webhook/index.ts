@@ -310,13 +310,31 @@ async function handleMediaMessage(supabaseAdmin: any, from: string, message: any
 
   console.log(`File uploaded to storage: ${storagePath}`);
 
+  // Deduplication: check if a document with same filename and file_size already exists for this patient
+  const finalFilename = fileName.includes(".") ? fileName : `${fileName}.${ext}`;
+  const { data: existingDoc } = await supabaseAdmin
+    .from("documents")
+    .select("id")
+    .eq("patient_id", user.patientId)
+    .eq("filename", finalFilename)
+    .eq("file_size", media.data.length)
+    .maybeSingle();
+
+  if (existingDoc) {
+    console.log(`[DEDUP] Duplicate detected: ${finalFilename} (${media.data.length} bytes). Skipping.`);
+    // Remove the uploaded file since it's a duplicate
+    await supabaseAdmin.storage.from("medical-documents").remove([storagePath]);
+    await sendWhatsAppReply(from, "ℹ️ This document has already been uploaded to your MediVault account. No duplicate was created.");
+    return;
+  }
+
   // Create document record
   const { data: doc, error: docError } = await supabaseAdmin
     .from("documents")
     .insert({
       patient_id: user.patientId,
       uploaded_by: user.userId,
-      filename: fileName.includes(".") ? fileName : `${fileName}.${ext}`,
+      filename: finalFilename,
       file_path: storagePath,
       content_type: media.mimeType,
       file_size: media.data.length,
