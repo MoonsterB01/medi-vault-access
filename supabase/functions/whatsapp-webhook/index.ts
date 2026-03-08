@@ -6,6 +6,19 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper: encode Uint8Array to base64 safely (no stack overflow)
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    for (let j = 0; j < chunk.length; j++) {
+      binary += String.fromCharCode(chunk[j]);
+    }
+  }
+  return btoa(binary);
+}
+
 // Helper to send WhatsApp text reply
 async function sendWhatsAppReply(to: string, message: string) {
   const phoneNumberId = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
@@ -37,6 +50,8 @@ async function sendWhatsAppReply(to: string, message: string) {
     if (!res.ok) {
       const err = await res.text();
       console.error("WhatsApp send error:", err);
+    } else {
+      console.log("WhatsApp reply sent to", to);
     }
   } catch (error) {
     console.error("Failed to send WhatsApp reply:", error);
@@ -49,19 +64,29 @@ async function downloadWhatsAppMedia(mediaId: string): Promise<{ data: Uint8Arra
   if (!accessToken) return null;
 
   try {
+    // Get media URL
     const metaRes = await fetch(
       `https://graph.facebook.com/v21.0/${mediaId}`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
-    if (!metaRes.ok) return null;
+    if (!metaRes.ok) {
+      console.error("Media meta error:", metaRes.status, await metaRes.text());
+      return null;
+    }
     const metaData = await metaRes.json();
+    console.log("Media metadata received, URL:", metaData.url ? "present" : "missing");
 
+    // Download media binary
     const mediaRes = await fetch(metaData.url, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    if (!mediaRes.ok) return null;
+    if (!mediaRes.ok) {
+      console.error("Media download error:", mediaRes.status);
+      return null;
+    }
 
     const data = new Uint8Array(await mediaRes.arrayBuffer());
+    console.log(`Media downloaded: ${data.length} bytes, type: ${metaData.mime_type}`);
     return { data, mimeType: metaData.mime_type || "application/octet-stream" };
   } catch (error) {
     console.error("Media download error:", error);
@@ -81,51 +106,58 @@ function getExtension(mimeType: string): string {
   return map[mimeType] || "bin";
 }
 
-// Extract text from a file using Gemini Vision API
-async function extractTextWithGemini(fileData: Uint8Array, mimeType: string): Promise<string | null> {
-  const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
-  if (!geminiApiKey) {
-    console.error("GEMINI_API_KEY not configured");
+// Extract text from a file using Lovable AI Gateway (Gemini Vision)
+async function extractTextFromFile(fileData: Uint8Array, mimeType: string): Promise<string | null> {
+  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!lovableApiKey) {
+    console.error("LOVABLE_API_KEY not configured");
     return null;
   }
 
   try {
-    const base64Data = btoa(String.fromCharCode(...fileData));
+    const base64Data = uint8ArrayToBase64(fileData);
+    console.log(`Sending ${base64Data.length} chars of base64 for text extraction...`);
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${lovableApiKey}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          contents: [{
-            parts: [
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: base64Data,
+          model: "google/gemini-2.5-flash",
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image_url",
+                  image_url: {
+                    url: `data:${mimeType};base64,${base64Data}`,
+                  },
                 },
-              },
-              {
-                text: "Extract ALL text content from this medical document. Include every detail: patient information, test names, values, units, reference ranges, dates, doctor names, hospital names, diagnoses, medications, and any other text visible. Preserve the structure as much as possible. If it's a lab report, include all test parameters with their values. Output ONLY the extracted text, no commentary.",
-              },
-            ],
-          }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 4096,
-          },
+                {
+                  type: "text",
+                  text: "Extract ALL text content from this medical document. Include every detail: patient information, test names, values, units, reference ranges, dates, doctor names, hospital names, diagnoses, medications, and any other text visible. Preserve the structure as much as possible. If it's a lab report, include all test parameters with their values. Output ONLY the extracted text, no commentary.",
+                },
+              ],
+            },
+          ],
+          stream: false,
         }),
       }
     );
 
     if (!response.ok) {
-      console.error("Gemini Vision API error:", response.status, await response.text());
+      console.error("Text extraction API error:", response.status, await response.text());
       return null;
     }
 
     const data = await response.json();
-    const extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const extractedText = data.choices?.[0]?.message?.content;
+    console.log(`Extracted text length: ${extractedText?.length || 0}`);
     return extractedText || null;
   } catch (error) {
     console.error("Text extraction error:", error);
@@ -133,54 +165,63 @@ async function extractTextWithGemini(fileData: Uint8Array, mimeType: string): Pr
   }
 }
 
-// Generate a medical summary using Gemini
+// Generate a medical summary using Lovable AI Gateway
 async function generateMedicalSummary(extractedText: string): Promise<string | null> {
-  const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
-  if (!geminiApiKey || !extractedText) return null;
+  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!lovableApiKey || !extractedText) return null;
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${lovableApiKey}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `You are a medical document summarizer. Analyze the following medical document text and provide a concise, clear summary.
+          model: "google/gemini-2.5-flash",
+          messages: [
+            {
+              role: "system",
+              content: "You are a medical document summarizer. Provide concise, clear summaries patients can understand.",
+            },
+            {
+              role: "user",
+              content: `Analyze this medical document text and provide a concise summary.
 
 DOCUMENT TEXT:
-${extractedText}
+${extractedText.substring(0, 8000)}
 
-Provide a summary that includes:
+Provide a summary including:
 1. **Document Type** (e.g., Blood Test Report, Prescription, Discharge Summary)
-2. **Key Findings** - Important values, diagnoses, or observations (highlight any abnormal values)
+2. **Key Findings** - Important values, diagnoses, or observations (highlight abnormal values)
 3. **Patient Info** - Name, age, date if available
 4. **Doctor/Hospital** - If mentioned
 5. **Recommendations** - Any follow-up actions mentioned
 
-Keep the summary under 500 words. Use simple language a patient can understand. Format with bullet points for readability.`,
-            }],
-          }],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 1024,
-          },
+Keep under 500 words. Use simple language. Use bullet points.`,
+            },
+          ],
+          stream: false,
         }),
       }
     );
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.error("Summary API error:", response.status, await response.text());
+      return null;
+    }
 
     const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+    return data.choices?.[0]?.message?.content || null;
   } catch (error) {
     console.error("Summary generation error:", error);
     return null;
   }
 }
 
-// Process document: extract text, analyze, generate summary, update DB
+// Process document: extract text, analyze, generate summary, update DB, reply on WhatsApp
 async function processDocument(
   supabaseAdmin: any,
   documentId: string,
@@ -191,11 +232,12 @@ async function processDocument(
   from: string
 ) {
   try {
-    // Step 1: Extract text using Gemini Vision
-    console.log(`Extracting text from document ${documentId}...`);
-    const extractedText = await extractTextWithGemini(fileData, mimeType);
+    // Step 1: Extract text
+    console.log(`[DOC ${documentId}] Starting text extraction...`);
+    const extractedText = await extractTextFromFile(fileData, mimeType);
 
     if (!extractedText || extractedText.length < 10) {
+      console.log(`[DOC ${documentId}] Text extraction failed or too short`);
       await supabaseAdmin.from("documents").update({
         processing_notes: "Could not extract text from document",
         verification_status: "unverified",
@@ -205,13 +247,28 @@ async function processDocument(
       return;
     }
 
-    console.log(`Extracted ${extractedText.length} characters from document ${documentId}`);
+    console.log(`[DOC ${documentId}] Extracted ${extractedText.length} chars`);
 
     // Step 2: Generate medical summary
+    console.log(`[DOC ${documentId}] Generating summary...`);
     const aiSummary = await generateMedicalSummary(extractedText);
+    console.log(`[DOC ${documentId}] Summary generated: ${aiSummary ? 'yes' : 'no'}`);
 
-    // Step 3: Run enhanced analysis pipeline
+    // Step 3: Update document with extracted text and summary
+    const { error: updateError } = await supabaseAdmin.from("documents").update({
+      ai_summary: aiSummary || "Analysis complete. Summary could not be generated.",
+      extracted_text: extractedText,
+      summary_generated_at: new Date().toISOString(),
+      verification_status: "unverified",
+    }).eq("id", documentId);
+
+    if (updateError) {
+      console.error(`[DOC ${documentId}] DB update error:`, updateError);
+    }
+
+    // Step 4: Run enhanced analysis pipeline (non-blocking, best-effort)
     try {
+      console.log(`[DOC ${documentId}] Calling enhanced-document-analyze...`);
       const analyzeRes = await fetch(
         `${Deno.env.get("SUPABASE_URL")}/functions/v1/enhanced-document-analyze`,
         {
@@ -240,18 +297,16 @@ async function processDocument(
       );
 
       if (!analyzeRes.ok) {
-        console.error("Enhanced analysis failed:", await analyzeRes.text());
+        const errText = await analyzeRes.text();
+        console.error(`[DOC ${documentId}] Enhanced analysis failed:`, analyzeRes.status, errText);
+      } else {
+        console.log(`[DOC ${documentId}] Enhanced analysis completed`);
+        // Consume the response body
+        await analyzeRes.text();
       }
     } catch (err) {
-      console.error("Enhanced analysis call error:", err);
+      console.error(`[DOC ${documentId}] Enhanced analysis call error:`, err);
     }
-
-    // Step 4: Update document with summary
-    await supabaseAdmin.from("documents").update({
-      ai_summary: aiSummary || "Analysis complete. Summary could not be generated.",
-      extracted_text: extractedText,
-      summary_generated_at: new Date().toISOString(),
-    }).eq("id", documentId);
 
     // Step 5: Send summary back to WhatsApp
     if (aiSummary) {
@@ -260,8 +315,10 @@ async function processDocument(
     } else {
       await sendWhatsAppReply(from, "✅ Document uploaded and text extracted. Check your MediVault dashboard for details.");
     }
+
+    console.log(`[DOC ${documentId}] Processing complete`);
   } catch (error) {
-    console.error("Document processing error:", error);
+    console.error(`[DOC ${documentId}] Processing error:`, error);
     await sendWhatsAppReply(from, "✅ Document saved but analysis encountered an issue. You can view it in your MediVault dashboard.");
   }
 }
@@ -331,8 +388,9 @@ async function handleTextMessage(supabaseAdmin: any, from: string, text: string)
   }
 
   try {
-    // Build context for the AI - fetch patient data directly instead of calling medibot-chat
-    // (medibot-chat requires user auth token which we don't have from WhatsApp)
+    console.log(`[CHAT] Processing message from ${from}: "${text.substring(0, 50)}..."`);
+
+    // Build context - fetch patient data
     const [patientData, documentsData, diagnosesData, medicationsData, labsData] = await Promise.all([
       supabaseAdmin.from("patients").select("*").eq("id", user.patientId).single(),
       supabaseAdmin.from("documents").select("id, filename, ai_summary, extracted_text, uploaded_at").eq("patient_id", user.patientId).order("uploaded_at", { ascending: false }).limit(10),
@@ -372,25 +430,31 @@ async function handleTextMessage(supabaseAdmin: any, from: string, text: string)
       });
     }
 
-    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!geminiApiKey) {
+    console.log(`[CHAT] Medical context built: ${medicalContext.length} chars`);
+
+    const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!lovableApiKey) {
+      console.error("[CHAT] LOVABLE_API_KEY not configured");
       await sendWhatsAppReply(from, "🤖 AI service is not configured. Please try again later.");
       return;
     }
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${lovableApiKey}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `You are MediBot, a helpful AI health assistant on WhatsApp. You have access to the patient's medical records.
+          model: "google/gemini-2.5-flash",
+          messages: [
+            {
+              role: "system",
+              content: `You are MediBot, a helpful AI health assistant on WhatsApp. You have access to the patient's medical records.
 
 ${medicalContext}
-
-USER QUESTION: ${text}
 
 GUIDELINES:
 - Be empathetic, clear, and concise (WhatsApp messages should be readable)
@@ -400,26 +464,34 @@ GUIDELINES:
 - For urgent symptoms, advise seeking emergency care
 - Use emojis sparingly for readability
 - Keep response under 500 words`,
-            }],
-          }],
-          generationConfig: {
-            temperature: 0.4,
-            maxOutputTokens: 1024,
-          },
+            },
+            {
+              role: "user",
+              content: text,
+            },
+          ],
+          stream: false,
         }),
       }
     );
 
     if (response.ok) {
       const data = await response.json();
-      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't process that request.";
+      const reply = data.choices?.[0]?.message?.content || "I couldn't process that request.";
+      console.log(`[CHAT] AI reply generated: ${reply.length} chars`);
       await sendWhatsAppReply(from, reply.substring(0, 4000));
     } else {
-      console.error("Gemini chat error:", response.status, await response.text());
-      await sendWhatsAppReply(from, "🤖 I'm having trouble right now. Please try again later.");
+      const errText = await response.text();
+      console.error("[CHAT] AI error:", response.status, errText);
+      
+      if (response.status === 429) {
+        await sendWhatsAppReply(from, "🤖 I'm receiving too many requests right now. Please try again in a minute.");
+      } else {
+        await sendWhatsAppReply(from, "🤖 I'm having trouble right now. Please try again later.");
+      }
     }
   } catch (err) {
-    console.error("MediBot chat error:", err);
+    console.error("[CHAT] MediBot error:", err);
     await sendWhatsAppReply(from, "🤖 I'm having trouble right now. Please try again later.");
   }
 }
@@ -442,6 +514,7 @@ async function handleMediaMessage(supabaseAdmin: any, from: string, message: any
     return;
   }
 
+  // Send acknowledgment first
   await sendWhatsAppReply(from, "📥 Report received. Processing and analyzing your document...");
 
   // Download media
@@ -468,6 +541,8 @@ async function handleMediaMessage(supabaseAdmin: any, from: string, message: any
     return;
   }
 
+  console.log(`File uploaded to storage: ${storagePath}`);
+
   // Create document record
   const { data: doc, error: docError } = await supabaseAdmin
     .from("documents")
@@ -490,10 +565,10 @@ async function handleMediaMessage(supabaseAdmin: any, from: string, message: any
     return;
   }
 
-  // Process document asynchronously (extract text, analyze, summarize, reply)
-  // Using EdgeRuntime.waitUntil-like pattern: fire and don't block the webhook response
-  processDocument(supabaseAdmin, doc.id, user.patientId, media.data, media.mimeType, fileName, from)
-    .catch(err => console.error("Background processing error:", err));
+  console.log(`Document record created: ${doc.id}`);
+
+  // IMPORTANT: Await the processing so it completes before the function terminates
+  await processDocument(supabaseAdmin, doc.id, user.patientId, media.data, media.mimeType, fileName, from);
 }
 
 // ========== Main Handler ==========
@@ -542,6 +617,8 @@ Deno.serve(async (req) => {
       for (const message of messages) {
         const from = message.from;
         const msgType = message.type;
+
+        console.log(`[WEBHOOK] Message from ${from}, type: ${msgType}`);
 
         if (msgType === "text") {
           const text = message.text?.body?.trim() || "";
