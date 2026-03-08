@@ -49,7 +49,6 @@ async function downloadWhatsAppMedia(mediaId: string): Promise<{ data: Uint8Arra
   if (!accessToken) return null;
 
   try {
-    // Step 1: Get media URL
     const metaRes = await fetch(
       `https://graph.facebook.com/v21.0/${mediaId}`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -57,7 +56,6 @@ async function downloadWhatsAppMedia(mediaId: string): Promise<{ data: Uint8Arra
     if (!metaRes.ok) return null;
     const metaData = await metaRes.json();
 
-    // Step 2: Download media
     const mediaRes = await fetch(metaData.url, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -83,8 +81,423 @@ function getExtension(mimeType: string): string {
   return map[mimeType] || "bin";
 }
 
+// Extract text from a file using Gemini Vision API
+async function extractTextWithGemini(fileData: Uint8Array, mimeType: string): Promise<string | null> {
+  const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!geminiApiKey) {
+    console.error("GEMINI_API_KEY not configured");
+    return null;
+  }
+
+  try {
+    const base64Data = btoa(String.fromCharCode(...fileData));
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              {
+                inline_data: {
+                  mime_type: mimeType,
+                  data: base64Data,
+                },
+              },
+              {
+                text: "Extract ALL text content from this medical document. Include every detail: patient information, test names, values, units, reference ranges, dates, doctor names, hospital names, diagnoses, medications, and any other text visible. Preserve the structure as much as possible. If it's a lab report, include all test parameters with their values. Output ONLY the extracted text, no commentary.",
+              },
+            ],
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 4096,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Gemini Vision API error:", response.status, await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    const extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    return extractedText || null;
+  } catch (error) {
+    console.error("Text extraction error:", error);
+    return null;
+  }
+}
+
+// Generate a medical summary using Gemini
+async function generateMedicalSummary(extractedText: string): Promise<string | null> {
+  const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!geminiApiKey || !extractedText) return null;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `You are a medical document summarizer. Analyze the following medical document text and provide a concise, clear summary.
+
+DOCUMENT TEXT:
+${extractedText}
+
+Provide a summary that includes:
+1. **Document Type** (e.g., Blood Test Report, Prescription, Discharge Summary)
+2. **Key Findings** - Important values, diagnoses, or observations (highlight any abnormal values)
+3. **Patient Info** - Name, age, date if available
+4. **Doctor/Hospital** - If mentioned
+5. **Recommendations** - Any follow-up actions mentioned
+
+Keep the summary under 500 words. Use simple language a patient can understand. Format with bullet points for readability.`,
+            }],
+          }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 1024,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
+  } catch (error) {
+    console.error("Summary generation error:", error);
+    return null;
+  }
+}
+
+// Process document: extract text, analyze, generate summary, update DB
+async function processDocument(
+  supabaseAdmin: any,
+  documentId: string,
+  patientId: string,
+  fileData: Uint8Array,
+  mimeType: string,
+  filename: string,
+  from: string
+) {
+  try {
+    // Step 1: Extract text using Gemini Vision
+    console.log(`Extracting text from document ${documentId}...`);
+    const extractedText = await extractTextWithGemini(fileData, mimeType);
+
+    if (!extractedText || extractedText.length < 10) {
+      await supabaseAdmin.from("documents").update({
+        processing_notes: "Could not extract text from document",
+        verification_status: "unverified",
+      }).eq("id", documentId);
+
+      await sendWhatsAppReply(from, "⚠️ I couldn't read the text from your document. Please ensure the image/PDF is clear and try again.");
+      return;
+    }
+
+    console.log(`Extracted ${extractedText.length} characters from document ${documentId}`);
+
+    // Step 2: Generate medical summary
+    const aiSummary = await generateMedicalSummary(extractedText);
+
+    // Step 3: Run enhanced analysis pipeline
+    try {
+      const analyzeRes = await fetch(
+        `${Deno.env.get("SUPABASE_URL")}/functions/v1/enhanced-document-analyze`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify({
+            documentId,
+            contentType: mimeType,
+            filename,
+            ocrResult: {
+              text: extractedText,
+              confidence: 0.85,
+              textDensityScore: extractedText.split(/\s+/).length,
+              medicalKeywordCount: 0,
+              detectedKeywords: [],
+              verificationStatus: "unverified",
+              formatSupported: true,
+              processingNotes: "Extracted via WhatsApp upload + Gemini Vision",
+              structuralCues: {},
+            },
+          }),
+        }
+      );
+
+      if (!analyzeRes.ok) {
+        console.error("Enhanced analysis failed:", await analyzeRes.text());
+      }
+    } catch (err) {
+      console.error("Enhanced analysis call error:", err);
+    }
+
+    // Step 4: Update document with summary
+    await supabaseAdmin.from("documents").update({
+      ai_summary: aiSummary || "Analysis complete. Summary could not be generated.",
+      extracted_text: extractedText,
+      summary_generated_at: new Date().toISOString(),
+    }).eq("id", documentId);
+
+    // Step 5: Send summary back to WhatsApp
+    if (aiSummary) {
+      const replyMessage = `✅ *Report Analyzed Successfully!*\n\n📋 *Summary:*\n${aiSummary.substring(0, 3500)}\n\n📱 View full details in your MediVault dashboard.`;
+      await sendWhatsAppReply(from, replyMessage);
+    } else {
+      await sendWhatsAppReply(from, "✅ Document uploaded and text extracted. Check your MediVault dashboard for details.");
+    }
+  } catch (error) {
+    console.error("Document processing error:", error);
+    await sendWhatsAppReply(from, "✅ Document saved but analysis encountered an issue. You can view it in your MediVault dashboard.");
+  }
+}
+
+// Handle link command
+async function handleLinkCommand(supabaseAdmin: any, from: string, otpCode: string) {
+  const { data: linkRecord, error: linkError } = await supabaseAdmin
+    .from("whatsapp_links")
+    .select("*")
+    .eq("otp_code", otpCode)
+    .eq("verified", false)
+    .gte("otp_expires_at", new Date().toISOString())
+    .maybeSingle();
+
+  if (linkError || !linkRecord) {
+    await sendWhatsAppReply(from, "❌ Invalid or expired OTP code. Please generate a new one from your MediVault settings.");
+    return;
+  }
+
+  const { error: updateError } = await supabaseAdmin
+    .from("whatsapp_links")
+    .update({
+      phone_number: from,
+      verified: true,
+      otp_code: null,
+      otp_expires_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", linkRecord.id);
+
+  if (updateError) {
+    console.error("Link update error:", updateError);
+    await sendWhatsAppReply(from, "❌ Failed to link account. Please try again.");
+  } else {
+    await sendWhatsAppReply(from, "✅ Your WhatsApp is now linked to your MediVault account! You can now:\n\n📄 Send medical files to upload them\n💬 Ask questions about your health records\n\nTry sending a medical report!");
+  }
+}
+
+// Look up linked user and patient
+async function lookupUser(supabaseAdmin: any, from: string): Promise<{ userId: string; patientId: string } | null> {
+  const { data: link } = await supabaseAdmin
+    .from("whatsapp_links")
+    .select("user_id")
+    .eq("phone_number", from)
+    .eq("verified", true)
+    .maybeSingle();
+
+  if (!link) return null;
+
+  const { data: patient } = await supabaseAdmin
+    .from("patients")
+    .select("id")
+    .eq("created_by", link.user_id)
+    .maybeSingle();
+
+  if (!patient) return null;
+
+  return { userId: link.user_id, patientId: patient.id };
+}
+
+// Handle text messages (chat with MediBot)
+async function handleTextMessage(supabaseAdmin: any, from: string, text: string) {
+  const user = await lookupUser(supabaseAdmin, from);
+  if (!user) {
+    await sendWhatsAppReply(from, "👋 Welcome to MediBot!\n\nTo get started, link your MediVault account:\n1. Go to Settings in MediVault\n2. Find \"WhatsApp Integration\"\n3. Enter your phone number and get an OTP\n4. Send: link YOUR_OTP here\n\nExample: link 123456");
+    return;
+  }
+
+  try {
+    // Build context for the AI - fetch patient data directly instead of calling medibot-chat
+    // (medibot-chat requires user auth token which we don't have from WhatsApp)
+    const [patientData, documentsData, diagnosesData, medicationsData, labsData] = await Promise.all([
+      supabaseAdmin.from("patients").select("*").eq("id", user.patientId).single(),
+      supabaseAdmin.from("documents").select("id, filename, ai_summary, extracted_text, uploaded_at").eq("patient_id", user.patientId).order("uploaded_at", { ascending: false }).limit(10),
+      supabaseAdmin.from("diagnoses").select("*").eq("patient_id", user.patientId).eq("hidden_by_user", false),
+      supabaseAdmin.from("medications").select("*").eq("patient_id", user.patientId).eq("hidden_by_user", false),
+      supabaseAdmin.from("labs").select("*").eq("patient_id", user.patientId).order("date", { ascending: false }).limit(20),
+    ]);
+
+    const patient = patientData.data;
+    const documents = documentsData.data || [];
+    const diagnoses = diagnosesData.data || [];
+    const medications = medicationsData.data || [];
+    const labs = labsData.data || [];
+
+    let medicalContext = `PATIENT: ${patient?.name || "Unknown"}, Age: ${patient?.dob ? new Date().getFullYear() - new Date(patient.dob).getFullYear() : "?"}, Gender: ${patient?.gender || "?"}, Blood Group: ${patient?.blood_group || "?"}\n`;
+
+    if (documents.length > 0) {
+      medicalContext += `\nDOCUMENTS (${documents.length}):\n`;
+      documents.forEach((doc: any, idx: number) => {
+        medicalContext += `${idx + 1}. ${doc.filename} (${new Date(doc.uploaded_at).toLocaleDateString()})\n`;
+        if (doc.ai_summary) medicalContext += `   Summary: ${doc.ai_summary.substring(0, 300)}\n`;
+      });
+    }
+
+    if (diagnoses.length > 0) {
+      medicalContext += `\nDIAGNOSES: ${diagnoses.map((d: any) => d.name).join(", ")}\n`;
+    }
+
+    if (medications.length > 0) {
+      medicalContext += `\nMEDICATIONS: ${medications.map((m: any) => `${m.name} ${m.dose || ""}`).join(", ")}\n`;
+    }
+
+    if (labs.length > 0) {
+      medicalContext += `\nRECENT LABS:\n`;
+      labs.slice(0, 10).forEach((lab: any) => {
+        medicalContext += `- ${lab.test_name}: ${lab.value} (${lab.date || "no date"})\n`;
+      });
+    }
+
+    const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!geminiApiKey) {
+      await sendWhatsAppReply(from, "🤖 AI service is not configured. Please try again later.");
+      return;
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `You are MediBot, a helpful AI health assistant on WhatsApp. You have access to the patient's medical records.
+
+${medicalContext}
+
+USER QUESTION: ${text}
+
+GUIDELINES:
+- Be empathetic, clear, and concise (WhatsApp messages should be readable)
+- Reference specific documents/tests when answering
+- Use simple language patients can understand
+- ALWAYS remind that you're an AI and cannot replace professional medical advice
+- For urgent symptoms, advise seeking emergency care
+- Use emojis sparingly for readability
+- Keep response under 500 words`,
+            }],
+          }],
+          generationConfig: {
+            temperature: 0.4,
+            maxOutputTokens: 1024,
+          },
+        }),
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "I couldn't process that request.";
+      await sendWhatsAppReply(from, reply.substring(0, 4000));
+    } else {
+      console.error("Gemini chat error:", response.status, await response.text());
+      await sendWhatsAppReply(from, "🤖 I'm having trouble right now. Please try again later.");
+    }
+  } catch (err) {
+    console.error("MediBot chat error:", err);
+    await sendWhatsAppReply(from, "🤖 I'm having trouble right now. Please try again later.");
+  }
+}
+
+// Handle media messages (document upload + analysis)
+async function handleMediaMessage(supabaseAdmin: any, from: string, message: any, msgType: string) {
+  const mediaInfo = message[msgType];
+  const mediaId = mediaInfo?.id;
+  const caption = mediaInfo?.caption || "";
+  const fileName = mediaInfo?.filename || `whatsapp-upload-${Date.now()}`;
+
+  if (!mediaId) {
+    await sendWhatsAppReply(from, "⚠️ Could not process this file. Please try again.");
+    return;
+  }
+
+  const user = await lookupUser(supabaseAdmin, from);
+  if (!user) {
+    await sendWhatsAppReply(from, "👋 Please link your MediVault account first! Go to Settings → WhatsApp Integration in MediVault.");
+    return;
+  }
+
+  await sendWhatsAppReply(from, "📥 Report received. Processing and analyzing your document...");
+
+  // Download media
+  const media = await downloadWhatsAppMedia(mediaId);
+  if (!media) {
+    await sendWhatsAppReply(from, "❌ Failed to download the file. Please try sending again.");
+    return;
+  }
+
+  const ext = getExtension(media.mimeType);
+  const storagePath = `${user.patientId}/whatsapp-${Date.now()}.${ext}`;
+
+  // Upload to storage
+  const { error: uploadError } = await supabaseAdmin.storage
+    .from("medical-documents")
+    .upload(storagePath, media.data, {
+      contentType: media.mimeType,
+      upsert: false,
+    });
+
+  if (uploadError) {
+    console.error("Storage upload error:", uploadError);
+    await sendWhatsAppReply(from, "❌ Failed to save the file. Please try again.");
+    return;
+  }
+
+  // Create document record
+  const { data: doc, error: docError } = await supabaseAdmin
+    .from("documents")
+    .insert({
+      patient_id: user.patientId,
+      uploaded_by: user.userId,
+      filename: fileName.includes(".") ? fileName : `${fileName}.${ext}`,
+      file_path: storagePath,
+      content_type: media.mimeType,
+      file_size: media.data.length,
+      description: caption || "Uploaded via WhatsApp",
+      verification_status: "unverified",
+    })
+    .select("id")
+    .single();
+
+  if (docError) {
+    console.error("Document insert error:", docError);
+    await sendWhatsAppReply(from, "❌ Failed to save document record. Please try again.");
+    return;
+  }
+
+  // Process document asynchronously (extract text, analyze, summarize, reply)
+  // Using EdgeRuntime.waitUntil-like pattern: fire and don't block the webhook response
+  processDocument(supabaseAdmin, doc.id, user.patientId, media.data, media.mimeType, fileName, from)
+    .catch(err => console.error("Background processing error:", err));
+}
+
+// ========== Main Handler ==========
 Deno.serve(async (req) => {
-  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -109,15 +522,12 @@ Deno.serve(async (req) => {
   if (req.method === "POST") {
     try {
       const body = await req.json();
-
-      // Meta sends webhook events in this structure
       const entry = body?.entry?.[0];
       const changes = entry?.changes?.[0];
       const value = changes?.value;
       const messages = value?.messages;
 
       if (!messages || messages.length === 0) {
-        // Status update or other non-message event
         return new Response(JSON.stringify({ status: "ok" }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -130,227 +540,27 @@ Deno.serve(async (req) => {
       );
 
       for (const message of messages) {
-        const from = message.from; // phone number
+        const from = message.from;
         const msgType = message.type;
 
-        // ===== Handle "link" command =====
         if (msgType === "text") {
           const text = message.text?.body?.trim() || "";
 
-          // Check for link command: "link 123456"
+          // Check for link command
           const linkMatch = text.match(/^link\s+(\d{6})$/i);
           if (linkMatch) {
-            const otpCode = linkMatch[1];
-
-            // Find pending link with this OTP
-            const { data: linkRecord, error: linkError } = await supabaseAdmin
-              .from("whatsapp_links")
-              .select("*")
-              .eq("otp_code", otpCode)
-              .eq("verified", false)
-              .gte("otp_expires_at", new Date().toISOString())
-              .maybeSingle();
-
-            if (linkError || !linkRecord) {
-              await sendWhatsAppReply(from, "❌ Invalid or expired OTP code. Please generate a new one from your MediVault settings.");
-              continue;
-            }
-
-            // Verify and update with phone number
-            const { error: updateError } = await supabaseAdmin
-              .from("whatsapp_links")
-              .update({
-                phone_number: from,
-                verified: true,
-                otp_code: null,
-                otp_expires_at: null,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", linkRecord.id);
-
-            if (updateError) {
-              console.error("Link update error:", updateError);
-              await sendWhatsAppReply(from, "❌ Failed to link account. Please try again.");
-            } else {
-              await sendWhatsAppReply(from, "✅ Your WhatsApp is now linked to your MediVault account! You can now:\n\n📄 Send medical files to upload them\n💬 Ask questions about your health records\n\nTry sending a medical report!");
-            }
+            await handleLinkCommand(supabaseAdmin, from, linkMatch[1]);
             continue;
           }
 
-          // ===== Handle general text (chat) =====
-          // Look up user by phone
-          const { data: link } = await supabaseAdmin
-            .from("whatsapp_links")
-            .select("user_id")
-            .eq("phone_number", from)
-            .eq("verified", true)
-            .maybeSingle();
-
-          if (!link) {
-            await sendWhatsAppReply(from, "👋 Welcome to MediBot!\n\nTo get started, link your MediVault account:\n1. Go to Settings in MediVault\n2. Find \"WhatsApp Integration\"\n3. Enter your phone number and get an OTP\n4. Send: link YOUR_OTP here\n\nExample: link 123456");
-            continue;
-          }
-
-          // Get patient for this user
-          const { data: patient } = await supabaseAdmin
-            .from("patients")
-            .select("id")
-            .eq("created_by", link.user_id)
-            .maybeSingle();
-
-          if (!patient) {
-            await sendWhatsAppReply(from, "⚠️ No patient profile found. Please set up your profile in MediVault first.");
-            continue;
-          }
-
-          // Call medibot-chat logic
-          try {
-            const chatRes = await fetch(
-              `${Deno.env.get("SUPABASE_URL")}/functions/v1/medibot-chat`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-                },
-                body: JSON.stringify({
-                  message: text,
-                  patientId: patient.id,
-                  userId: link.user_id,
-                }),
-              }
-            );
-
-            if (chatRes.ok) {
-              const chatData = await chatRes.json();
-              const reply = chatData?.response || chatData?.message || "I couldn't process that request.";
-              // Truncate to WhatsApp limit (4096 chars)
-              await sendWhatsAppReply(from, reply.substring(0, 4000));
-            } else {
-              await sendWhatsAppReply(from, "🤖 I'm having trouble right now. Please try again later.");
-            }
-          } catch (err) {
-            console.error("MediBot chat error:", err);
-            await sendWhatsAppReply(from, "🤖 I'm having trouble right now. Please try again later.");
-          }
+          // Handle general text (chat with MediBot)
+          await handleTextMessage(supabaseAdmin, from, text);
           continue;
         }
 
-        // ===== Handle media (image, document) =====
+        // Handle media (image, document)
         if (["image", "document"].includes(msgType)) {
-          const mediaInfo = message[msgType]; // message.image or message.document
-          const mediaId = mediaInfo?.id;
-          const caption = mediaInfo?.caption || "";
-          const fileName = mediaInfo?.filename || `whatsapp-upload-${Date.now()}`;
-
-          if (!mediaId) {
-            await sendWhatsAppReply(from, "⚠️ Could not process this file. Please try again.");
-            continue;
-          }
-
-          // Look up user
-          const { data: link } = await supabaseAdmin
-            .from("whatsapp_links")
-            .select("user_id")
-            .eq("phone_number", from)
-            .eq("verified", true)
-            .maybeSingle();
-
-          if (!link) {
-            await sendWhatsAppReply(from, "👋 Please link your MediVault account first! Go to Settings → WhatsApp Integration in MediVault.");
-            continue;
-          }
-
-          // Get patient
-          const { data: patient } = await supabaseAdmin
-            .from("patients")
-            .select("id")
-            .eq("created_by", link.user_id)
-            .maybeSingle();
-
-          if (!patient) {
-            await sendWhatsAppReply(from, "⚠️ No patient profile found. Please set up your profile first.");
-            continue;
-          }
-
-          await sendWhatsAppReply(from, "📥 Receiving your file... Processing will take a moment.");
-
-          // Download media
-          const media = await downloadWhatsAppMedia(mediaId);
-          if (!media) {
-            await sendWhatsAppReply(from, "❌ Failed to download the file. Please try sending again.");
-            continue;
-          }
-
-          const ext = getExtension(media.mimeType);
-          const storagePath = `${patient.id}/whatsapp-${Date.now()}.${ext}`;
-
-          // Upload to storage
-          const { error: uploadError } = await supabaseAdmin.storage
-            .from("medical-documents")
-            .upload(storagePath, media.data, {
-              contentType: media.mimeType,
-              upsert: false,
-            });
-
-          if (uploadError) {
-            console.error("Storage upload error:", uploadError);
-            await sendWhatsAppReply(from, "❌ Failed to save the file. Please try again.");
-            continue;
-          }
-
-          // Create document record
-          const { data: doc, error: docError } = await supabaseAdmin
-            .from("documents")
-            .insert({
-              patient_id: patient.id,
-              uploaded_by: link.user_id,
-              filename: fileName.includes(".") ? fileName : `${fileName}.${ext}`,
-              file_path: storagePath,
-              content_type: media.mimeType,
-              file_size: media.data.length,
-              description: caption || "Uploaded via WhatsApp",
-              verification_status: "unverified",
-            })
-            .select("id")
-            .single();
-
-          if (docError) {
-            console.error("Document insert error:", docError);
-            await sendWhatsAppReply(from, "❌ Failed to save document record. Please try again.");
-            continue;
-          }
-
-          // Trigger AI analysis (fire and forget)
-          try {
-            fetch(
-              `${Deno.env.get("SUPABASE_URL")}/functions/v1/enhanced-document-analyze`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-                },
-                body: JSON.stringify({
-                  documentId: doc.id,
-                  patientId: patient.id,
-                }),
-              }
-            ).then(async (res) => {
-              if (res.ok) {
-                const result = await res.json();
-                const summary = result?.summary || result?.ai_summary || "Analysis complete.";
-                await sendWhatsAppReply(from, `✅ File uploaded and analyzed!\n\n📋 Summary:\n${summary.substring(0, 3500)}\n\nView the full details in your MediVault dashboard.`);
-              } else {
-                await sendWhatsAppReply(from, "✅ File uploaded successfully! AI analysis is still processing. Check your MediVault dashboard for results.");
-              }
-            }).catch(() => {
-              // Analysis failed but upload succeeded
-            });
-          } catch {
-            // Fire and forget - upload already succeeded
-          }
-
+          await handleMediaMessage(supabaseAdmin, from, message, msgType);
           continue;
         }
 
@@ -365,7 +575,7 @@ Deno.serve(async (req) => {
     } catch (error) {
       console.error("Webhook error:", error);
       return new Response(JSON.stringify({ error: "Internal error" }), {
-        status: 200, // Return 200 to prevent Meta from retrying
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
