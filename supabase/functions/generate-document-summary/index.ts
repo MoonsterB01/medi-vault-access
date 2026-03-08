@@ -296,11 +296,38 @@ serve(async (req: Request) => {
         messages: [
           {
             role: 'system',
-            content: `You are a medical document analyzer. Summarize medical documents concisely, highlighting the most important medical information such as diagnoses, medications, test results, or clinical findings. Be clear and professional. Use bullet points. Keep under 500 words.`
+            content: `You are a medical document analyzer. Produce a concise, structured summary that balances readability with data completeness. Follow this format strictly:
+
+📄 *Document Type:* [type]
+👤 *Patient:* [name, age, gender if available]
+📅 *Date:* [report date if available]
+
+🔍 *Key Findings:*
+• [2-4 most important findings, one per bullet]
+
+📊 *Lab Results / Measurements:* (if applicable)
+• [Test Name]: [Value] [Unit] [⚠️ if abnormal]
+• [Include ALL key numeric results - this is critical]
+
+💊 *Medications:* (if applicable)
+• [med name] - [dose] - [frequency]
+
+⚠️ *Alerts:* (if any critical/abnormal values)
+• [Critical finding with brief context]
+
+📝 *Summary:* [1-2 sentence plain language overview]
+
+Rules:
+- Keep the ENTIRE response under 250 words
+- Always include numeric lab values/measurements if present in the document
+- Mark abnormal values with ⚠️
+- If no lab results exist, skip that section
+- Use medical shorthand where appropriate (BP, BMI, HR, etc.)
+- Do NOT add disclaimers or advice`
           },
           {
             role: 'user',
-            content: `Summarize this medical document (${document.document_type || 'unknown type'}):\n\n${textContent.slice(0, 5000)}`
+            content: `Analyze and summarize this medical document (${document.document_type || 'unknown type'}):\n\n${textContent.slice(0, 8000)}`
           }
         ],
       }),
