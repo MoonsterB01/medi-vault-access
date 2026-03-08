@@ -6,19 +6,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Helper: encode Uint8Array to base64 safely (no stack overflow)
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunkSize = 8192;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, i + chunkSize);
-    for (let j = 0; j < chunk.length; j++) {
-      binary += String.fromCharCode(chunk[j]);
-    }
-  }
-  return btoa(binary);
-}
-
 // Helper to send WhatsApp text reply
 async function sendWhatsAppReply(to: string, message: string) {
   const phoneNumberId = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
@@ -64,7 +51,6 @@ async function downloadWhatsAppMedia(mediaId: string): Promise<{ data: Uint8Arra
   if (!accessToken) return null;
 
   try {
-    // Get media URL
     const metaRes = await fetch(
       `https://graph.facebook.com/v21.0/${mediaId}`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -76,7 +62,6 @@ async function downloadWhatsAppMedia(mediaId: string): Promise<{ data: Uint8Arra
     const metaData = await metaRes.json();
     console.log("Media metadata received, URL:", metaData.url ? "present" : "missing");
 
-    // Download media binary
     const mediaRes = await fetch(metaData.url, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -104,223 +89,6 @@ function getExtension(mimeType: string): string {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
   };
   return map[mimeType] || "bin";
-}
-
-// Extract text from a file using Lovable AI Gateway (Gemini Vision)
-async function extractTextFromFile(fileData: Uint8Array, mimeType: string): Promise<string | null> {
-  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!lovableApiKey) {
-    console.error("LOVABLE_API_KEY not configured");
-    return null;
-  }
-
-  try {
-    const base64Data = uint8ArrayToBase64(fileData);
-    console.log(`Sending ${base64Data.length} chars of base64 for text extraction...`);
-
-    const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${lovableApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "image_url",
-                  image_url: {
-                    url: `data:${mimeType};base64,${base64Data}`,
-                  },
-                },
-                {
-                  type: "text",
-                  text: "Extract ALL text content from this medical document. Include every detail: patient information, test names, values, units, reference ranges, dates, doctor names, hospital names, diagnoses, medications, and any other text visible. Preserve the structure as much as possible. If it's a lab report, include all test parameters with their values. Output ONLY the extracted text, no commentary.",
-                },
-              ],
-            },
-          ],
-          stream: false,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      console.error("Text extraction API error:", response.status, await response.text());
-      return null;
-    }
-
-    const data = await response.json();
-    const extractedText = data.choices?.[0]?.message?.content;
-    console.log(`Extracted text length: ${extractedText?.length || 0}`);
-    return extractedText || null;
-  } catch (error) {
-    console.error("Text extraction error:", error);
-    return null;
-  }
-}
-
-// Generate a medical summary using Lovable AI Gateway
-async function generateMedicalSummary(extractedText: string): Promise<string | null> {
-  const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!lovableApiKey || !extractedText) return null;
-
-  try {
-    const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${lovableApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          messages: [
-            {
-              role: "system",
-              content: "You are a medical document summarizer. Provide concise, clear summaries patients can understand.",
-            },
-            {
-              role: "user",
-              content: `Analyze this medical document text and provide a concise summary.
-
-DOCUMENT TEXT:
-${extractedText.substring(0, 8000)}
-
-Provide a summary including:
-1. **Document Type** (e.g., Blood Test Report, Prescription, Discharge Summary)
-2. **Key Findings** - Important values, diagnoses, or observations (highlight abnormal values)
-3. **Patient Info** - Name, age, date if available
-4. **Doctor/Hospital** - If mentioned
-5. **Recommendations** - Any follow-up actions mentioned
-
-Keep under 500 words. Use simple language. Use bullet points.`,
-            },
-          ],
-          stream: false,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      console.error("Summary API error:", response.status, await response.text());
-      return null;
-    }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || null;
-  } catch (error) {
-    console.error("Summary generation error:", error);
-    return null;
-  }
-}
-
-// Process document: extract text, analyze, generate summary, update DB, reply on WhatsApp
-async function processDocument(
-  supabaseAdmin: any,
-  documentId: string,
-  patientId: string,
-  fileData: Uint8Array,
-  mimeType: string,
-  filename: string,
-  from: string
-) {
-  try {
-    // Step 1: Extract text
-    console.log(`[DOC ${documentId}] Starting text extraction...`);
-    const extractedText = await extractTextFromFile(fileData, mimeType);
-
-    if (!extractedText || extractedText.length < 10) {
-      console.log(`[DOC ${documentId}] Text extraction failed or too short`);
-      await supabaseAdmin.from("documents").update({
-        processing_notes: "Could not extract text from document",
-        verification_status: "unverified",
-      }).eq("id", documentId);
-
-      await sendWhatsAppReply(from, "⚠️ I couldn't read the text from your document. Please ensure the image/PDF is clear and try again.");
-      return;
-    }
-
-    console.log(`[DOC ${documentId}] Extracted ${extractedText.length} chars`);
-
-    // Step 2: Generate medical summary
-    console.log(`[DOC ${documentId}] Generating summary...`);
-    const aiSummary = await generateMedicalSummary(extractedText);
-    console.log(`[DOC ${documentId}] Summary generated: ${aiSummary ? 'yes' : 'no'}`);
-
-    // Step 3: Update document with extracted text and summary
-    const { error: updateError } = await supabaseAdmin.from("documents").update({
-      ai_summary: aiSummary || "Analysis complete. Summary could not be generated.",
-      extracted_text: extractedText,
-      summary_generated_at: new Date().toISOString(),
-      verification_status: "unverified",
-    }).eq("id", documentId);
-
-    if (updateError) {
-      console.error(`[DOC ${documentId}] DB update error:`, updateError);
-    }
-
-    // Step 4: Run enhanced analysis pipeline (non-blocking, best-effort)
-    try {
-      console.log(`[DOC ${documentId}] Calling enhanced-document-analyze...`);
-      const analyzeRes = await fetch(
-        `${Deno.env.get("SUPABASE_URL")}/functions/v1/enhanced-document-analyze`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-          },
-          body: JSON.stringify({
-            documentId,
-            contentType: mimeType,
-            filename,
-            ocrResult: {
-              text: extractedText,
-              confidence: 0.85,
-              textDensityScore: extractedText.split(/\s+/).length,
-              medicalKeywordCount: 0,
-              detectedKeywords: [],
-              verificationStatus: "unverified",
-              formatSupported: true,
-              processingNotes: "Extracted via WhatsApp upload + Gemini Vision",
-              structuralCues: {},
-            },
-          }),
-        }
-      );
-
-      if (!analyzeRes.ok) {
-        const errText = await analyzeRes.text();
-        console.error(`[DOC ${documentId}] Enhanced analysis failed:`, analyzeRes.status, errText);
-      } else {
-        console.log(`[DOC ${documentId}] Enhanced analysis completed`);
-        // Consume the response body
-        await analyzeRes.text();
-      }
-    } catch (err) {
-      console.error(`[DOC ${documentId}] Enhanced analysis call error:`, err);
-    }
-
-    // Step 5: Send summary back to WhatsApp
-    if (aiSummary) {
-      const replyMessage = `✅ *Report Analyzed Successfully!*\n\n📋 *Summary:*\n${aiSummary.substring(0, 3500)}\n\n📱 View full details in your MediVault dashboard.`;
-      await sendWhatsAppReply(from, replyMessage);
-    } else {
-      await sendWhatsAppReply(from, "✅ Document uploaded and text extracted. Check your MediVault dashboard for details.");
-    }
-
-    console.log(`[DOC ${documentId}] Processing complete`);
-  } catch (error) {
-    console.error(`[DOC ${documentId}] Processing error:`, error);
-    await sendWhatsAppReply(from, "✅ Document saved but analysis encountered an issue. You can view it in your MediVault dashboard.");
-  }
 }
 
 // Handle link command
@@ -412,6 +180,7 @@ async function handleTextMessage(supabaseAdmin: any, from: string, text: string)
       documents.forEach((doc: any, idx: number) => {
         medicalContext += `${idx + 1}. ${doc.filename} (${new Date(doc.uploaded_at).toLocaleDateString()})\n`;
         if (doc.ai_summary) medicalContext += `   Summary: ${doc.ai_summary.substring(0, 300)}\n`;
+        if (!doc.ai_summary && doc.extracted_text) medicalContext += `   Text: ${doc.extracted_text.substring(0, 300)}\n`;
       });
     }
 
@@ -434,7 +203,6 @@ async function handleTextMessage(supabaseAdmin: any, from: string, text: string)
 
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!lovableApiKey) {
-      console.error("[CHAT] LOVABLE_API_KEY not configured");
       await sendWhatsAppReply(from, "🤖 AI service is not configured. Please try again later.");
       return;
     }
@@ -483,7 +251,6 @@ GUIDELINES:
     } else {
       const errText = await response.text();
       console.error("[CHAT] AI error:", response.status, errText);
-      
       if (response.status === 429) {
         await sendWhatsAppReply(from, "🤖 I'm receiving too many requests right now. Please try again in a minute.");
       } else {
@@ -496,7 +263,7 @@ GUIDELINES:
   }
 }
 
-// Handle media messages (document upload + analysis)
+// Handle media messages (document upload + delegate processing)
 async function handleMediaMessage(supabaseAdmin: any, from: string, message: any, msgType: string) {
   const mediaInfo = message[msgType];
   const mediaId = mediaInfo?.id;
@@ -514,7 +281,7 @@ async function handleMediaMessage(supabaseAdmin: any, from: string, message: any
     return;
   }
 
-  // Send acknowledgment first
+  // Send acknowledgment
   await sendWhatsAppReply(from, "📥 Report received. Processing and analyzing your document...");
 
   // Download media
@@ -567,8 +334,37 @@ async function handleMediaMessage(supabaseAdmin: any, from: string, message: any
 
   console.log(`Document record created: ${doc.id}`);
 
-  // IMPORTANT: Await the processing so it completes before the function terminates
-  await processDocument(supabaseAdmin, doc.id, user.patientId, media.data, media.mimeType, fileName, from);
+  // DELEGATE processing to generate-document-summary (separate edge function)
+  // This avoids memory limits since the webhook doesn't need to hold the file + base64
+  try {
+    console.log(`[DELEGATE] Invoking generate-document-summary for doc ${doc.id}`);
+    const processRes = await fetch(
+      `${Deno.env.get("SUPABASE_URL")}/functions/v1/generate-document-summary`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        },
+        body: JSON.stringify({
+          documentId: doc.id,
+          whatsappNumber: from,
+        }),
+      }
+    );
+
+    if (!processRes.ok) {
+      const errText = await processRes.text();
+      console.error(`[DELEGATE] Processing failed: ${processRes.status}`, errText);
+      await sendWhatsAppReply(from, "✅ Document saved! Analysis is taking longer than expected. Check your MediVault dashboard for updates.");
+    } else {
+      await processRes.text(); // consume body
+      console.log(`[DELEGATE] Processing completed for doc ${doc.id}`);
+    }
+  } catch (err) {
+    console.error(`[DELEGATE] Error invoking processing:`, err);
+    await sendWhatsAppReply(from, "✅ Document saved! Analysis will be available shortly in your MediVault dashboard.");
+  }
 }
 
 // ========== Main Handler ==========
@@ -622,26 +418,20 @@ Deno.serve(async (req) => {
 
         if (msgType === "text") {
           const text = message.text?.body?.trim() || "";
-
-          // Check for link command
           const linkMatch = text.match(/^link\s+(\d{6})$/i);
           if (linkMatch) {
             await handleLinkCommand(supabaseAdmin, from, linkMatch[1]);
             continue;
           }
-
-          // Handle general text (chat with MediBot)
           await handleTextMessage(supabaseAdmin, from, text);
           continue;
         }
 
-        // Handle media (image, document)
         if (["image", "document"].includes(msgType)) {
           await handleMediaMessage(supabaseAdmin, from, message, msgType);
           continue;
         }
 
-        // Unsupported message type
         await sendWhatsAppReply(from, "⚠️ I can only process text messages and files (images, PDFs, documents). Please send a supported file type.");
       }
 
