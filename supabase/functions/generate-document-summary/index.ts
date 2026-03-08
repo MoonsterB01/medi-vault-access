@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { encode as encodeBase64 } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.53.0";
 
 const corsHeaders = {
@@ -40,6 +39,67 @@ async function sendWhatsAppReply(to: string, message: string) {
   }
 }
 
+// Upload file to Gemini Files API and get a file URI (no base64, no memory issues)
+async function uploadToGeminiFiles(
+  fileBlob: Blob,
+  mimeType: string,
+  displayName: string
+): Promise<string | null> {
+  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+  if (!GEMINI_API_KEY) {
+    console.error('GEMINI_API_KEY not configured');
+    return null;
+  }
+
+  try {
+    // Step 1: Start resumable upload to get upload URL
+    const startRes = await fetch(
+      `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'X-Goog-Upload-Protocol': 'resumable',
+          'X-Goog-Upload-Command': 'start',
+          'X-Goog-Upload-Header-Content-Length': String(fileBlob.size),
+          'X-Goog-Upload-Header-Content-Type': mimeType,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ file: { display_name: displayName } }),
+      }
+    );
+
+    const uploadUrl = startRes.headers.get('X-Goog-Upload-URL');
+    if (!uploadUrl) {
+      console.error('Failed to get upload URL from Gemini Files API');
+      return null;
+    }
+
+    // Step 2: Upload the actual file bytes
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'X-Goog-Upload-Offset': '0',
+        'X-Goog-Upload-Command': 'upload, finalize',
+        'Content-Length': String(fileBlob.size),
+      },
+      body: fileBlob,
+    });
+
+    if (!uploadRes.ok) {
+      console.error('Gemini file upload failed:', uploadRes.status, await uploadRes.text());
+      return null;
+    }
+
+    const uploadData = await uploadRes.json();
+    const fileUri = uploadData.file?.uri;
+    console.log(`Gemini file uploaded: ${fileUri}`);
+    return fileUri || null;
+  } catch (error) {
+    console.error('Gemini file upload error:', error);
+    return null;
+  }
+}
+
 // Extract text using Gemini Vision
 async function extractTextFromStorage(
   supabaseClient: any,
@@ -47,18 +107,13 @@ async function extractTextFromStorage(
   contentType: string
 ): Promise<string | null> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) {
-    console.error('LOVABLE_API_KEY not configured');
-    return null;
-  }
+  const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 
   try {
     const isImage = contentType.startsWith('image/');
 
-    let imageUrlPayload: { url: string };
-
-    if (isImage) {
-      // Images: use signed URL directly (supported by gateway)
+    if (isImage && LOVABLE_API_KEY) {
+      // Images: use signed URL via Lovable gateway (works great, no memory issues)
       const { data: signedUrlData, error: signedUrlError } = await supabaseClient.storage
         .from('medical-documents')
         .createSignedUrl(filePath, 600);
@@ -68,67 +123,86 @@ async function extractTextFromStorage(
         return null;
       }
       console.log('Using signed URL for image OCR');
-      imageUrlPayload = { url: signedUrlData.signedUrl };
-    } else {
-      // PDFs: must download and use data URL (gateway rejects PDF signed URLs)
-      const { data: fileData, error: downloadError } = await supabaseClient.storage
-        .from('medical-documents')
-        .download(filePath);
 
-      if (downloadError || !fileData) {
-        console.error('File download error:', downloadError);
-        return null;
-      }
-
-      const bytes = new Uint8Array(await fileData.arrayBuffer());
-      console.log(`Downloaded PDF: ${bytes.length} bytes`);
-
-      if (bytes.length > 10 * 1024 * 1024) {
-        console.error(`PDF too large for OCR: ${bytes.length} bytes`);
-        return null;
-      }
-
-      // Use Deno's efficient native base64 encoder
-      const base64Data = encodeBase64(bytes);
-      console.log(`Base64 encoded: ${base64Data.length} chars`);
-      imageUrlPayload = { url: `data:application/pdf;base64,${base64Data}` };
-    }
-
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [{
             role: 'user',
             content: [
-              {
-                type: 'image_url',
-                image_url: imageUrlPayload,
-              },
-              {
-                type: 'text',
-                text: 'Extract ALL text content from this medical document. Include every detail: patient information, test names, values, units, reference ranges, dates, doctor names, hospital names, diagnoses, medications, and any other text visible. Preserve the structure. Output ONLY the extracted text, no commentary.',
-              },
+              { type: 'image_url', image_url: { url: signedUrlData.signedUrl } },
+              { type: 'text', text: 'Extract ALL text content from this medical document. Include every detail: patient information, test names, values, units, reference ranges, dates, doctor names, hospital names, diagnoses, medications, and any other text visible. Preserve the structure. Output ONLY the extracted text, no commentary.' },
             ],
-          },
-        ],
-        stream: false,
-      }),
-    });
+          }],
+          stream: false,
+        }),
+      });
 
-    if (!response.ok) {
-      console.error('Vision API error:', response.status, await response.text());
+      if (!response.ok) {
+        console.error('Vision API error:', response.status, await response.text());
+        return null;
+      }
+      const data = await response.json();
+      const extractedText = data.choices?.[0]?.message?.content;
+      console.log(`Extracted text (image): ${extractedText?.length || 0} chars`);
+      return extractedText || null;
+    }
+
+    // PDFs: Use Gemini Files API directly (streams file, no base64, no memory issues)
+    if (!GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY not configured for PDF processing');
       return null;
     }
 
-    const data = await response.json();
-    const extractedText = data.choices?.[0]?.message?.content;
-    console.log(`Extracted text: ${extractedText?.length || 0} chars`);
+    // Download file as blob (streaming, not fully buffered)
+    const { data: fileData, error: downloadError } = await supabaseClient.storage
+      .from('medical-documents')
+      .download(filePath);
+
+    if (downloadError || !fileData) {
+      console.error('File download error:', downloadError);
+      return null;
+    }
+
+    console.log(`Downloaded file for Gemini upload: ${fileData.size} bytes`);
+
+    // Upload to Gemini Files API (streams the blob, no base64 needed)
+    const fileUri = await uploadToGeminiFiles(fileData, 'application/pdf', filePath);
+    if (!fileUri) {
+      console.error('Failed to upload PDF to Gemini');
+      return null;
+    }
+
+    // Now call Gemini generateContent with fileUri reference
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: 'Extract ALL text content from this medical document. Include every detail: patient information, test names, values, units, reference ranges, dates, doctor names, hospital names, diagnoses, medications, and any other text visible. Preserve the structure. Output ONLY the extracted text, no commentary.' },
+              { file_data: { mime_type: 'application/pdf', file_uri: fileUri } },
+            ],
+          }],
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Gemini generateContent error:', response.status, await response.text());
+      return null;
+    }
+
+    const result = await response.json();
+    const extractedText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    console.log(`Extracted text (PDF via Gemini Files): ${extractedText?.length || 0} chars`);
     return extractedText || null;
   } catch (error) {
     console.error('Text extraction error:', error);
