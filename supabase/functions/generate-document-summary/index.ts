@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { encode as encodeBase64 } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.53.0";
 
 const corsHeaders = {
@@ -39,8 +40,7 @@ async function sendWhatsAppReply(to: string, message: string) {
   }
 }
 
-
-// Extract text from file using Gemini Vision via signed URL (avoids memory issues)
+// Extract text using Gemini Vision
 async function extractTextFromStorage(
   supabaseClient: any,
   filePath: string,
@@ -53,20 +53,46 @@ async function extractTextFromStorage(
   }
 
   try {
-    // Generate a signed URL instead of downloading the file
-    const { data: signedUrlData, error: signedUrlError } = await supabaseClient.storage
-      .from('medical-documents')
-      .createSignedUrl(filePath, 600); // 10 min expiry
+    const isImage = contentType.startsWith('image/');
 
-    if (signedUrlError || !signedUrlData?.signedUrl) {
-      console.error('Signed URL error:', signedUrlError);
-      return null;
+    let imageUrlPayload: { url: string };
+
+    if (isImage) {
+      // Images: use signed URL directly (supported by gateway)
+      const { data: signedUrlData, error: signedUrlError } = await supabaseClient.storage
+        .from('medical-documents')
+        .createSignedUrl(filePath, 600);
+
+      if (signedUrlError || !signedUrlData?.signedUrl) {
+        console.error('Signed URL error:', signedUrlError);
+        return null;
+      }
+      console.log('Using signed URL for image OCR');
+      imageUrlPayload = { url: signedUrlData.signedUrl };
+    } else {
+      // PDFs: must download and use data URL (gateway rejects PDF signed URLs)
+      const { data: fileData, error: downloadError } = await supabaseClient.storage
+        .from('medical-documents')
+        .download(filePath);
+
+      if (downloadError || !fileData) {
+        console.error('File download error:', downloadError);
+        return null;
+      }
+
+      const bytes = new Uint8Array(await fileData.arrayBuffer());
+      console.log(`Downloaded PDF: ${bytes.length} bytes`);
+
+      if (bytes.length > 10 * 1024 * 1024) {
+        console.error(`PDF too large for OCR: ${bytes.length} bytes`);
+        return null;
+      }
+
+      // Use Deno's efficient native base64 encoder
+      const base64Data = encodeBase64(bytes);
+      console.log(`Base64 encoded: ${base64Data.length} chars`);
+      imageUrlPayload = { url: `data:application/pdf;base64,${base64Data}` };
     }
-
-    const signedUrl = signedUrlData.signedUrl;
-    console.log(`Using signed URL for OCR (type: ${contentType})`);
-
-    const mimeForApi = contentType.startsWith('image/') ? contentType : 'application/pdf';
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -82,9 +108,7 @@ async function extractTextFromStorage(
             content: [
               {
                 type: 'image_url',
-                image_url: {
-                  url: signedUrl,
-                },
+                image_url: imageUrlPayload,
               },
               {
                 type: 'text',
