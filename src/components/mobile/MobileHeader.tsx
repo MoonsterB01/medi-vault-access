@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Copy, ChevronDown, ChevronUp, Clock, MoreVertical, LogOut, CreditCard, CalendarPlus } from "lucide-react";
+import { User, Copy, ChevronDown, ChevronUp, Clock, MoreVertical, LogOut, CreditCard, CalendarPlus, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
