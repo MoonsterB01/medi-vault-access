@@ -39,18 +39,6 @@ async function sendWhatsAppReply(to: string, message: string) {
   }
 }
 
-// Encode Uint8Array to base64 in chunks to avoid stack overflow
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunkSize = 8192;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    const chunk = bytes.subarray(i, i + chunkSize);
-    for (let j = 0; j < chunk.length; j++) {
-      binary += String.fromCharCode(chunk[j]);
-    }
-  }
-  return btoa(binary);
-}
 
 // Extract text from file using Gemini Vision via signed URL (avoids memory issues)
 async function extractTextFromStorage(
