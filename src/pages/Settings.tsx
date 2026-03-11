@@ -300,10 +300,11 @@ export default function Settings({ user }: SettingsProps) {
 
       if (error) throw error;
 
+      setWhatsappOtp(otp);
       setWhatsappOtpSent(true);
       toast({
         title: "OTP Generated",
-        description: `Your OTP is: ${otp}. Send "link ${otp}" to MediBot on WhatsApp within 10 minutes.`,
+        description: "Click the button below to connect via WhatsApp.",
       });
     } catch (error: any) {
       toast({
