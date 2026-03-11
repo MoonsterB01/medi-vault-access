@@ -752,15 +752,24 @@ export default function Settings({ user }: SettingsProps) {
                       </div>
                     </div>
 
-                    {whatsappOtpSent && (
-                      <div className="p-4 bg-muted/50 rounded-lg space-y-2">
-                        <p className="text-sm font-medium">Next Steps:</p>
-                        <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                          <li>Open WhatsApp on your phone</li>
-                          <li>Send a message to the MediBot number</li>
-                          <li>Type: <code className="bg-muted px-1.5 py-0.5 rounded text-foreground font-mono">link YOUR_OTP</code></li>
-                          <li>The OTP expires in 10 minutes</li>
-                        </ol>
+                    {whatsappOtpSent && whatsappOtp && (
+                      <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-3">
+                        <p className="text-sm font-medium text-foreground">OTP generated! Click below to connect:</p>
+                        <Button
+                          className="w-full gap-2"
+                          onClick={() => {
+                            const waNumber = '15551481903';
+                            const message = encodeURIComponent(`link ${whatsappOtp}`);
+                            window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank');
+                          }}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          Open WhatsApp & Connect
+                        </Button>
+                        <p className="text-xs text-muted-foreground text-center">
+                          WhatsApp will open with the verification message pre-filled — just tap Send!
+                          <br />OTP expires in 10 minutes.
+                        </p>
                       </div>
                     )}
 
