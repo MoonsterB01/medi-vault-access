@@ -27,7 +27,8 @@ import {
   MessageCircle,
   Phone,
   CheckCircle2,
-  Unlink
+  Unlink,
+  ExternalLink
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
