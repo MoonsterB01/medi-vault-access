@@ -759,7 +759,7 @@ export default function Settings({ user }: SettingsProps) {
                         <Button
                           className="w-full gap-2"
                           onClick={() => {
-                            const waNumber = '15551481903';
+                            const waNumber = '918112244532';
                             const message = encodeURIComponent(`link ${whatsappOtp}`);
                             window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank');
                           }}
