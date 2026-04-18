@@ -323,14 +323,24 @@ export function FamilyAccessTab({ user, patientData }: FamilyAccessTabProps) {
                     </p>
                     <PermBadges permissions={link.permissions} />
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleLeave(link.id, link.patient?.name)}
-                  >
-                    <LogOut className="h-4 w-4 mr-1" />
-                    Leave
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleSwitchTo(link)}
+                      disabled={activePatient?.patientId === link.patient?.id}
+                    >
+                      <ArrowRightLeft className="h-4 w-4 mr-1" />
+                      {activePatient?.patientId === link.patient?.id ? "Currently viewing" : "Open account"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleLeave(link.id, link.patient?.name)}
+                    >
+                      <LogOut className="h-4 w-4 mr-1" />
+                      Leave
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
