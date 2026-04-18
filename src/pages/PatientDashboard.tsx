@@ -23,6 +23,8 @@ import { MediBot } from "@/components/MediBot";
 import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { MobilePatientDashboard } from "@/components/mobile/MobilePatientDashboard";
 import { WellbeingPage } from "@/components/wellbeing/WellbeingPage";
+import { FamilyAccessTab } from "@/components/family/FamilyAccessTab";
+import { Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -518,7 +520,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-7">
+              <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
                 <TabsTrigger value="summary"><Bot className="h-4 w-4 mr-1" />Summary</TabsTrigger>
                 <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-1" />Documents</TabsTrigger>
                 <TabsTrigger value="search"><Search className="h-4 w-4 mr-1" />Search</TabsTrigger>
@@ -526,6 +528,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
                 <TabsTrigger value="appointments"><Clock className="h-4 w-4 mr-1" />Appointments</TabsTrigger>
                 <TabsTrigger value="book-appointment"><Calendar className="h-4 w-4 mr-1" />Book</TabsTrigger>
                 <TabsTrigger value="upload"><Upload className="h-4 w-4 mr-1" />Upload</TabsTrigger>
+                <TabsTrigger value="family"><Users className="h-4 w-4 mr-1" />Family</TabsTrigger>
               </TabsList>
 
               <TabsContent value="summary" className="mt-6" id="tab-content-summary">
@@ -725,6 +728,10 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
               
               <TabsContent value="upload" className="mt-6" id="tab-content-upload">
                 <DocumentUpload onUploadSuccess={onUploadSuccess} />
+              </TabsContent>
+
+              <TabsContent value="family" className="mt-6" id="tab-content-family">
+                <FamilyAccessTab user={user} patientData={patientData} />
               </TabsContent>
             </Tabs>
           </div>
