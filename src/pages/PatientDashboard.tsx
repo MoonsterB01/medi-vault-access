@@ -24,6 +24,8 @@ import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 import { MobilePatientDashboard } from "@/components/mobile/MobilePatientDashboard";
 import { WellbeingPage } from "@/components/wellbeing/WellbeingPage";
 import { FamilyAccessTab } from "@/components/family/FamilyAccessTab";
+import { FamilyModeBanner } from "@/components/family/FamilyModeBanner";
+import { useActivePatient } from "@/contexts/ActivePatientContext";
 import { Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +58,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   const [isMissingInfoDialogOpen, setMissingInfoDialogOpen] = useState(false);
   const [missingFields, setMissingFields] = useState<any[]>([]);
   const subscription = useSubscription(user?.id, patientData?.id);
+  const { activePatient, isFamilyMode, switchToOwnAccount } = useActivePatient();
 
   useEffect(() => {
     if (patientData) {
@@ -106,10 +109,45 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   }, [location.hash]);
 
   useEffect(() => {
-    if (user) {
+    if (!user) return;
+    if (isFamilyMode && activePatient?.patientId) {
+      // Load the linked patient's data instead of the user's own
+      fetchPatientById(activePatient.patientId);
+    } else {
       fetchPatientData(user.id);
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isFamilyMode, activePatient?.patientId]);
+
+  const fetchPatientById = async (patientId: string) => {
+    try {
+      const { data: patient, error } = await supabase
+        .from('patients')
+        .select('*')
+        .eq('id', patientId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!patient) {
+        toast({
+          title: "Access lost",
+          description: "You no longer have access to this patient. Switching back to your account.",
+          variant: "destructive",
+        });
+        switchToOwnAccount();
+        return;
+      }
+      setPatientData(patient);
+      await fetchDocuments(patient.id);
+      await fetchPrescriptions(patient.id);
+    } catch (err: any) {
+      console.error('Error loading linked patient:', err);
+      toast({
+        title: "Could not load family member's data",
+        description: err.message || "Please try again or switch back to your account.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchPatientData = async (userId: string, retryCount = 0) => {
     const maxRetries = 2;
