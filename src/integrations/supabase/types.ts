@@ -903,6 +903,50 @@ export type Database = {
           },
         ]
       }
+      family_access: {
+        Row: {
+          created_at: string
+          family_user_id: string
+          granted_at: string
+          id: string
+          is_active: boolean
+          patient_id: string
+          permissions: Json
+          revoked_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          family_user_id: string
+          granted_at?: string
+          id?: string
+          is_active?: boolean
+          patient_id: string
+          permissions?: Json
+          revoked_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          family_user_id?: string
+          granted_at?: string
+          id?: string
+          is_active?: boolean
+          patient_id?: string
+          permissions?: Json
+          revoked_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_access_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       file_hashes: {
         Row: {
           content_type: string | null
@@ -2671,6 +2715,12 @@ export type Database = {
           start_time: string
         }[]
       }
+      get_family_accessible_patient_ids: {
+        Args: never
+        Returns: {
+          patient_id: string
+        }[]
+      }
       get_public_stats: {
         Args: never
         Returns: {
@@ -2717,6 +2767,14 @@ export type Database = {
       }
       user_can_access_patient_files: {
         Args: { patient_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
+      user_has_family_access: {
+        Args: { _patient_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_has_family_permission: {
+        Args: { _patient_id: string; _permission: string }
         Returns: boolean
       }
       user_owns_patient: {
