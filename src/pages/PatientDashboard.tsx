@@ -464,6 +464,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
       onReset={() => user && fetchPatientData(user.id)}
     >
       <div className="container mx-auto px-4 py-8">
+        <FamilyModeBanner />
         {patientData && missingFields.length > 0 && (
           <MissingInfoDialog
             patientId={patientData.id}
