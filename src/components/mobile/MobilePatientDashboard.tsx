@@ -15,6 +15,7 @@ import AppointmentBooking from "@/components/AppointmentBooking";
 import { WellbeingPage } from "@/components/wellbeing/WellbeingPage";
 import { PatientSummary as PatientSummaryType } from "@/types/patient-summary";
 import { PulsingDot } from "@/components/PulsingDot";
+import { FamilyModeBanner } from "@/components/family/FamilyModeBanner";
 
 interface MobilePatientDashboardProps {
   user: any;
@@ -152,6 +153,9 @@ export function MobilePatientDashboard({
 
       {/* Scrollable Content Area with animation */}
       <MobileTabContent className="pt-4">
+        <div className="px-4">
+          <FamilyModeBanner />
+        </div>
         <div 
           className={`transition-all duration-300 ${
             isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'

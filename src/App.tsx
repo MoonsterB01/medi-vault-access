@@ -25,6 +25,7 @@ import Pricing from "./pages/Pricing";
 import Security from "./pages/Security";
 import About from "./pages/About";
 import Settings from "./pages/Settings";
+import { ActivePatientProvider } from "./contexts/ActivePatientContext";
 
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <ActivePatientProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
@@ -67,6 +69,7 @@ const App = () => (
         </Routes>
         
       </BrowserRouter>
+      </ActivePatientProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -14,7 +14,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Users, UserPlus, LogOut, ShieldOff, Eye, Upload, Calendar, Loader2 } from "lucide-react";
+import { Users, UserPlus, LogOut, ShieldOff, Eye, Upload, Calendar, Loader2, ArrowRightLeft } from "lucide-react";
+import { useActivePatient } from "@/contexts/ActivePatientContext";
+import { useNavigate } from "react-router-dom";
 
 interface FamilyAccessTabProps {
   user: any;
@@ -45,12 +47,32 @@ interface OutgoingLink {
  */
 export function FamilyAccessTab({ user, patientData }: FamilyAccessTabProps) {
   const { toast } = useToast();
+  const { switchToPatient, activePatient } = useActivePatient();
+  const navigate = useNavigate();
   const [helping, setHelping] = useState<IncomingLink[]>([]);
   const [helpers, setHelpers] = useState<OutgoingLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [pidInput, setPidInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const handleSwitchTo = (link: IncomingLink) => {
+    if (!link.patient) {
+      toast({ title: "Cannot switch", description: "Patient details unavailable.", variant: "destructive" });
+      return;
+    }
+    switchToPatient({
+      patientId: link.patient.id,
+      patientName: link.patient.name,
+      shareableId: link.patient.shareable_id,
+      permissions: link.permissions || {},
+    });
+    toast({
+      title: `Now viewing ${link.patient.name}'s account`,
+      description: "You can switch back at any time from the banner above.",
+    });
+    navigate("#summary");
+  };
 
   const loadLinks = async () => {
     setLoading(true);
@@ -301,14 +323,24 @@ export function FamilyAccessTab({ user, patientData }: FamilyAccessTabProps) {
                     </p>
                     <PermBadges permissions={link.permissions} />
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleLeave(link.id, link.patient?.name)}
-                  >
-                    <LogOut className="h-4 w-4 mr-1" />
-                    Leave
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleSwitchTo(link)}
+                      disabled={activePatient?.patientId === link.patient?.id}
+                    >
+                      <ArrowRightLeft className="h-4 w-4 mr-1" />
+                      {activePatient?.patientId === link.patient?.id ? "Currently viewing" : "Open account"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleLeave(link.id, link.patient?.name)}
+                    >
+                      <LogOut className="h-4 w-4 mr-1" />
+                      Leave
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
