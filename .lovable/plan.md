@@ -1,215 +1,123 @@
 
-# Hospital Portal Enhancement Plan
 
-## Current State Analysis
+## Family Access — Complete Workflow Plan
 
-After reviewing the codebase, here's what I found:
+### Roles
+- **P** = Patient whose account is being managed (owns the data)
+- **F** = Family member who gains access via P's Patient Shareable ID (PID)
 
-### Working Features
-- **Schedule Module**: Appointment scheduling, slot setup, and booking work correctly
-- **Overview Page**: Dashboard with stats works
-- **Billing Page**: Patient billing with items, taxes, discounts is functional
-- **IPD/OPD Pages**: Basic structure exists with dialogs for new entries
-- **Pharmacy Dispensing/Billing**: Core billing workflow exists
-- **Pharmacy Purchase List**: Fully functional with filters and export
-
-### Partially Working / Placeholder Features
-| Module | Current State | Issues |
-|--------|---------------|--------|
-| **EHR** | Shows patient queue only | No full EHR functionality (medical history, vitals, notes) |
-| **Laboratory** | LabBilling works, Work Order is placeholder | No sample collection, result entry, or report generation |
-| **Reports** | Static cards with no functionality | No actual report generation or data visualization |
-| **Pharmacy Inventory** | View-only | No add/edit medicine functionality |
-| **Lab Tests Master** | Missing | No way to manage lab test catalog |
-
-### Database Tables Available
-The following tables already exist and can be utilized:
-- `lab_orders` - For lab test orders with results
-- `lab_tests` - Lab test master catalog
-- `pharmacy_inventory` - Medicine stock
-- `pharmacy_dispensations` - Dispensing records
-- `pharmacy_purchases` - Purchase from suppliers
-- `pharmacy_suppliers` - Supplier master
-- `opd_visits` - OPD visit records
-- `ipd_admissions` - IPD admission records
-- `billing` - Unified billing records
-- `documents` - Patient documents (for reports)
+### Core Flow
+1. F opens **Family Access** tab → enters P's PID → clicks "Link Account"
+2. System validates PID, creates an **active** access link (no approval needed per your spec)
+3. **P receives a notification** ("F now has access to your records") — P can revoke anytime
+4. F can now switch context to manage P's account
 
 ---
 
-## Implementation Plan
+### Database Design (safe, no recursion)
 
-### Phase 1: Laboratory Module (Priority: High)
+**New table: `family_access`** (rebuilt cleanly)
+- `id` uuid PK
+- `patient_id` uuid (P — the owner)
+- `family_user_id` uuid (F — the helper)
+- `granted_at` timestamptz
+- `revoked_at` timestamptz nullable
+- `is_active` boolean default true
+- `permissions` jsonb → `{ view: true, upload: true, appointments: true }`
+- UNIQUE (patient_id, family_user_id)
 
-**1.1 Lab Test Master (Lab Component)**
-- Add/Edit/Delete lab tests in catalog
-- Fields: test name, code, price, normal range, sample type, department
-- Connect to existing `lab_tests` table
+**Critical lesson from past failure**: All RLS policies on `family_access` and policies on other tables that reference family access will use **SECURITY DEFINER functions** — never inline subqueries to `family_access` inside `family_access`'s own policies. We will:
+- Create `public.user_has_family_access(_user_id uuid, _patient_id uuid)` returns boolean
+- Create `public.get_family_accessible_patient_ids()` returns table of uuid
+- Use these in all dependent policies (documents, appointments, summaries, etc.)
 
-**1.2 Lab Work Order**
-- Create work orders when tests are billed
-- Show pending samples to collect
-- Mark sample collected with timestamp
-- Assign to technician
-- Uses `lab_orders` table with status workflow: `ordered` -> `sample_collected` -> `processing` -> `completed`
+**RLS on `family_access` itself** (simple, no self-reference):
+- F can INSERT rows where `family_user_id = auth.uid()`
+- F can SELECT/DELETE their own rows (`family_user_id = auth.uid()`) — this is "leave"
+- P can SELECT/UPDATE/DELETE rows where they own the patient (`patient_id IN (SELECT id FROM patients WHERE created_by = auth.uid())`) — this is "revoke"
 
-**1.3 Lab Result Entry**
-- Enter test results against work orders
-- Compare with normal ranges (auto-flag abnormal values)
-- Save results to `lab_orders.results` JSON field
-- Mark order as complete
-
-**1.4 Lab History**
-- Search patient lab history
-- View past results with date filtering
-- Print/export lab reports
+**Extending existing table policies** (additive, won't break current ones):
+For `documents`, `appointments`, `patient_summaries`, `patients` — add new policies using the security definer helper so F gets read/write per granted permissions. Existing owner policies remain untouched.
 
 ---
 
-### Phase 2: Pharmacy Module Enhancements
+### UI Components
 
-**2.1 Add Medicine to Inventory**
-- Dialog to add new medicines with batch, expiry, quantity, price
-- Low stock alerts based on reorder level
-- Stock adjustment functionality
+**1. Family Access tab** (`#family` — already in sidebar)
+- Two sub-sections:
+  - **"People I'm Helping"** — list of patients F is linked to (revoke = leave)
+  - **"People With Access to My Records"** — list of family members who can manage P's account (P can revoke)
+- "Add Family Member" button → dialog asking for PID → validates → creates link → toasts success
 
-**2.2 Supplier Management**
-- Add/Edit suppliers with GSTIN, contact details
-- View supplier purchase history
+**2. Account Switcher** (header, top-right of AppLayout)
+- Dropdown showing: "My Account (current)" + linked patients
+- Switching sets a context (React Context + localStorage `activePatientId`)
+- All data hooks (`fetchPatientData`, summary, documents, appointments) read from active context, not just `auth.uid()`'s own patient
+- Visual indicator (banner): "Viewing P's account — Family access mode" with "Switch back" button
 
-**2.3 New Purchase Entry**
-- Record medicine purchases from suppliers
-- Auto-update inventory quantities
-- GST calculations (CGST/SGST/IGST)
-
----
-
-### Phase 3: EHR Module Enhancement
-
-**3.1 Patient Medical Record View**
-- When doctor clicks "Patient Dashboard", show:
-  - Demographics & vitals
-  - Medical history (diagnoses, allergies)
-  - Current medications
-  - Recent lab results
-  - Document viewer (prescriptions, reports)
-
-**3.2 Consultation Notes**
-- Add clinical notes during visit
-- Diagnosis entry with ICD codes (optional)
-- Prescription writer (connects to pharmacy)
-- Order lab tests from EHR
-
-**3.3 Visit History**
-- Timeline of all patient visits
-- View past consultation notes
-- Track treatment progress
+**3. Notification to P**
+- Use existing `notifications` table + `create_notification` RPC
+- Type: `family_access_granted`, message: "F now has access to your medical records"
+- Shows in NotificationCenter bell
 
 ---
 
-### Phase 4: Reports & Analytics
-
-**4.1 Patient Statistics Report**
-- Date range filter
-- New vs returning patients
-- Gender/age distribution charts
-- Department-wise patient count
-
-**4.2 Financial Reports**
-- Daily/monthly revenue summary
-- Payment method breakdown
-- Outstanding dues aging report
-- Department-wise revenue
-
-**4.3 Inventory Reports**
-- Stock value report
-- Near-expiry medicines
-- Low stock alerts
-- Medicine consumption trends
-
-**4.4 Doctor Performance**
-- Patients seen per doctor
-- Average consultation time
-- Revenue generated
-- Appointment completion rate
+### Permission Enforcement
+F's allowed actions when context = P:
+- ✅ View all records, summary, appointments
+- ✅ Upload documents (uploaded_by = F's id, patient_id = P's id)
+- ✅ Book/manage appointments for P
+- ❌ Cannot edit P's demographics
+- ❌ Cannot grant access to others
+- ❌ Cannot delete P's account or remove other family links
 
 ---
 
-## Technical Implementation Details
+### Edge Function: `link-family-access`
+Validates PID → confirms patient exists → prevents self-linking → prevents duplicates → inserts family_access row → calls `create_notification` for P → returns success.
 
-### Database Changes Required
-No new tables needed - all required tables exist. Minor additions:
-- Add `sample_collected_at`, `collected_by` columns to `lab_orders`
-- Add `technician_id` to `lab_orders` for assignment
+(Direct insert from client also works via RLS, but edge function gives us a clean place for validation + notification + audit logging.)
 
-### New Components to Create
+---
 
-| Component | Purpose |
-|-----------|---------|
-| `LabTestMaster.tsx` | CRUD for lab tests catalog |
-| `LabWorkOrderList.tsx` | Active work orders with status |
-| `LabResultEntry.tsx` | Enter and save test results |
-| `LabReportViewer.tsx` | View/print lab reports |
-| `AddMedicineDialog.tsx` | Add medicine to inventory |
-| `SupplierManagement.tsx` | Manage pharmacy suppliers |
-| `NewPurchaseDialog.tsx` | Record new purchases |
-| `PatientEHRView.tsx` | Full patient medical record |
-| `ConsultationNotes.tsx` | Add/view consultation notes |
-| `ReportGenerator.tsx` | Generate various reports |
-| `ReportCharts.tsx` | Recharts-based visualizations |
-
-### Integration Points
+### Safety Measures (avoiding past disaster)
 
 ```text
-+------------------+     +------------------+
-|   EHR Console    |---->| Order Lab Tests  |
-+------------------+     +------------------+
-         |                       |
-         v                       v
-+------------------+     +------------------+
-| Write Prescription| --> | Pharmacy Billing |
-+------------------+     +------------------+
-         |                       |
-         v                       v
-+------------------+     +------------------+
-|  Create OPD Visit |    | Update Inventory |
-+------------------+     +------------------+
+┌─────────────────────────────────────────────────┐
+│  RLS Recursion Prevention Strategy              │
+├─────────────────────────────────────────────────┤
+│  family_access policies → NEVER reference       │
+│    family_access table inside themselves        │
+│                                                 │
+│  Other tables → use SECURITY DEFINER helper:    │
+│    user_has_family_access(uid, patient_id)      │
+│                                                 │
+│  Helper function uses STABLE + SET search_path  │
+│  → bypasses RLS, no recursion possible          │
+└─────────────────────────────────────────────────┘
 ```
 
----
-
-## Implementation Order
-
-1. **Week 1**: Laboratory Module
-   - Lab Test Master (add/edit tests)
-   - Work Order workflow (sample collection, processing)
-   - Result entry with normal range comparison
-
-2. **Week 2**: Pharmacy Enhancements
-   - Add medicine to inventory
-   - Supplier management
-   - Purchase entry workflow
-
-3. **Week 3**: EHR Enhancement
-   - Patient medical record view
-   - Consultation notes
-   - Order tests/medicines from EHR
-
-4. **Week 4**: Reports
-   - Patient statistics with charts
-   - Financial reports
-   - Inventory reports
-   - Export to PDF/CSV
+- Migration will be **additive only** — no DROP on existing policies
+- New policies have unique names (e.g., "Family helpers can view documents")
+- Tested helper function before applying dependent policies
+- Self-link prevention: P cannot link their own PID to themselves
 
 ---
 
-## Summary
+### Implementation Order (when approved)
+1. **Migration**: Create `family_access` table + 2 security definer helpers + RLS on family_access
+2. **Migration**: Add additive RLS policies on documents, appointments, patient_summaries, patients (read+write for family helpers)
+3. **Edge function**: `link-family-access` (validation + notification)
+4. **Frontend Context**: `ActivePatientContext` provider in `AppLayout`
+5. **UI**: Family Access tab content (`FamilyAccessTab.tsx`) with both sub-sections + add dialog
+6. **UI**: Account switcher dropdown in header + "viewing as" banner
+7. **Refactor data hooks**: `fetchPatientData`, `usePatientSummary`, etc. to honor active patient context
+8. **Wire notifications**: Verify P sees the access-granted notification
 
-This plan transforms the hospital portal from a basic structure into a fully functional HMS by:
+---
 
-1. **Completing the Lab workflow**: From test ordering to result delivery
-2. **Enabling inventory management**: Full stock control for pharmacy
-3. **Building a proper EHR**: Complete patient medical records
-4. **Adding analytics**: Data-driven insights with visual reports
+### Open Risks (called out, not blockers)
+- Switching active patient must reset all React Query caches (`queryClient.clear()` on switch) to avoid stale data leaking between accounts
+- Document uploads in family-mode must store F's `uploaded_by` for audit trail (already supported by schema)
+- Mobile sidebar / bottom nav needs the same switcher for parity
 
-All features will integrate with existing database tables and maintain the current UI patterns for consistency.
