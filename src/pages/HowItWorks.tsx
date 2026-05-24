@@ -166,18 +166,18 @@ export default function HowItWorks() {
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <Shield className="h-8 w-8 text-purple-600" />
-                  <CardTitle className="text-lg text-purple-800 dark:text-purple-300">HIPAA Compliant</CardTitle>
+                  <CardTitle className="text-lg text-purple-800 dark:text-purple-300">Privacy by Design</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <p className="text-purple-700 dark:text-purple-400 mb-4">
-                  We meet and exceed all HIPAA requirements for handling protected health information.
+                  We follow privacy-first practices aligned with India's DPDP Act. Your records are visible only to you and people you invite.
                 </p>
                 <ul className="space-y-2 text-sm text-purple-600 dark:text-purple-500">
-                  <li>• Regular security audits</li>
-                  <li>• Staff background checks</li>
-                  <li>• Incident response protocols</li>
-                  <li>• Compliance monitoring</li>
+                  <li>• Minimal data collection</li>
+                  <li>• Per-user data isolation (RLS)</li>
+                  <li>• Clear consent for family access</li>
+                  <li>• No data sold to third parties</li>
                 </ul>
               </CardContent>
             </Card>
