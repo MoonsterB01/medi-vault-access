@@ -192,32 +192,32 @@ const FAQ = () => {
     {
       category: "Security & Privacy",
       question: "Is my medical data secure?",
-      answer: "Absolutely! We use bank-level security (256-bit AES encryption) to protect all medical data. Your documents are encrypted both when stored on our servers and when transmitted over the internet. We're also HIPAA compliant, which means we follow strict healthcare privacy laws. Only you and people you explicitly grant access can view your documents."
+      answer: "We use industry-standard encryption — AES-256 at rest on our cloud storage and TLS in transit. Access is enforced at the database level using Row-Level Security, so only you and people you explicitly grant access can view your records. MediVault is currently in active development and is not certified for any specific regulatory framework — see our Privacy Policy for details."
     },
     {
       category: "Security & Privacy",
       question: "What is encryption and how does MediVault use it?",
-      answer: "Encryption is like putting your documents in a locked safe where only you have the key. When you upload a medical report, MediVault scrambles it into a secret code that nobody can read without the special key. We use '256-bit encryption' - the same security level that banks use to protect your money. Even our own staff cannot read your documents without your permission."
+      answer: "Encryption scrambles your documents into unreadable data that requires a key to unlock. Your files are encrypted in transit (using TLS) while travelling between your device and our servers, and at rest (using AES-256) while stored on our cloud storage. This protects your data if it were ever intercepted or if storage media were improperly accessed."
     },
     {
       category: "Security & Privacy",
-      question: "Is MediVault HIPAA compliant?",
-      answer: "Yes, MediVault is fully HIPAA compliant. HIPAA (Health Insurance Portability and Accountability Act) is a US law that requires strict protection of medical information. We follow all HIPAA requirements including secure data storage, access controls, audit logging, and breach notification procedures. We also sign Business Associate Agreements with healthcare providers."
+      question: "Is MediVault compliant with any specific regulation?",
+      answer: "MediVault is built following privacy-first principles aligned with India's Digital Personal Data Protection Act (DPDP). We are NOT currently certified as HIPAA compliant and do not advertise such certification. We are actively working toward stronger compliance posture as the product matures."
     },
     {
       category: "Security & Privacy",
       question: "Who can access my medical records?",
-      answer: "Only you can access your medical records by default. You control who sees your documents by explicitly granting access to family members or doctors. Hospital staff can only upload documents - they cannot browse or view your existing records. Every access to your documents is logged for security purposes."
+      answer: "Only you can access your medical records by default. You control who sees your documents by explicitly granting access to family members. Hospital staff can only upload documents to your account — they cannot browse your existing records. Every access is logged for transparency."
     },
     {
       category: "Security & Privacy",
       question: "Does MediVault share my data with third parties?",
-      answer: "No, we do NOT sell your medical data to anyone. Ever. We only share your information in these situations: 1) When YOU grant access to family members or doctors, 2) When required by law (like a court order), or 3) With our secure service providers (like Supabase for database hosting) who are legally bound to protect your data. We will never share your data for marketing or advertising purposes."
+      answer: "No. We do NOT sell your medical data. We only share information when: 1) YOU grant access to family members or doctors, 2) it is required by law, or 3) with infrastructure providers (e.g. Supabase for hosting, Google Gemini via Lovable AI Gateway for document analysis) that process data on our behalf to make the service work."
     },
     {
       category: "Security & Privacy",
       question: "How does the AI analyze my documents - is it safe?",
-      answer: "Our AI reads your documents to extract information like test results and diagnoses, but it runs in a secure, encrypted environment. The AI never stores your documents outside our secure system. Think of it like a robot librarian that reads your files to organize them, but can't take them out of the library. The AI processing is HIPAA compliant and all data remains encrypted."
+      answer: "Document text is sent to our AI provider (Google Gemini via the Lovable AI Gateway) over an encrypted connection to extract structured information like test names, values, and dates. The AI is used solely to organize and summarize your records — never for advertising — and providers do not retain your documents for training under our usage terms."
     },
     {
       category: "Security & Privacy",
