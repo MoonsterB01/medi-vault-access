@@ -229,23 +229,22 @@ const PrivacyPolicy = () => {
 
                   <div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">
-                      B. With Service Providers (Business Associates)
+                      B. With Service Providers
                     </h3>
                     <ul className="list-disc ml-6 space-y-2">
                       <li>
-                        <strong>Supabase:</strong> Cloud database hosting with HIPAA-compliant infrastructure
+                        <strong>Supabase:</strong> Cloud database, storage and authentication hosting (infrastructure SOC 2 Type II certified)
                       </li>
                       <li>
                         <strong>Lovable Cloud:</strong> Application hosting and serverless functions
                       </li>
                       <li>
-                        <strong>AI Providers:</strong> Secure, HIPAA-compliant AI services for document analysis
+                        <strong>AI Providers (Google Gemini via Lovable AI Gateway):</strong> Document analysis and summarization
                       </li>
                     </ul>
                     <p className="mt-2">
                       All service providers are contractually obligated to protect your data and use it only for
-                      providing services to us. We sign Business Associate Agreements (BAAs) with all providers handling
-                      PHI.
+                      providing services to us.
                     </p>
                   </div>
 
