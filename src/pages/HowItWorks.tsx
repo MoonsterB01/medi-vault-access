@@ -322,22 +322,18 @@ export default function HowItWorks() {
           <h2 className="text-3xl font-bold mb-8">
             Trusted by Healthcare Professionals
           </h2>
-          <div className="grid md:grid-cols-4 gap-8 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <div>
-              <div className="text-3xl font-bold text-blue-400 mb-2">256-bit</div>
-              <p className="text-primary-foreground/80">Encryption Standard</p>
+              <div className="text-3xl font-bold text-blue-400 mb-2">AES-256</div>
+              <p className="text-primary-foreground/80">Encryption at Rest</p>
             </div>
             <div>
-              <div className="text-3xl font-bold text-blue-400 mb-2">99.9%</div>
-              <p className="text-primary-foreground/80">Uptime Guarantee</p>
+              <div className="text-3xl font-bold text-blue-400 mb-2">TLS 1.2+</div>
+              <p className="text-primary-foreground/80">Encryption in Transit</p>
             </div>
             <div>
-              <div className="text-3xl font-bold text-blue-400 mb-2">24/7</div>
-              <p className="text-primary-foreground/80">Security Monitoring</p>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-blue-400 mb-2">100%</div>
-              <p className="text-primary-foreground/80">HIPAA Compliant</p>
+              <div className="text-3xl font-bold text-blue-400 mb-2">RLS</div>
+              <p className="text-primary-foreground/80">Per-User Data Isolation</p>
             </div>
           </div>
           
