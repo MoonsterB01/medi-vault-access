@@ -19,7 +19,7 @@ const FAQ = () => {
     {
       category: "Getting Started",
       question: "What is MediVault and how does it work?",
-      answer: "MediVault is a secure digital platform for storing and managing medical records. Think of it as a safe online filing cabinet for all your health documents. Hospitals upload your test reports, prescriptions, and medical records directly to your account. You can then view them anytime from your phone or computer, share them with doctors, or let family members access them. Everything is encrypted and secure, just like online banking."
+      answer: "MediVault is a digital platform for storing and managing your family's medical records. Think of it as a safe online filing cabinet for your health documents. You (or your hospital) can upload test reports, prescriptions, and records to your account. You can then view them anytime from your phone or computer and share access with family members. Documents are encrypted in transit and at rest, and only people you explicitly grant access can see them."
     },
     {
       category: "Getting Started",
