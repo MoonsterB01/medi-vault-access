@@ -126,18 +126,18 @@ export default function HowItWorks() {
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <Lock className="h-8 w-8 text-green-600" />
-                  <CardTitle className="text-lg text-green-800 dark:text-green-300">End-to-End Encryption</CardTitle>
+                  <CardTitle className="text-lg text-green-800 dark:text-green-300">Encrypted Storage & Transit</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <p className="text-green-700 dark:text-green-400 mb-4">
-                  All your documents are encrypted using AES-256 encryption - the same standard used by banks and government agencies.
+                  Documents are encrypted in transit using TLS and encrypted at rest on Supabase Storage (AES-256).
                 </p>
                 <ul className="space-y-2 text-sm text-green-600 dark:text-green-500">
-                  <li>• Encrypted during upload</li>
-                  <li>• Encrypted while stored</li>
-                  <li>• Encrypted during access</li>
-                  <li>• Keys stored separately</li>
+                  <li>• TLS 1.2+ for all uploads & downloads</li>
+                  <li>• AES-256 at rest on managed storage</li>
+                  <li>• Row-Level Security on every record</li>
+                  <li>• Signed, time-limited file URLs</li>
                 </ul>
               </CardContent>
             </Card>
