@@ -377,8 +377,7 @@ const PrivacyPolicy = () => {
                     <strong>Right to Opt-Out:</strong> Disable email notifications (emergency alerts cannot be disabled)
                   </li>
                   <li>
-                    <strong>Right to File a Complaint:</strong> Report privacy concerns to us or to the Department of
-                    Health and Human Services (HHS)
+                    <strong>Right to File a Complaint:</strong> Report privacy concerns to us or to the Data Protection Board of India under the DPDP Act
                   </li>
                 </ul>
 
