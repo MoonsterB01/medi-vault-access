@@ -284,29 +284,26 @@ const PrivacyPolicy = () => {
             <section id="data-security" className="scroll-mt-8">
               <h2 className="text-2xl font-bold text-foreground mb-4">5. Data Security</h2>
               <div className="space-y-4 text-muted-foreground leading-relaxed">
-                <p>We implement industry-leading security measures to protect your medical information:</p>
+                <p>We implement standard security measures to protect your medical information:</p>
 
                 <div className="ml-4 space-y-4">
                   <div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">Technical Safeguards</h3>
                     <ul className="list-disc ml-6 space-y-2">
                       <li>
-                        <strong>256-bit AES Encryption:</strong> All data encrypted at rest and in transit (same level
-                        as banking systems)
+                        <strong>AES-256 Encryption at Rest:</strong> All files stored on Supabase Storage are encrypted at rest
                       </li>
                       <li>
-                        <strong>Row-Level Security (RLS):</strong> Database configured so users can only access their
-                        own records
+                        <strong>TLS in Transit:</strong> All connections between your device and our servers use TLS
                       </li>
                       <li>
-                        <strong>Secure Authentication:</strong> Encrypted passwords, session management, and two-factor
-                        authentication option
+                        <strong>Row-Level Security (RLS):</strong> Database policies ensure users can only access their own records
                       </li>
                       <li>
-                        <strong>HTTPS/TLS:</strong> All connections secured with SSL certificates
+                        <strong>Secure Authentication:</strong> Email + password authentication with hashed credentials
                       </li>
                       <li>
-                        <strong>Regular Security Audits:</strong> Quarterly penetration testing and vulnerability scans
+                        <strong>Signed, time-limited URLs:</strong> File access requires short-lived signed URLs
                       </li>
                     </ul>
                   </div>
@@ -314,30 +311,25 @@ const PrivacyPolicy = () => {
                   <div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">Administrative Safeguards</h3>
                     <ul className="list-disc ml-6 space-y-2">
-                      <li>Limited employee access to patient data (need-to-know basis)</li>
-                      <li>Background checks for all staff with data access</li>
-                      <li>Regular HIPAA training for all employees</li>
-                      <li>Incident response plan for security breaches</li>
-                      <li>Data loss prevention systems</li>
+                      <li>Limited operator access to production data (need-to-know basis)</li>
+                      <li>Internal data handling guidelines</li>
+                      <li>Incident response plan for security events</li>
                     </ul>
                   </div>
 
                   <div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">Physical Safeguards</h3>
                     <ul className="list-disc ml-6 space-y-2">
-                      <li>Data centers with 24/7 security monitoring</li>
-                      <li>Redundant backups in geographically distributed locations</li>
-                      <li>Disaster recovery procedures</li>
-                      <li>99.9% uptime SLA</li>
+                      <li>Data hosted on Supabase, which runs on SOC 2 Type II certified infrastructure</li>
+                      <li>Automated, managed backups</li>
+                      <li>Disaster recovery handled by the underlying cloud platform</li>
                     </ul>
                   </div>
 
                   <div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">Audit Logging</h3>
                     <p>
-                      We maintain comprehensive audit logs tracking who accessed what data and when. This helps detect
-                      unauthorized access and is required for HIPAA compliance. You can view your own access log in your
-                      account settings.
+                      We maintain audit logs tracking who accessed what data and when, to help detect unauthorized access and support transparency.
                     </p>
                   </div>
                 </div>
