@@ -60,7 +60,7 @@ const PrivacyPolicy = () => {
                 { id: "data-security", title: "5. Data Security" },
                 { id: "your-rights", title: "6. Your Rights & Choices" },
                 { id: "data-retention", title: "7. Data Retention" },
-                { id: "hipaa", title: "8. HIPAA Compliance" },
+                { id: "hipaa", title: "8. Regulatory Status" },
                 { id: "ai-ml", title: "9. AI & Machine Learning" },
                 { id: "children", title: "10. Children's Privacy" },
                 { id: "changes", title: "11. Changes to This Policy" },
