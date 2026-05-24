@@ -1,5 +1,5 @@
 import PublicLayout from "@/components/PublicLayout";
-import { Shield, Lock, Server, Eye, FileCheck, AlertTriangle, CheckCircle, Download } from "lucide-react";
+import { Shield, Lock, Server, Eye, FileCheck, AlertTriangle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FadeInOnScroll } from "@/components/FadeInOnScroll";
 import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
