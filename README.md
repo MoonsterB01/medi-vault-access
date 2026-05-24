@@ -6,7 +6,7 @@ MediVault is a secure digital medical records management system for hospitals an
 
 ## Features
 
--   **Secure Document Upload**: Upload medical documents with end-to-end encryption.
+-   **Secure Document Upload**: Upload medical documents over TLS, stored encrypted at rest (AES-256 on Supabase Storage).
 -   **AI-Powered Analysis**: Automatically categorize and extract keywords from medical documents using AI.
 -   **Patient Dashboard**: A comprehensive dashboard for patients to view their medical records, appointments, and manage family access.
 -   **Doctor Dashboard**: A dedicated dashboard for doctors to manage their appointments and patients.
