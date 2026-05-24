@@ -257,8 +257,8 @@ export default function Index() {
             {[
               {
                 icon: Lock,
-                title: "Your Data is Private",
-                description: "We never share or sell your information. Your data belongs to you.",
+                title: "Your Data, Your Control",
+                description: "We don't sell your information. Only people you explicitly grant access can view your records.",
               },
               {
                 icon: FileText,
