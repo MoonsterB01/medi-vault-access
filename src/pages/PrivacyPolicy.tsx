@@ -420,44 +420,26 @@ const PrivacyPolicy = () => {
               </div>
             </section>
 
-            {/* 8. HIPAA Compliance */}
+            {/* 8. Regulatory Status */}
             <section id="hipaa" className="scroll-mt-8">
-              <h2 className="text-2xl font-bold text-foreground mb-4">8. HIPAA Compliance</h2>
+              <h2 className="text-2xl font-bold text-foreground mb-4">8. Regulatory Status</h2>
               <div className="space-y-4 text-muted-foreground leading-relaxed">
-                <p>
-                  MediVault is fully compliant with the Health Insurance Portability and Accountability Act (HIPAA) and
-                  its implementing regulations:
-                </p>
+                <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500">
+                  <p className="font-semibold text-foreground mb-2">Honest disclosure</p>
+                  <p>
+                    MediVault is currently in active development. We are <strong>not</strong> certified as HIPAA, SOC 2, or ISO 27001 compliant, and we do not represent ourselves as such. Our underlying cloud infrastructure (Supabase) holds SOC 2 Type II certification, but that does not by itself make our application certified.
+                  </p>
+                </div>
+                <p>What we DO follow today:</p>
                 <ul className="list-disc ml-6 space-y-2">
-                  <li>
-                    <strong>Covered Entity Status:</strong> MediVault acts as a Business Associate to healthcare
-                    providers
-                  </li>
-                  <li>
-                    <strong>BAAs:</strong> We sign Business Associate Agreements with all healthcare organizations using
-                    our platform
-                  </li>
-                  <li>
-                    <strong>Privacy Rule Compliance:</strong> Strict controls on use and disclosure of Protected Health
-                    Information (PHI)
-                  </li>
-                  <li>
-                    <strong>Security Rule Compliance:</strong> Administrative, physical, and technical safeguards
-                    protecting ePHI
-                  </li>
-                  <li>
-                    <strong>Breach Notification:</strong> Procedures to notify affected individuals and HHS of breaches
-                    within required timeframes
-                  </li>
-                  <li>
-                    <strong>Patient Rights:</strong> Systems to support all HIPAA patient rights (access, correction,
-                    accounting of disclosures)
-                  </li>
+                  <li>Privacy-first principles aligned with India's Digital Personal Data Protection (DPDP) Act, 2023</li>
+                  <li>Encryption in transit (TLS) and at rest (AES-256 via Supabase Storage)</li>
+                  <li>Row-Level Security at the database layer so users can only access their own records</li>
+                  <li>Explicit, revocable consent for family access to records</li>
+                  <li>User-initiated data export and account deletion</li>
                 </ul>
                 <p className="mt-4">
-                  If you believe your privacy rights have been violated, you may file a complaint with us or with the
-                  Office for Civil Rights (OCR) at the Department of Health and Human Services. We will not retaliate
-                  against you for filing a complaint.
+                  If you believe your privacy rights have been violated, you may contact us, or file a complaint with the Data Protection Board of India under the DPDP Act. We will not retaliate against you for filing a complaint.
                 </p>
               </div>
             </section>
