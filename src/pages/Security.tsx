@@ -92,12 +92,11 @@ export default function Security() {
                 Learn how we protect your sensitive medical information.
               </p>
               <div className="flex flex-wrap justify-center gap-4">
-                <Button size="lg" className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Download Security Whitepaper
+                <Button asChild size="lg">
+                  <a href="/privacy-policy">Read Privacy Policy</a>
                 </Button>
-                <Button variant="outline" size="lg">
-                  Request Security Audit
+                <Button asChild variant="outline" size="lg">
+                  <a href="mailto:security@medivault.in">Contact Security Team</a>
                 </Button>
               </div>
             </div>
