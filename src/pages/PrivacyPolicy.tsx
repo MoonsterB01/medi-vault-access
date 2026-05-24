@@ -465,10 +465,10 @@ const PrivacyPolicy = () => {
                   <div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">AI Privacy</h3>
                     <ul className="list-disc ml-6 space-y-2">
-                      <li>All AI processing occurs in HIPAA-compliant environments</li>
+                      <li>AI processing occurs over encrypted connections via the Lovable AI Gateway (Google Gemini)</li>
                       <li>Your documents are not used to train public AI models</li>
-                      <li>AI providers sign Business Associate Agreements</li>
-                      <li>Processing is encrypted end-to-end</li>
+                      <li>AI providers process data on our behalf under their standard terms</li>
+                      <li>Processing is encrypted in transit (TLS)</li>
                     </ul>
                   </div>
 
