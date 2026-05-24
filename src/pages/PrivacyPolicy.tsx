@@ -252,7 +252,7 @@ const PrivacyPolicy = () => {
                     <h3 className="text-lg font-semibold text-foreground mb-2">C. For Legal Requirements</h3>
                     <ul className="list-disc ml-6 space-y-2">
                       <li>When required by law or court order</li>
-                      <li>To comply with HIPAA breach notification requirements</li>
+                      <li>To comply with breach notification requirements under applicable laws</li>
                       <li>To prevent serious harm or protect public health</li>
                       <li>To law enforcement in specific legal circumstances</li>
                     </ul>
