@@ -226,18 +226,18 @@ export default function HowItWorks() {
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <Eye className="h-8 w-8 text-red-600" />
-                  <CardTitle className="text-lg text-red-800 dark:text-red-300">24/7 Monitoring</CardTitle>
+                  <CardTitle className="text-lg text-red-800 dark:text-red-300">Managed Monitoring</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <p className="text-red-700 dark:text-red-400 mb-4">
-                  Our systems are monitored around the clock to detect and prevent any security threats.
+                  Our infrastructure runs on Supabase, which provides platform-level monitoring, logging, and abuse protection.
                 </p>
                 <ul className="space-y-2 text-sm text-red-600 dark:text-red-500">
-                  <li>• Continuous threat detection</li>
-                  <li>• Automated response systems</li>
-                  <li>• Security team on standby</li>
-                  <li>• Regular penetration testing</li>
+                  <li>• Platform threat detection</li>
+                  <li>• Automatic backups</li>
+                  <li>• Access audit logs</li>
+                  <li>• Email-based account recovery</li>
                 </ul>
               </CardContent>
             </Card>
