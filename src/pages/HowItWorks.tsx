@@ -273,7 +273,7 @@ export default function HowItWorks() {
                 </div>
                 <div className="p-3 border rounded-lg bg-card">
                   <h4 className="font-semibold text-sm mb-1">Audit Trail</h4>
-                  <p className="text-sm text-muted-foreground">Complete record of all uploads and access attempts. HIPAA-compliant logging for compliance.</p>
+                  <p className="text-sm text-muted-foreground">Complete record of all uploads and access attempts for transparency and accountability.</p>
                 </div>
                 <div className="p-3 border rounded-lg bg-card">
                   <h4 className="font-semibold text-sm mb-1">Bulk Operations</h4>
