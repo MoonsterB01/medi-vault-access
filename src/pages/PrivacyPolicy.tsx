@@ -198,7 +198,7 @@ const PrivacyPolicy = () => {
                     improve our platform
                   </li>
                   <li>
-                    <strong>Legal Compliance:</strong> To comply with HIPAA, data protection laws, and respond to legal
+                    <strong>Legal Compliance:</strong> To comply with India's DPDP Act, other applicable data protection laws, and respond to legal
                     requests
                   </li>
                   <li>
