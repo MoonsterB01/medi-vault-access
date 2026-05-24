@@ -84,11 +84,11 @@ export default function Index() {
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <CheckCircle className="h-4 w-4 text-trust" />
-                  Private & Secure
+                  Only you control access
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle className="h-4 w-4 text-trust" />
-                  Bank-level Encryption
+                  Encrypted in transit & at rest
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle className="h-4 w-4 text-trust" />
@@ -172,7 +172,7 @@ export default function Index() {
             {[
               { value: stats.isLoading ? null : formatStatNumber(stats.documentsCount), label: "Documents Organized", icon: FileText },
               { value: stats.isLoading ? null : formatStatNumber(stats.patientsCount), label: "Families Trust Us", icon: Users },
-              { value: "99.9%", label: "Uptime", icon: BarChart3 },
+              { value: "AI", label: "Auto-Categorized", icon: BarChart3 },
               { value: stats.isLoading ? null : formatStatNumber(stats.hospitalsCount || 4), label: "Healthcare Partners", icon: CheckCircle },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
@@ -257,8 +257,8 @@ export default function Index() {
             {[
               {
                 icon: Lock,
-                title: "Your Data is Private",
-                description: "We never share or sell your information. Your data belongs to you.",
+                title: "Your Data, Your Control",
+                description: "We don't sell your information. Only people you explicitly grant access can view your records.",
               },
               {
                 icon: FileText,

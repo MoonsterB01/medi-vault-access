@@ -69,9 +69,9 @@ export function StatsCounter() {
     },
     {
       icon: Clock,
-      value: 99.9,
-      suffix: "%",
-      label: "Uptime Guarantee",
+      value: 24,
+      suffix: "/7",
+      label: "Records Always Available",
       color: "text-orange-500",
       bgColor: "bg-orange-500/10",
     },

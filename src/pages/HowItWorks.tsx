@@ -56,7 +56,7 @@ export default function HowItWorks() {
                 <span>Document verified and categorized</span>
               </div>
               <p className="text-sm text-muted-foreground/80">
-                Your documents are immediately encrypted using bank-level security before any processing begins.
+                Your documents are encrypted in transit (TLS) and at rest on our secure cloud storage before any processing begins.
               </p>
             </CardContent>
           </Card>
@@ -108,7 +108,7 @@ export default function HowItWorks() {
                 <span>Continuous security monitoring</span>
               </div>
               <p className="text-sm text-muted-foreground/80">
-                Your documents are stored in secure, HIPAA-compliant cloud infrastructure with 24/7 monitoring.
+                Your documents are stored on secure cloud infrastructure (Supabase, hosted on SOC 2 Type II certified data centers) with continuous monitoring.
               </p>
             </CardContent>
           </Card>
@@ -126,18 +126,18 @@ export default function HowItWorks() {
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <Lock className="h-8 w-8 text-green-600" />
-                  <CardTitle className="text-lg text-green-800 dark:text-green-300">End-to-End Encryption</CardTitle>
+                  <CardTitle className="text-lg text-green-800 dark:text-green-300">Encrypted Storage & Transit</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <p className="text-green-700 dark:text-green-400 mb-4">
-                  All your documents are encrypted using AES-256 encryption - the same standard used by banks and government agencies.
+                  Documents are encrypted in transit using TLS and encrypted at rest on Supabase Storage (AES-256).
                 </p>
                 <ul className="space-y-2 text-sm text-green-600 dark:text-green-500">
-                  <li>• Encrypted during upload</li>
-                  <li>• Encrypted while stored</li>
-                  <li>• Encrypted during access</li>
-                  <li>• Keys stored separately</li>
+                  <li>• TLS 1.2+ for all uploads & downloads</li>
+                  <li>• AES-256 at rest on managed storage</li>
+                  <li>• Row-Level Security on every record</li>
+                  <li>• Signed, time-limited file URLs</li>
                 </ul>
               </CardContent>
             </Card>
@@ -166,18 +166,18 @@ export default function HowItWorks() {
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <Shield className="h-8 w-8 text-purple-600" />
-                  <CardTitle className="text-lg text-purple-800 dark:text-purple-300">HIPAA Compliant</CardTitle>
+                  <CardTitle className="text-lg text-purple-800 dark:text-purple-300">Privacy by Design</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <p className="text-purple-700 dark:text-purple-400 mb-4">
-                  We meet and exceed all HIPAA requirements for handling protected health information.
+                  We follow privacy-first practices aligned with India's DPDP Act. Your records are visible only to you and people you invite.
                 </p>
                 <ul className="space-y-2 text-sm text-purple-600 dark:text-purple-500">
-                  <li>• Regular security audits</li>
-                  <li>• Staff background checks</li>
-                  <li>• Incident response protocols</li>
-                  <li>• Compliance monitoring</li>
+                  <li>• Minimal data collection</li>
+                  <li>• Per-user data isolation (RLS)</li>
+                  <li>• Clear consent for family access</li>
+                  <li>• No data sold to third parties</li>
                 </ul>
               </CardContent>
             </Card>
@@ -226,18 +226,18 @@ export default function HowItWorks() {
               <CardHeader>
                 <div className="flex items-center gap-3">
                   <Eye className="h-8 w-8 text-red-600" />
-                  <CardTitle className="text-lg text-red-800 dark:text-red-300">24/7 Monitoring</CardTitle>
+                  <CardTitle className="text-lg text-red-800 dark:text-red-300">Managed Monitoring</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <p className="text-red-700 dark:text-red-400 mb-4">
-                  Our systems are monitored around the clock to detect and prevent any security threats.
+                  Our infrastructure runs on Supabase, which provides platform-level monitoring, logging, and abuse protection.
                 </p>
                 <ul className="space-y-2 text-sm text-red-600 dark:text-red-500">
-                  <li>• Continuous threat detection</li>
-                  <li>• Automated response systems</li>
-                  <li>• Security team on standby</li>
-                  <li>• Regular penetration testing</li>
+                  <li>• Platform threat detection</li>
+                  <li>• Automatic backups</li>
+                  <li>• Access audit logs</li>
+                  <li>• Email-based account recovery</li>
                 </ul>
               </CardContent>
             </Card>
@@ -273,7 +273,7 @@ export default function HowItWorks() {
                 </div>
                 <div className="p-3 border rounded-lg bg-card">
                   <h4 className="font-semibold text-sm mb-1">Audit Trail</h4>
-                  <p className="text-sm text-muted-foreground">Complete record of all uploads and access attempts. HIPAA-compliant logging for compliance.</p>
+                  <p className="text-sm text-muted-foreground">Complete record of all uploads and access attempts for transparency and accountability.</p>
                 </div>
                 <div className="p-3 border rounded-lg bg-card">
                   <h4 className="font-semibold text-sm mb-1">Bulk Operations</h4>
@@ -322,22 +322,18 @@ export default function HowItWorks() {
           <h2 className="text-3xl font-bold mb-8">
             Trusted by Healthcare Professionals
           </h2>
-          <div className="grid md:grid-cols-4 gap-8 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <div>
-              <div className="text-3xl font-bold text-blue-400 mb-2">256-bit</div>
-              <p className="text-primary-foreground/80">Encryption Standard</p>
+              <div className="text-3xl font-bold text-blue-400 mb-2">AES-256</div>
+              <p className="text-primary-foreground/80">Encryption at Rest</p>
             </div>
             <div>
-              <div className="text-3xl font-bold text-blue-400 mb-2">99.9%</div>
-              <p className="text-primary-foreground/80">Uptime Guarantee</p>
+              <div className="text-3xl font-bold text-blue-400 mb-2">TLS 1.2+</div>
+              <p className="text-primary-foreground/80">Encryption in Transit</p>
             </div>
             <div>
-              <div className="text-3xl font-bold text-blue-400 mb-2">24/7</div>
-              <p className="text-primary-foreground/80">Security Monitoring</p>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-blue-400 mb-2">100%</div>
-              <p className="text-primary-foreground/80">HIPAA Compliant</p>
+              <div className="text-3xl font-bold text-blue-400 mb-2">RLS</div>
+              <p className="text-primary-foreground/80">Per-User Data Isolation</p>
             </div>
           </div>
           

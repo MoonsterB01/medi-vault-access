@@ -1,5 +1,5 @@
 import PublicLayout from "@/components/PublicLayout";
-import { Shield, Lock, Server, Eye, FileCheck, AlertTriangle, CheckCircle, Download } from "lucide-react";
+import { Shield, Lock, Server, Eye, FileCheck, AlertTriangle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FadeInOnScroll } from "@/components/FadeInOnScroll";
 import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
@@ -9,40 +9,40 @@ const securityPractices = [
     icon: Lock,
     title: "Data Encryption",
     items: [
-      "AES-256 encryption for all stored data",
-      "TLS 1.3 for all data in transit",
-      "Client-side encryption before upload",
-      "Encrypted database backups",
+      "AES-256 encryption at rest (Supabase Storage)",
+      "TLS for all data in transit",
+      "Signed, time-limited URLs for file access",
+      "Automated encrypted backups (managed by Supabase)",
     ],
   },
   {
     icon: Server,
-    title: "Infrastructure Security",
+    title: "Infrastructure",
     items: [
-      "SOC 2 Type II certified data centers",
-      "Geographic redundancy across regions",
-      "DDoS protection and WAF",
-      "24/7 security monitoring",
+      "Hosted on SOC 2 Type II certified infrastructure (Supabase)",
+      "Geographic redundancy via managed cloud",
+      "Platform-level DDoS protection",
+      "Continuous platform monitoring",
     ],
   },
   {
     icon: Eye,
     title: "Access Controls",
     items: [
-      "Role-based access control (RBAC)",
-      "Multi-factor authentication",
-      "Session timeout policies",
-      "Complete audit logging",
+      "Row-Level Security on every record",
+      "Email + password authentication",
+      "Family access via explicit, revocable consent",
+      "Access audit logging",
     ],
   },
   {
     icon: FileCheck,
-    title: "Compliance & Audits",
+    title: "Privacy Practices",
     items: [
-      "HIPAA compliant infrastructure",
-      "GDPR data protection ready",
-      "Annual penetration testing",
-      "Regular security audits",
+      "Aligned with India's DPDP Act principles",
+      "Minimal data collection",
+      "No selling of user data",
+      "User-initiated data export & deletion",
     ],
   },
 ];
@@ -50,19 +50,23 @@ const securityPractices = [
 const faqItems = [
   {
     question: "Can MediVault employees see my medical records?",
-    answer: "No. Your documents are encrypted with keys that only you control. Our zero-knowledge architecture means even our team cannot access your actual medical data.",
+    answer: "Access to production data is restricted to a small number of operators for support and incident response, and is logged. We do not claim a zero-knowledge architecture — please review our Privacy Policy for the full data access model.",
   },
   {
     question: "What happens if MediVault shuts down?",
-    answer: "You always own your data. You can export all your records at any time. In the unlikely event of shutdown, you'll receive advance notice and tools to migrate your data.",
+    answer: "You always own your data. You can export your records at any time from Settings. In the unlikely event of shutdown, you'll receive advance notice and tools to migrate your data.",
   },
   {
-    question: "Is my data stored in India?",
-    answer: "Yes. All data is stored in Indian data centers to comply with data localization requirements. We use geo-redundant storage for reliability.",
+    question: "Where is my data stored?",
+    answer: "Data is stored on Supabase managed infrastructure. Region selection follows our hosting plan; please contact us if you have specific data-residency requirements.",
   },
   {
     question: "How do you handle data breaches?",
-    answer: "We have a comprehensive incident response plan. In case of any security incident, affected users would be notified within 72 hours as per regulatory requirements.",
+    answer: "We have an incident response process. In case of a security incident affecting user data, we will notify affected users without undue delay in line with applicable regulations.",
+  },
+  {
+    question: "Is MediVault HIPAA / SOC 2 certified?",
+    answer: "No. MediVault itself is not currently HIPAA or SOC 2 certified. Our underlying cloud infrastructure (Supabase) is SOC 2 Type II certified, but that does not by itself make our application certified. We're working toward stronger compliance posture as the product matures.",
   },
 ];
 
@@ -88,12 +92,11 @@ export default function Security() {
                 Learn how we protect your sensitive medical information.
               </p>
               <div className="flex flex-wrap justify-center gap-4">
-                <Button size="lg" className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Download Security Whitepaper
+                <Button asChild size="lg">
+                  <a href="/privacy-policy">Read Privacy Policy</a>
                 </Button>
-                <Button variant="outline" size="lg">
-                  Request Security Audit
+                <Button asChild variant="outline" size="lg">
+                  <a href="mailto:security@medivault.in">Contact Security Team</a>
                 </Button>
               </div>
             </div>
