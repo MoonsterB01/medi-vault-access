@@ -349,7 +349,7 @@ const PrivacyPolicy = () => {
             <section id="your-rights" className="scroll-mt-8">
               <h2 className="text-2xl font-bold text-foreground mb-4">6. Your Rights & Choices</h2>
               <div className="space-y-4 text-muted-foreground leading-relaxed">
-                <p>Under HIPAA and data protection laws, you have the following rights:</p>
+                <p>Under India's DPDP Act and other applicable data protection laws, you have the following rights:</p>
                 <ul className="list-disc ml-6 space-y-3">
                   <li>
                     <strong>Right to Access:</strong> View and download all your medical records at any time
