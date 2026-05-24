@@ -56,7 +56,7 @@ export default function HowItWorks() {
                 <span>Document verified and categorized</span>
               </div>
               <p className="text-sm text-muted-foreground/80">
-                Your documents are immediately encrypted using bank-level security before any processing begins.
+                Your documents are encrypted in transit (TLS) and at rest on our secure cloud storage before any processing begins.
               </p>
             </CardContent>
           </Card>
