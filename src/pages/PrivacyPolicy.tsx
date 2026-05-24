@@ -44,7 +44,7 @@ const PrivacyPolicy = () => {
           <div className="mb-8 p-6 rounded-lg border-2 border-primary bg-primary/5">
             <p className="text-foreground font-medium text-center">
               Your privacy is critically important to us. This policy explains how we collect, use, protect, and share
-              your medical information in compliance with HIPAA and other privacy laws.
+              your medical information in line with India's Digital Personal Data Protection (DPDP) Act and other applicable laws.
             </p>
           </div>
 
