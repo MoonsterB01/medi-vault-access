@@ -172,7 +172,7 @@ export default function Index() {
             {[
               { value: stats.isLoading ? null : formatStatNumber(stats.documentsCount), label: "Documents Organized", icon: FileText },
               { value: stats.isLoading ? null : formatStatNumber(stats.patientsCount), label: "Families Trust Us", icon: Users },
-              { value: "99.9%", label: "Uptime", icon: BarChart3 },
+              { value: "AI", label: "Auto-Categorized", icon: BarChart3 },
               { value: stats.isLoading ? null : formatStatNumber(stats.hospitalsCount || 4), label: "Healthcare Partners", icon: CheckCircle },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
