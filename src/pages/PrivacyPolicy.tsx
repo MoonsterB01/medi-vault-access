@@ -407,7 +407,7 @@ const PrivacyPolicy = () => {
                     <strong>Backups:</strong> Backup copies deleted within 90 days
                   </li>
                   <li>
-                    <strong>Audit Logs:</strong> Access logs retained for 7 years per HIPAA requirements
+                    <strong>Audit Logs:</strong> Access logs retained for a reasonable period for security and compliance purposes
                   </li>
                   <li>
                     <strong>Legal Holds:</strong> Data subject to legal proceedings retained until hold is lifted
