@@ -233,7 +233,7 @@ const PrivacyPolicy = () => {
                     </h3>
                     <ul className="list-disc ml-6 space-y-2">
                       <li>
-                        <strong>Supabase:</strong> Cloud database, storage and authentication hosting (infrastructure SOC 2 Type II certified)
+                        <strong>Supabase:</strong> Managed cloud database, storage and authentication hosting
                       </li>
                       <li>
                         <strong>Lovable Cloud:</strong> Application hosting and serverless functions
