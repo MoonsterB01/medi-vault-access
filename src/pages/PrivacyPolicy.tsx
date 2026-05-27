@@ -133,7 +133,7 @@ const PrivacyPolicy = () => {
                 <div className="ml-4">
                   <h3 className="text-lg font-semibold text-foreground mb-2">C. Account Information</h3>
                   <ul className="list-disc ml-6 space-y-2">
-                    <li>Email address and encrypted password</li>
+                    <li>Email address and a hashed password (we never store plain-text passwords)</li>
                     <li>User role (patient, hospital staff, doctor)</li>
                     <li>Account preferences and settings</li>
                     <li>Family member access grants</li>
