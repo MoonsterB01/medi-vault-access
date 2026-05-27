@@ -27,6 +27,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
     { label: "How It Works", href: "/how-it-works" },
     { label: "Privacy", href: "/privacy-policy" },
     { label: "Pricing", href: "/pricing" },
+    { label: "Status", href: "/status" },
     { label: "FAQ", href: "/faq" },
   ];
 
