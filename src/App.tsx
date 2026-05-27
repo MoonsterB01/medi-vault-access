@@ -25,6 +25,7 @@ import Pricing from "./pages/Pricing";
 import Security from "./pages/Security";
 import About from "./pages/About";
 import Settings from "./pages/Settings";
+import Status from "./pages/Status";
 import { ActivePatientProvider } from "./contexts/ActivePatientContext";
 
 
