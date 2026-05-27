@@ -320,7 +320,7 @@ const PrivacyPolicy = () => {
                   <div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">Physical Safeguards</h3>
                     <ul className="list-disc ml-6 space-y-2">
-                      <li>Data hosted on Supabase, which runs on SOC 2 Type II certified infrastructure</li>
+                      <li>Data hosted on Supabase managed cloud infrastructure</li>
                       <li>Automated, managed backups</li>
                       <li>Disaster recovery handled by the underlying cloud platform</li>
                     </ul>
