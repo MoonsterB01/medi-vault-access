@@ -427,7 +427,7 @@ const PrivacyPolicy = () => {
                 <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500">
                   <p className="font-semibold text-foreground mb-2">Honest disclosure</p>
                   <p>
-                    MediVault is currently in active development. We are <strong>not</strong> certified as HIPAA, SOC 2, or ISO 27001 compliant, and we do not represent ourselves as such. Our underlying cloud infrastructure (Supabase) holds SOC 2 Type II certification, but that does not by itself make our application certified.
+                    MediVault is currently in active development. We are <strong>not</strong> certified as HIPAA, SOC 2, or ISO 27001 compliant, and we do not represent ourselves as such.
                   </p>
                 </div>
                 <p>What we DO follow today:</p>
