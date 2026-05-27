@@ -19,7 +19,7 @@ const securityPractices = [
     icon: Server,
     title: "Infrastructure",
     items: [
-      "Hosted on SOC 2 Type II certified infrastructure (Supabase)",
+      "Hosted on Supabase managed cloud infrastructure",
       "Geographic redundancy via managed cloud",
       "Platform-level DDoS protection",
       "Continuous platform monitoring",
