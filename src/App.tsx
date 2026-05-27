@@ -25,6 +25,7 @@ import Pricing from "./pages/Pricing";
 import Security from "./pages/Security";
 import About from "./pages/About";
 import Settings from "./pages/Settings";
+import Status from "./pages/Status";
 import { ActivePatientProvider } from "./contexts/ActivePatientContext";
 
 
@@ -63,6 +64,7 @@ const App = () => (
           <Route path="/security" element={<Security />} />
           <Route path="/about" element={<About />} />
           <Route path="/settings" element={<AppLayout userRole="patient"><Settings /></AppLayout>} />
+          <Route path="/status" element={<Status />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
