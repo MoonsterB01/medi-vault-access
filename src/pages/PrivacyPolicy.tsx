@@ -133,7 +133,7 @@ const PrivacyPolicy = () => {
                 <div className="ml-4">
                   <h3 className="text-lg font-semibold text-foreground mb-2">C. Account Information</h3>
                   <ul className="list-disc ml-6 space-y-2">
-                    <li>Email address and encrypted password</li>
+                    <li>Email address and a hashed password (we never store plain-text passwords)</li>
                     <li>User role (patient, hospital staff, doctor)</li>
                     <li>Account preferences and settings</li>
                     <li>Family member access grants</li>
@@ -233,7 +233,7 @@ const PrivacyPolicy = () => {
                     </h3>
                     <ul className="list-disc ml-6 space-y-2">
                       <li>
-                        <strong>Supabase:</strong> Cloud database, storage and authentication hosting (infrastructure SOC 2 Type II certified)
+                        <strong>Supabase:</strong> Managed cloud database, storage and authentication hosting
                       </li>
                       <li>
                         <strong>Lovable Cloud:</strong> Application hosting and serverless functions
@@ -320,7 +320,7 @@ const PrivacyPolicy = () => {
                   <div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">Physical Safeguards</h3>
                     <ul className="list-disc ml-6 space-y-2">
-                      <li>Data hosted on Supabase, which runs on SOC 2 Type II certified infrastructure</li>
+                      <li>Data hosted on Supabase managed cloud infrastructure</li>
                       <li>Automated, managed backups</li>
                       <li>Disaster recovery handled by the underlying cloud platform</li>
                     </ul>
@@ -427,7 +427,7 @@ const PrivacyPolicy = () => {
                 <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500">
                   <p className="font-semibold text-foreground mb-2">Honest disclosure</p>
                   <p>
-                    MediVault is currently in active development. We are <strong>not</strong> certified as HIPAA, SOC 2, or ISO 27001 compliant, and we do not represent ourselves as such. Our underlying cloud infrastructure (Supabase) holds SOC 2 Type II certification, but that does not by itself make our application certified.
+                    MediVault is currently in active development. We are <strong>not</strong> certified as HIPAA, SOC 2, or ISO 27001 compliant, and we do not represent ourselves as such.
                   </p>
                 </div>
                 <p>What we DO follow today:</p>

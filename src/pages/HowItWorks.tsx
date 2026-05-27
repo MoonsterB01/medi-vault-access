@@ -108,7 +108,7 @@ export default function HowItWorks() {
                 <span>Continuous security monitoring</span>
               </div>
               <p className="text-sm text-muted-foreground/80">
-                Your documents are stored on secure cloud infrastructure (Supabase, hosted on SOC 2 Type II certified data centers) with continuous monitoring.
+                Your documents are stored on managed cloud infrastructure (Supabase) with platform-level monitoring.
               </p>
             </CardContent>
           </Card>

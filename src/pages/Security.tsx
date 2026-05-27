@@ -19,7 +19,7 @@ const securityPractices = [
     icon: Server,
     title: "Infrastructure",
     items: [
-      "Hosted on SOC 2 Type II certified infrastructure (Supabase)",
+      "Hosted on Supabase managed cloud infrastructure",
       "Geographic redundancy via managed cloud",
       "Platform-level DDoS protection",
       "Continuous platform monitoring",
@@ -66,7 +66,7 @@ const faqItems = [
   },
   {
     question: "Is MediVault HIPAA / SOC 2 certified?",
-    answer: "No. MediVault itself is not currently HIPAA or SOC 2 certified. Our underlying cloud infrastructure (Supabase) is SOC 2 Type II certified, but that does not by itself make our application certified. We're working toward stronger compliance posture as the product matures.",
+    answer: "No. MediVault is not currently HIPAA, SOC 2, or ISO 27001 certified, and we do not represent ourselves as such. We're working toward a stronger compliance posture as the product matures.",
   },
 ];
 
