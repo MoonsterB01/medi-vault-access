@@ -222,7 +222,7 @@ const FAQ = () => {
     {
       category: "Security & Privacy",
       question: "What happens if I forget my password?",
-      answer: "Click 'Forgot Password' on the login page, enter your email address, and we'll send you a secure link to reset your password. For security reasons, we never store your actual password - we only store an encrypted version. This means even our staff cannot see or retrieve your password."
+      answer: "Click 'Forgot Password' on the login page, enter your email address, and we'll send you a secure link to reset your password. For security reasons, we never store your actual password — we only store a hashed (one-way) version, which means even our staff cannot see or retrieve your password."
     },
     {
       category: "Security & Privacy",
