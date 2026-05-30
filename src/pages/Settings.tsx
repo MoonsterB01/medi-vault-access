@@ -265,10 +265,15 @@ export default function Settings({ user }: SettingsProps) {
   const [whatsappLink, setWhatsappLink] = useState<any>(null);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [whatsappOtpSent, setWhatsappOtpSent] = useState(false);
+  const [waBusinessNumber, setWaBusinessNumber] = useState('');
 
   useEffect(() => {
     if (user) fetchWhatsAppLink();
   }, [user]);
+
+  useEffect(() => {
+    getWhatsAppBusinessNumber().then(setWaBusinessNumber);
+  }, []);
 
   const fetchWhatsAppLink = async () => {
     if (!user) return;
