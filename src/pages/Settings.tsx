@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { getWhatsAppBusinessNumber, buildWhatsAppDeepLink } from "@/lib/whatsappConfig";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -265,10 +266,15 @@ export default function Settings({ user }: SettingsProps) {
   const [whatsappLink, setWhatsappLink] = useState<any>(null);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [whatsappOtpSent, setWhatsappOtpSent] = useState(false);
+  const [waBusinessNumber, setWaBusinessNumber] = useState('');
 
   useEffect(() => {
     if (user) fetchWhatsAppLink();
   }, [user]);
+
+  useEffect(() => {
+    getWhatsAppBusinessNumber().then(setWaBusinessNumber);
+  }, []);
 
   const fetchWhatsAppLink = async () => {
     if (!user) return;
@@ -758,10 +764,20 @@ export default function Settings({ user }: SettingsProps) {
                         <p className="text-sm font-medium text-foreground">OTP generated! Click below to connect:</p>
                         <Button
                           className="w-full gap-2"
+                          disabled={!waBusinessNumber}
                           onClick={() => {
-                            const waNumber = '918112244532';
-                            const message = encodeURIComponent(`link ${whatsappOtp}`);
-                            window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank');
+                            if (!waBusinessNumber) {
+                              toast({
+                                title: "WhatsApp not configured",
+                                description: "Business number is unavailable. Please contact support.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            window.open(
+                              buildWhatsAppDeepLink(waBusinessNumber, `link ${whatsappOtp}`),
+                              '_blank'
+                            );
                           }}
                         >
                           <ExternalLink className="h-4 w-4" />
