@@ -1,10 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.53.0";
+import { authenticateRequest, unauthorized, forbidden } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
 
 // Helper to send WhatsApp text reply
 async function sendWhatsAppReply(to: string, message: string) {
@@ -216,6 +218,9 @@ serve(async (req: Request) => {
   }
 
   try {
+    const caller = await authenticateRequest(req);
+    if (!caller) return unauthorized(corsHeaders);
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -245,6 +250,18 @@ serve(async (req: Request) => {
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Ownership check (service-role bypasses)
+    if (!caller.isServiceRole) {
+      const { data: ownsPatient } = await supabaseClient
+        .from('patients')
+        .select('id')
+        .eq('id', document.patient_id)
+        .eq('created_by', caller.userId)
+        .maybeSingle();
+      if (!ownsPatient) return forbidden(corsHeaders);
+    }
+
 
     // Get text content - either from DB or by extracting from file
     let textContent = document.extracted_text || document.ocr_extracted_text || '';
