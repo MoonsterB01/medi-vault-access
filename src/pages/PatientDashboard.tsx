@@ -626,48 +626,52 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
                                   variant="outline"
                                   onClick={() => {
                                     const win = window.open('', '_blank');
-                                    if (win) {
-                                      win.document.write(`
-                                        <html>
-                                          <head>
-                                            <title>Prescription ${rx.prescription_id}</title>
-                                            <style>
-                                              body { font-family: Arial, sans-serif; padding: 40px; }
-                                              h1 { color: #333; }
-                                              .section { margin: 20px 0; }
-                                              .medicine { padding: 10px; border-left: 3px solid #4CAF50; margin: 10px 0; }
-                                            </style>
-                                          </head>
-                                          <body>
-                                            <h1>Prescription: ${rx.prescription_id}</h1>
-                                            <div class="section">
-                                              <p><strong>Date:</strong> ${new Date(rx.created_at).toLocaleDateString()}</p>
-                                              <p><strong>Doctor:</strong> Dr. ${rx.doctors?.users?.name || 'Unknown'}</p>
-                                              ${rx.diagnosis ? `<p><strong>Diagnosis:</strong> ${rx.diagnosis}</p>` : ''}
-                                            </div>
-                                            <div class="section">
-                                              <h2>Medicines</h2>
-                                              ${rx.medicines.map((med: any) => `
-                                                <div class="medicine">
-                                                  <p><strong>${med.name}</strong></p>
-                                                  <p>Dose: ${med.dose}</p>
-                                                  <p>Frequency: ${med.frequency}</p>
-                                                  ${med.duration ? `<p>Duration: ${med.duration}</p>` : ''}
-                                                  ${med.instructions ? `<p>Instructions: ${med.instructions}</p>` : ''}
-                                                </div>
-                                              `).join('')}
-                                            </div>
-                                            ${rx.advice ? `
-                                              <div class="section">
-                                                <h2>Advice</h2>
-                                                <p>${rx.advice}</p>
-                                              </div>
-                                            ` : ''}
-                                          </body>
-                                        </html>
-                                      `);
-                                    }
+                                    if (!win) return;
+                                    const esc = (s: any) =>
+                                      String(s ?? '')
+                                        .replace(/&/g, '&amp;')
+                                        .replace(/</g, '&lt;')
+                                        .replace(/>/g, '&gt;')
+                                        .replace(/"/g, '&quot;')
+                                        .replace(/'/g, '&#39;');
+                                    const medsHtml = (rx.medicines || []).map((med: any) => `
+                                      <div class="medicine">
+                                        <p><strong>${esc(med.name)}</strong></p>
+                                        <p>Dose: ${esc(med.dose)}</p>
+                                        <p>Frequency: ${esc(med.frequency)}</p>
+                                        ${med.duration ? `<p>Duration: ${esc(med.duration)}</p>` : ''}
+                                        ${med.instructions ? `<p>Instructions: ${esc(med.instructions)}</p>` : ''}
+                                      </div>
+                                    `).join('');
+                                    win.document.write(`
+                                      <html>
+                                        <head>
+                                          <title>Prescription ${esc(rx.prescription_id)}</title>
+                                          <style>
+                                            body { font-family: Arial, sans-serif; padding: 40px; }
+                                            h1 { color: #333; }
+                                            .section { margin: 20px 0; }
+                                            .medicine { padding: 10px; border-left: 3px solid #4CAF50; margin: 10px 0; }
+                                          </style>
+                                        </head>
+                                        <body>
+                                          <h1>Prescription: ${esc(rx.prescription_id)}</h1>
+                                          <div class="section">
+                                            <p><strong>Date:</strong> ${esc(new Date(rx.created_at).toLocaleDateString())}</p>
+                                            <p><strong>Doctor:</strong> Dr. ${esc(rx.doctors?.users?.name || 'Unknown')}</p>
+                                            ${rx.diagnosis ? `<p><strong>Diagnosis:</strong> ${esc(rx.diagnosis)}</p>` : ''}
+                                          </div>
+                                          <div class="section">
+                                            <h2>Medicines</h2>
+                                            ${medsHtml}
+                                          </div>
+                                          ${rx.advice ? `<div class="section"><h2>Advice</h2><p>${esc(rx.advice)}</p></div>` : ''}
+                                        </body>
+                                      </html>
+                                    `);
+                                    win.document.close();
                                   }}
+
                                 >
                                   <FileText className="h-4 w-4 mr-2" />View
                                 </Button>

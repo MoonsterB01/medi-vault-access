@@ -95,10 +95,25 @@ const handler = async (req: Request): Promise<Response> => {
             });
         }
 
+        // Ownership check: caller must own the patient
+        const { data: ownsPatient } = await supabase
+            .from('patients')
+            .select('id')
+            .eq('id', patientId)
+            .eq('created_by', user.id)
+            .maybeSingle();
+        if (!ownsPatient) {
+            return new Response(JSON.stringify({ error: 'Access denied' }), {
+                status: 403,
+                headers: { 'Content-Type': 'application/json', ...corsHeaders },
+            });
+        }
+
         // 1. Insert the correction into the manual_corrections table
         await supabase.from('manual_corrections').insert({
             patient_id: patientId,
             user_id: user.id,
+
             fieldPath: correction.field,
             oldValue: correction.valueBefore,
             newValue: correction.valueAfter,

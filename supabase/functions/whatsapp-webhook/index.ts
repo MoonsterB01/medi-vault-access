@@ -3,8 +3,33 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-hub-signature-256",
 };
+
+// Compute HMAC-SHA256 of payload using key, return hex string
+async function hmacSha256Hex(key: string, payload: string): Promise<string> {
+  const enc = new TextEncoder();
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(key),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sigBuf = await crypto.subtle.sign("HMAC", cryptoKey, enc.encode(payload));
+  return Array.from(new Uint8Array(sigBuf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+// Constant-time hex string comparison
+function timingSafeEqualHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 
 // Helper to send WhatsApp text reply
 async function sendWhatsAppReply(to: string, message: string) {
@@ -410,7 +435,25 @@ Deno.serve(async (req) => {
   // ========== POST: Incoming Messages ==========
   if (req.method === "POST") {
     try {
-      const body = await req.json();
+      // Read raw body for HMAC verification
+      const rawBody = await req.text();
+
+      // Verify Meta's X-Hub-Signature-256 if app secret configured
+      const appSecret = Deno.env.get("WHATSAPP_APP_SECRET");
+      if (appSecret) {
+        const sigHeader = req.headers.get("x-hub-signature-256") || "";
+        const expectedHex = await hmacSha256Hex(appSecret, rawBody);
+        const provided = sigHeader.startsWith("sha256=") ? sigHeader.slice(7) : "";
+        if (!provided || !timingSafeEqualHex(provided, expectedHex)) {
+          console.warn("[WEBHOOK] Invalid X-Hub-Signature-256");
+          return new Response("Forbidden", { status: 403, headers: corsHeaders });
+        }
+      } else {
+        console.warn("[WEBHOOK] WHATSAPP_APP_SECRET not set — skipping signature verification. Set this secret to harden the webhook.");
+      }
+
+      const body = JSON.parse(rawBody);
+
       const entry = body?.entry?.[0];
       const changes = entry?.changes?.[0];
       const value = changes?.value;

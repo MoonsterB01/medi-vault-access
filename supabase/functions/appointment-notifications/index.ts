@@ -17,6 +17,29 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  // Require either a valid user JWT or service-role bearer token
+  const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  let authorized = false;
+  if (token && token === serviceRoleKey) {
+    authorized = true;
+  } else if (token) {
+    const verifier = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+    const { data, error } = await verifier.auth.getUser(token);
+    if (!error && data?.user) authorized = true;
+  }
+  if (!authorized) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+
   try {
     console.log('Appointment notifications function called');
     

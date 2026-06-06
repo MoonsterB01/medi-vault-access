@@ -1,10 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { authenticateRequest, assertOwnsPatient, unauthorized, forbidden } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
 
 // Health calculation functions
 function calculateBMI(weightKg: number, heightCm: number): number {
@@ -140,8 +142,11 @@ serve(async (req) => {
   }
 
   try {
+    const caller = await authenticateRequest(req);
+    if (!caller) return unauthorized(corsHeaders);
+
     const { patientId, profileId } = await req.json();
-    
+
     if (!patientId) {
       throw new Error('Patient ID is required');
     }
@@ -151,6 +156,11 @@ serve(async (req) => {
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    if (!(await assertOwnsPatient(supabase, caller, patientId))) {
+      return forbidden(corsHeaders);
+    }
+
 
     // Fetch wellbeing profile
     const { data: profile, error: profileError } = await supabase
