@@ -1,4 +1,5 @@
 import PublicLayout from "@/components/PublicLayout";
+import SEO from "@/components/SEO";
 import { Shield, Lock, Server, Eye, FileCheck, AlertTriangle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FadeInOnScroll } from "@/components/FadeInOnScroll";
@@ -73,6 +74,7 @@ const faqItems = [
 export default function Security() {
   return (
     <PublicLayout>
+      <SEO title="Security - How MediVault Protects Your Data" description="Discover MediVault's security practices: encryption, access controls, audit trails and DPDP-aligned safeguards for medical records." path="/security" />
       {/* Hero Section */}
       <section className="py-16 relative overflow-hidden">
         <div className="absolute inset-0 animated-gradient opacity-30" />

@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import logo from "@/assets/logo.png";
 import PublicLayout from "@/components/PublicLayout";
+import SEO from "@/components/SEO";
 
 const signInSchema = z.object({
   email: z.string().trim().email({ message: "Please enter a valid email address" }).max(255),
@@ -163,6 +164,7 @@ export default function Auth() {
 
   return (
     <PublicLayout>
+      <SEO title="Sign In or Sign Up - MediVault Patient Portal" description="Access your MediVault account to manage medical records, share with doctors and book appointments. Secure login for patients." path="/auth" />
       <div className="flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">

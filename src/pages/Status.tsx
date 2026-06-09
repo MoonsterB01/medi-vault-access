@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import PublicLayout from "@/components/PublicLayout";
+import SEO from "@/components/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -131,6 +132,7 @@ export default function Status() {
 
   return (
     <PublicLayout>
+      <SEO title="System Status - MediVault" description="Live status of MediVault services including uploads, AI summaries, authentication and hospital integrations with recent incidents." path="/status" />
       <div className="container mx-auto px-4 py-10 max-w-4xl">
         <header className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">System Status</h1>

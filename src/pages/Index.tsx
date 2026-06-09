@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/logo.png";
 import PublicLayout from "@/components/PublicLayout";
+import SEO from "@/components/SEO";
 import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
 import { VoiceAssistant } from "@/components/VoiceAssistant";
 import { ChatAssistant } from "@/components/ChatAssistant";
@@ -47,6 +48,7 @@ export default function Index() {
 
   return (
     <PublicLayout>
+      <SEO title="MediVault - Secure Digital Medical Records for Families" description="MediVault helps Indian families store, share and manage medical records securely with AI-powered organization and bank-grade encryption." path="/" />
       {/* Hero Section - Clean, Professional */}
       <section className="py-16 lg:py-24">
         <div className="container mx-auto px-4">

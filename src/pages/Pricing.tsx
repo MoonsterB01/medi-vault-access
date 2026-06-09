@@ -5,6 +5,7 @@ import { PlanCard } from "@/components/PlanCard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import SEO from "@/components/SEO";
 
 declare global {
   interface Window {
@@ -199,6 +200,7 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO title="Pricing Plans - MediVault" description="Compare MediVault's pricing plans for patients, doctors and hospitals. Affordable, secure medical records management for every family." path="/pricing" />
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <Button
           variant="ghost"
