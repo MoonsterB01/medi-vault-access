@@ -1,0 +1,17 @@
+# MediVault
+
+> Secure digital medical records management for Indian families and healthcare providers. AI-powered document organization with bank-grade encryption and privacy-first design.
+
+MediVault helps patients and families organize, store, and access medical records securely. Documents are encrypted in transit and at rest, with AI-powered categorization and search. The platform supports patients, doctors, and hospital staff with role-based access controls and Row-Level Security on every record.
+
+## Pages
+
+- [/](/): Home page — overview of MediVault's secure medical records platform, features, and trust indicators.
+- [/about](/about): About MediVault — mission, vision, company story, and values.
+- [/how-it-works](/how-it-works): How the platform works, data processing workflow, security features, and platform capabilities for hospitals and patients.
+- [/pricing](/pricing): Subscription plans and pricing for individuals and families.
+- [/faq](/faq): Frequently asked questions about getting started, security, features, and account management.
+- [/contact-us](/contact-us): Contact information and support form.
+- [/privacy-policy](/privacy-policy): Privacy policy with India DPDP Act alignment and data handling practices.
+- [/security](/security): Security practices, infrastructure details, encryption standards, and access controls.
+- [/status](/status): Real-time system status and service health monitoring.
