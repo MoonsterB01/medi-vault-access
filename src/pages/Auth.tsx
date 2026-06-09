@@ -174,6 +174,7 @@ export default function Auth() {
           </div>
           <Card>
             <CardHeader>
+              <h2 className="sr-only">Patient Portal</h2>
               <CardTitle>Patient Portal</CardTitle>
               <CardDescription>Sign in or create a patient account</CardDescription>
             </CardHeader>

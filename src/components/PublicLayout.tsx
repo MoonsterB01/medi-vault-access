@@ -92,6 +92,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               <Button 
                 variant="ghost" 
                 size="icon"
+                aria-label="Toggle menu"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               >
                 {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

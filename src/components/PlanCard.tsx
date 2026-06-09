@@ -51,7 +51,7 @@ export function PlanCard({
       )}
       
       <div className="text-center space-y-4">
-        <h3 className="text-xl font-bold text-foreground">{displayName}</h3>
+        <h2 className="text-xl font-bold text-foreground">{displayName}</h2>
         
         <div className="space-y-1">
           <div className="text-4xl font-bold text-foreground">
