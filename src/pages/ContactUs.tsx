@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Mail, Phone, User, ArrowLeft } from "lucide-react";
 import PublicLayout from "@/components/PublicLayout";
+import SEO from "@/components/SEO";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,6 +57,7 @@ export default function ContactUs() {
 
   return (
     <PublicLayout>
+      <SEO title="Contact MediVault - Get in Touch" description="Reach the MediVault team for support, partnership, or hospital onboarding. We respond within one business day across India." path="/contact-us" />
       <header className="container mx-auto px-4 py-16 text-center">
         {isLoggedIn && (
           <Button 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import PublicLayout from "@/components/PublicLayout";
+import SEO from "@/components/SEO";
 import { Input } from "@/components/ui/input";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
@@ -356,6 +357,7 @@ const FAQ = () => {
 
   return (
     <PublicLayout>
+      <SEO title="FAQ - MediVault Help Center" description="Answers to common questions about MediVault: account setup, security, sharing records with doctors, billing, and supported features." path="/faq" />
       <div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}

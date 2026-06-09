@@ -4,6 +4,7 @@ import { Shield, Lock, Eye, FileText, Users, Hospital, CheckCircle, Clock, Serve
 import { useNavigate } from "react-router-dom";
 import logo from "@/assets/logo.png";
 import PublicLayout from "@/components/PublicLayout";
+import SEO from "@/components/SEO";
 
 /**
  * @function HowItWorks
@@ -15,6 +16,7 @@ export default function HowItWorks() {
 
   return (
     <PublicLayout>
+      <SEO title="How MediVault Works - Secure Medical Records" description="See how MediVault uploads, organizes and shares your medical records securely across doctors, hospitals and families in a few simple steps." path="/how-it-works" />
       <header className="container mx-auto px-4 py-16 text-center">
         <div className="flex justify-center mb-6">
           <div className="bg-primary/10 p-4 rounded-full">

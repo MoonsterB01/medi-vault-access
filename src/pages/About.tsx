@@ -1,4 +1,5 @@
 import PublicLayout from "@/components/PublicLayout";
+import SEO from "@/components/SEO";
 import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
 import { FadeInOnScroll } from "@/components/FadeInOnScroll";
 import { Target, Heart, Shield, Lightbulb, Users, Globe } from "lucide-react";
@@ -35,6 +36,7 @@ const milestones = [
 export default function About() {
   return (
     <PublicLayout>
+      <SEO title="About Us - MediVault" description="Learn about MediVault's mission to give Indian families secure, lifelong access to their medical records with privacy-first technology." path="/about" />
       {/* Hero Section */}
       <section className="py-20 relative overflow-hidden">
         <div className="absolute inset-0 animated-gradient opacity-30" />
