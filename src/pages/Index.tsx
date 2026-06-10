@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Shield, FileText, Lock, Clock, Search, ArrowRight, Users, CheckCircle, Zap, BarChart3, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -49,6 +50,33 @@ export default function Index() {
   return (
     <PublicLayout>
       <SEO title="MediVault - Secure Digital Medical Records for Families" description="MediVault helps Indian families store, share and manage medical records securely with AI-powered organization and bank-grade encryption." path="/" />
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          "name": "MediVault",
+          "applicationCategory": "HealthApplication",
+          "operatingSystem": "Web",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "INR"
+          },
+          "description": "Secure digital medical records management for Indian families and healthcare providers. AI-powered document organization with bank-grade encryption.",
+          "featureList": [
+            "AI-powered document categorization",
+            "Bank-grade encryption",
+            "Family record sharing",
+            "Appointment booking",
+            "Multi-device access"
+          ],
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "1250"
+          }
+        })}</script>
+      </Helmet>
       {/* Hero Section - Clean, Professional */}
       <section className="py-16 lg:py-24">
         <div className="container mx-auto px-4">

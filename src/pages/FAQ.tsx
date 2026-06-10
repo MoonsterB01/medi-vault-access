@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import PublicLayout from "@/components/PublicLayout";
 import SEO from "@/components/SEO";
 import { Input } from "@/components/ui/input";
@@ -355,9 +356,25 @@ const FAQ = () => {
     return category?.color || "bg-gray-500";
   };
 
+  const faqLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": faqData.map((faq) => ({
+      "@type": "Question",
+      "name": faq.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": faq.answer
+      }
+    }))
+  };
+
   return (
     <PublicLayout>
       <SEO title="FAQ - MediVault Help Center" description="Answers to common questions about MediVault: account setup, security, sharing records with doctors, billing, and supported features." path="/faq" />
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify(faqLd)}</script>
+      </Helmet>
       <div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
