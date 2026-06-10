@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Shield, FileText, Lock, Clock, Search, ArrowRight, Users, CheckCircle, Zap, BarChart3, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
