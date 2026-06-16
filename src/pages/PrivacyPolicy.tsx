@@ -31,7 +31,7 @@ const PrivacyPolicy = () => {
 
   return (
     <PublicLayout>
-      <SEO title="Privacy Policy - MediVault" description="Read how MediVault collects, stores and protects your medical data under India's DPDP Act with strict privacy and security controls." path="/privacy-policy" />
+      <SEO title="Privacy Policy - MediVault" description="Read how MediVault collects, stores and protects your medical data under India's DPDP Act with strict privacy and security controls." path="/privacy-policy" type="article" />
       <div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
