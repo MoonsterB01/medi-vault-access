@@ -31,6 +31,10 @@ export interface Diagnosis {
   lastSeen: string;
   sourceDocs: { docId: string; confidence: number }[];
   hiddenByUser?: boolean;
+  classification?: 'confirmed_diagnosis' | 'template_checkbox_checked' | 'suspected_condition' | 'family_history' | 'doctor_specialty' | 'template_checkbox_unchecked' | 'screening_or_test_purpose' | 'informational_mention';
+  confidence?: number;
+  evidence_text?: string;
+  classification_reason?: string;
 }
 
 export interface Medication {
