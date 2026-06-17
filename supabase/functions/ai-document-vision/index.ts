@@ -23,11 +23,20 @@ interface VisionResponse {
   };
   medicalEntities: {
     doctors?: string[];
-    conditions?: string[];
+    conditions?: Array<{
+      name: string;
+      classification: string;
+      confidence: number;
+      evidence_text: string;
+      classification_reason: string;
+    }>;
     medications?: Array<{
       name: string;
       dose?: string;
       frequency?: string;
+      status?: string;
+      confidence?: number;
+      evidence_text?: string;
     }>;
     labResults?: Array<{
       test: string;
@@ -35,6 +44,11 @@ interface VisionResponse {
       unit?: string;
       normalRange?: string;
       isAbnormal?: boolean;
+    }>;
+    allergies?: Array<{
+      name: string;
+      confirmed: boolean;
+      evidence_text?: string;
     }>;
   };
   categories: string[];
@@ -45,23 +59,46 @@ interface VisionResponse {
 
 const medicalDocumentPrompt = `You are a medical document analyzer. Carefully read this medical document and extract ALL information with EXACT values, including decimals and units.
 
-Analyze the document and return a JSON response with this structure:
+CRITICAL: For every disease/condition you find, you MUST reason about WHY it is mentioned before listing it. A disease word in a document does NOT automatically mean the patient has that disease.
+
+Use one of these classification values for each condition:
+- "confirmed_diagnosis" — patient is explicitly stated to have it (e.g. "Known case of...", "Diagnosed with...", "h/o ...", problem list, assessment)
+- "suspected_condition" — rule-out / differential / query (e.g. "?Asthma", "r/o COPD")
+- "family_history" — appears under family history section
+- "doctor_specialty" — listed under doctor specialization, "Conditions Treated", "Services", "Expertise", "Department", clinic letterhead or marketing
+- "template_checkbox_unchecked" — next to an UNTICKED box (☐ □ [ ])
+- "template_checkbox_checked" — next to a TICKED box (☑ ✓ ✔ [x]) — treat as confirmed
+- "screening_or_test_purpose" — name of a screening/test, not a diagnosis
+- "informational_mention" — educational/generic text without patient context
+
+Return JSON:
 {
   "extractedText": "full text of document",
   "patientInfo": {
     "name": "patient full name if found",
-    "dob": "date of birth in YYYY-MM-DD if found",
+    "dob": "YYYY-MM-DD if found",
     "gender": "gender if found",
     "contact": "phone or contact if found"
   },
   "medicalEntities": {
     "doctors": ["Dr. names found"],
-    "conditions": ["diagnoses, diseases, conditions"],
+    "conditions": [
+      {
+        "name": "condition name",
+        "classification": "one of the values above",
+        "confidence": 0.0-1.0,
+        "evidence_text": "EXACT short snippet copied from the document",
+        "classification_reason": "one sentence explaining why this classification was chosen"
+      }
+    ],
     "medications": [
       {
         "name": "medication name",
         "dose": "exact dose with unit (e.g., 3.5 mg)",
-        "frequency": "frequency if mentioned"
+        "frequency": "frequency if mentioned",
+        "status": "active | historical | template_option",
+        "confidence": 0.0-1.0,
+        "evidence_text": "exact snippet"
       }
     ],
     "labResults": [
@@ -72,6 +109,9 @@ Analyze the document and return a JSON response with this structure:
         "normalRange": "reference range if shown",
         "isAbnormal": true/false if outside normal range
       }
+    ],
+    "allergies": [
+      { "name": "allergen", "confirmed": true|false, "evidence_text": "snippet" }
     ]
   },
   "categories": ["Lab Report", "Prescription", "Radiology", "Clinical Notes", etc],
@@ -80,12 +120,11 @@ Analyze the document and return a JSON response with this structure:
 }
 
 CRITICAL RULES:
-- Preserve ALL decimal points exactly (3.5 not 35)
-- Include units with values (mg/dL, mmol/L)
-- Identify abnormal lab results
-- Extract exact medication doses
-- Identify document type correctly
-- Flag any critical/urgent findings`;
+- Preserve ALL decimal points exactly (3.5 not 35) and include units.
+- NEVER classify a disease as confirmed_diagnosis if it appears near doctor info, under Specialization/Conditions Treated/Services/Expertise/Department, in clinic or lab marketing, or in a template list with an unticked box.
+- For checkboxes: ☑ ✓ ✔ [x] [X] = checked; ☐ □ [ ] = unchecked.
+- evidence_text is REQUIRED for every condition and must be copied verbatim.
+- If unsure, use "informational_mention" with low confidence rather than guessing.`;
 
 async function processWithAIVision(
   fileContent: string,
