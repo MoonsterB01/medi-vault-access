@@ -68,27 +68,99 @@ const handler = async (req: Request): Promise<Response> => {
         const newEntities = document.extracted_entities || {};
         const today = new Date().toISOString().split('T')[0];
 
+        // Load configurable confidence threshold (default 0.6)
+        let confidenceThreshold = 0.6;
+        try {
+          const { data: cfg } = await supabase
+            .from('app_config')
+            .select('value')
+            .eq('key', 'diagnosis_confidence_threshold')
+            .maybeSingle();
+          if (cfg?.value !== undefined && cfg?.value !== null) {
+            const v = typeof cfg.value === 'number' ? cfg.value : parseFloat(String(cfg.value));
+            if (!Number.isNaN(v)) confidenceThreshold = v;
+          }
+        } catch (_) { /* ignore */ }
+
+        const CONFIRMED_CLASSIFICATIONS = new Set([
+          'confirmed_diagnosis',
+          'template_checkbox_checked',
+        ]);
+
         // --- Core Logic: Write to Structured Tables ---
 
-        // Process Diagnoses
-        if (newEntities.diagnoses && Array.isArray(newEntities.diagnoses)) {
-            for (const newDiag of newEntities.diagnoses) {
-                const name = (newDiag.name || newDiag).toLowerCase();
-                const { data: existing } = await supabase.from('diagnoses').select('id, source_docs').eq('patient_id', patientId).ilike('name', name).single();
+        // Accept either `diagnoses` or `conditions` (newer prompt) — both as structured objects
+        const rawDiagnoses = (Array.isArray(newEntities.diagnoses) ? newEntities.diagnoses : [])
+          .concat(Array.isArray(newEntities.conditions) ? newEntities.conditions : []);
+
+        if (rawDiagnoses.length > 0) {
+            for (const newDiag of rawDiagnoses) {
+                // Skip bare strings — without classification metadata we cannot trust them
+                if (typeof newDiag === 'string') {
+                    console.log('Skipping unclassified diagnosis string:', newDiag);
+                    continue;
+                }
+                const classification = newDiag.classification || 'informational_mention';
+                const confidence = typeof newDiag.confidence === 'number' ? newDiag.confidence : 0;
+
+                if (!CONFIRMED_CLASSIFICATIONS.has(classification)) {
+                    console.log(`Skipping non-confirmed diagnosis "${newDiag.name}" (${classification})`);
+                    continue;
+                }
+                if (confidence < confidenceThreshold) {
+                    console.log(`Skipping low-confidence diagnosis "${newDiag.name}" (${confidence})`);
+                    continue;
+                }
+
+                const name = String(newDiag.name || '').toLowerCase().trim();
+                if (!name) continue;
+
+                const { data: existing } = await supabase.from('diagnoses').select('id, source_docs').eq('patient_id', patientId).ilike('name', name).maybeSingle();
                 if (existing) {
-                    const updatedSourceDocs = [...(existing.source_docs || []), { docId: documentId, confidence: newDiag.confidence || 0.8 }];
-                    await supabase.from('diagnoses').update({ lastSeen: today, source_docs: updatedSourceDocs }).eq('id', existing.id);
+                    const updatedSourceDocs = [...(existing.source_docs || []), { docId: documentId, confidence }];
+                    await supabase.from('diagnoses').update({
+                      lastSeen: today,
+                      source_docs: updatedSourceDocs,
+                      classification,
+                      confidence,
+                      evidence_text: newDiag.evidence_text || null,
+                      classification_reason: newDiag.classification_reason || null,
+                    }).eq('id', existing.id);
                 } else {
-                    await supabase.from('diagnoses').insert({ patient_id: patientId, name: newDiag.name || newDiag, status: 'active', firstSeen: today, lastSeen: today, severity: newDiag.severity || 'undetermined', source_docs: [{ docId: documentId, confidence: newDiag.confidence || 0.8 }] });
+                    await supabase.from('diagnoses').insert({
+                      patient_id: patientId,
+                      name: newDiag.name,
+                      status: 'active',
+                      firstSeen: today,
+                      lastSeen: today,
+                      severity: newDiag.severity || 'undetermined',
+                      source_docs: [{ docId: documentId, confidence }],
+                      classification,
+                      confidence,
+                      evidence_text: newDiag.evidence_text || null,
+                      classification_reason: newDiag.classification_reason || null,
+                    });
                 }
             }
         }
 
-        // Process Medications
+        // Process Medications — skip template options and string-only entries below threshold
         if (newEntities.medications && Array.isArray(newEntities.medications)) {
             for (const newMed of newEntities.medications) {
+                if (typeof newMed === 'string') {
+                    // Legacy shape; keep current behavior
+                } else {
+                    if (newMed.status === 'template_option') {
+                        console.log(`Skipping template-option medication "${newMed.name}"`);
+                        continue;
+                    }
+                    if (typeof newMed.confidence === 'number' && newMed.confidence < confidenceThreshold) {
+                        console.log(`Skipping low-confidence medication "${newMed.name}"`);
+                        continue;
+                    }
+                }
                 const name = (newMed.name || newMed).toLowerCase();
-                const { data: existing } = await supabase.from('medications').select('id, source_docs').eq('patient_id', patientId).ilike('name', name).single();
+                const { data: existing } = await supabase.from('medications').select('id, source_docs').eq('patient_id', patientId).ilike('name', name).maybeSingle();
                 if (existing) {
                     const updatedSourceDocs = [...(existing.source_docs || []), { docId: documentId, confidence: newMed.confidence || 0.8 }];
                     await supabase.from('medications').update({ status: 'active', source_docs: updatedSourceDocs }).eq('id', existing.id);
