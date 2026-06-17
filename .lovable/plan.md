@@ -1,59 +1,97 @@
-## Why it's hardcoded today
+# Smarter Disease Extraction & Classification
 
-In `src/pages/Settings.tsx` (line 762) the WABA number is inlined:
-
-```ts
-const waNumber = '918112244532';
-window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank');
-```
-
-It was written this way during the initial WhatsApp wiring as a quick way to get the deep link working. There is no shared config, no env var, and no DB row, so the string lives in exactly one component. If Meta ever issues a new WABA number (or we add a second region/sandbox number), the deep link silently points at the old number and every "Connect via WhatsApp" click fails — with no error, because `wa.me` happily opens any number.
+## Problem
+The vision/analysis pipeline currently dumps every disease word it sees into `extracted_entities.diagnoses` / `conditions`, and `generate-patient-summary` inserts them straight into the `diagnoses` table with a hard-coded `status: 'active'` and `confidence: 0.8`. That means a pulmonologist's "Conditions treated: Asthma, COPD" or an unchecked "☐ Diabetes" template box becomes a patient diagnosis.
 
 ## Goal
+Make the system reason about **why** a disease is mentioned and only promote it to the patient summary when it is a confirmed patient diagnosis.
 
-One source of truth for the WABA number, readable from both the frontend (Settings deep link) and edge functions (webhook replies, future templates), changeable without redeploying the app.
-
-## Approach
-
-Two layers, used together:
-
-1. **Build-time default via Vite env** — `VITE_WHATSAPP_BUSINESS_NUMBER` in `.env`. Safe to expose (the number is public on `wa.me` anyway). Gives us a working default on every environment.
-2. **Runtime override via `app_config` table** — a tiny key/value table read once on Settings mount. Lets us rotate the number from the Supabase dashboard with zero code change. Falls back to the env value if the row is missing.
-
-Edge functions read the same value from a non-prefixed secret `WHATSAPP_BUSINESS_NUMBER` (already the convention for `WHATSAPP_VERIFY_TOKEN` etc.), so the webhook side is consistent.
+---
 
 ## Changes
 
-### 1. Frontend config module — `src/lib/whatsappConfig.ts` (new)
-- Exports `getWhatsAppBusinessNumber()` that:
-  - Reads `import.meta.env.VITE_WHATSAPP_BUSINESS_NUMBER` as default.
-  - Queries `app_config` for key `whatsapp_business_number`; if present, returns it.
-  - Strips `+`, spaces, dashes; validates it's digits only.
-- Exports `buildWhatsAppDeepLink(number, text)` helper.
+### 1. Upgrade the extraction prompt (classification layer)
 
-### 2. `.env`
-- Add `VITE_WHATSAPP_BUSINESS_NUMBER="918112244532"` (current value, so behavior is unchanged on day one).
+Edit `supabase/functions/ai-document-vision/index.ts` (and the equivalent prompt in `enhanced-document-analyze/index.ts`) so the model returns each condition as a structured object instead of a bare string:
 
-### 3. `app_config` table (new, tiny)
-- `key text primary key`, `value text not null`, `updated_at timestamptz`.
-- RLS: `SELECT` allowed to `anon` and `authenticated` (values are non-secret display config); `INSERT/UPDATE/DELETE` only via `service_role`.
-- GRANTs included per the public-schema rule.
-- Seed row: `('whatsapp_business_number', '918112244532')`.
+```json
+"conditions": [
+  {
+    "name": "Type 2 Diabetes Mellitus",
+    "classification": "confirmed_diagnosis",
+    "confidence": 0.96,
+    "evidence_text": "Known case of Type 2 Diabetes Mellitus for 8 years",
+    "classification_reason": "Stated as known case in patient history section"
+  }
+]
+```
 
-### 4. `src/pages/Settings.tsx`
-- Remove the inline `const waNumber = '918112244532'`.
-- Call `getWhatsAppBusinessNumber()` (cached in a `useEffect` on mount) and use it in the deep link.
-- If the lookup returns empty, disable the "Connect via WhatsApp" button with a tooltip ("WhatsApp number not configured — contact support").
+Allowed `classification` values:
+- `confirmed_diagnosis`
+- `suspected_condition`
+- `family_history`
+- `doctor_specialty` (conditions treated / specialization / department)
+- `template_checkbox_unchecked`
+- `template_checkbox_checked` → treated as confirmed
+- `screening_or_test_purpose`
+- `informational_mention`
 
-### 5. Edge function side (no behavior change today, just consistency)
-- Add `WHATSAPP_BUSINESS_NUMBER` to the secrets list expected by `whatsapp-webhook` (used later for outbound template sends). No code change in the webhook itself in this pass.
+Prompt rules to add explicitly:
+- Do **not** classify as a patient condition if it appears near doctor info, under headings like *Specialization / Conditions Treated / Services / Expertise / Department*, in clinic/lab marketing, or in a template checkbox list where the box is not ticked.
+- For checkboxes, infer state from glyphs (☑ ✓ ✔ [x] = checked; ☐ □ [ ] = unchecked).
+- Every condition must include `evidence_text` (the exact snippet) and `classification_reason`.
+- Keep the same shape for `medications` (add `status: active|historical|template_option`) and `allergies` (add `confirmed: true|false`).
 
-## Out of scope for this pass
-- Moving OTP generation server-side, signature verification, phone normalization — already tracked from the earlier WhatsApp audit.
-- Multi-number / per-region routing. The `app_config` row makes this trivial to add later (swap to a JSON value).
+### 2. Filter at write time in `generate-patient-summary`
+
+In `supabase/functions/generate-patient-summary/index.ts` around the diagnosis-insert loop:
+- Skip any condition whose `classification` is not `confirmed_diagnosis` or `template_checkbox_checked`.
+- Skip any condition whose `confidence` is below a threshold read from a new `app_config` row `diagnosis_confidence_threshold` (default `0.6`).
+- Persist `classification`, `confidence`, `evidence_text`, `classification_reason`, and `source_document` on every diagnosis row so the UI can show "why".
+- Apply the same gate to medications (skip `template_option`) and allergies (skip `confirmed: false`).
+
+### 3. Database migration
+
+Add explainability columns to `public.diagnoses`:
+- `classification text` (e.g. `confirmed_diagnosis`)
+- `evidence_text text`
+- `classification_reason text`
+- `confidence numeric`
+
+Add a row to `app_config`: `diagnosis_confidence_threshold = 0.6` (tunable).
+
+Backward-compatible: columns are nullable, existing rows keep working.
+
+### 4. Patient summary protection
+
+`generate-patient-summary` already pulls from the `diagnoses`, `medications`, `labs`, `alerts` tables. With step 2 in place the summary is automatically clean. Additionally:
+- When building the AI summary prompt (lines ~250-290), pass only diagnoses where `classification = 'confirmed_diagnosis'` and `confidence >= threshold`.
+- Labs section: only include rows flagged abnormal.
+- Allergies: only `confirmed = true`.
+
+### 5. UI explainability
+
+Update `src/components/PatientSummary.tsx` and `src/types/patient-summary.ts`:
+- Extend `Diagnosis` with `classification`, `evidence_text`, `classification_reason`, `confidence`.
+- Show a small "Why?" popover/tooltip on each diagnosis chip displaying the evidence snippet, classification, and confidence %.
+- Add a subtle "Low confidence / unconfirmed" filter toggle (off by default) so power users can audit suppressed items.
+
+### 6. Backfill safety
+
+One-time SQL (in the same migration) to soft-hide existing diagnoses that were inserted with no classification AND whose source document is a known clinic/lab marketing type — implemented as: set `hidden_by_user = true` only when the linked document's `document_type` is in (`clinic_letterhead`, `marketing`, `directory`). This avoids nuking real history while removing the obvious noise. Users can unhide via the existing correction flow.
+
+---
 
 ## Files touched
-- `src/lib/whatsappConfig.ts` (new)
-- `src/pages/Settings.tsx` (replace hardcoded number)
-- `.env` (add `VITE_WHATSAPP_BUSINESS_NUMBER`)
-- New migration: create `app_config` + GRANTs + RLS + seed row
+- `supabase/functions/ai-document-vision/index.ts` — new prompt + response shape
+- `supabase/functions/enhanced-document-analyze/index.ts` — matching prompt changes
+- `supabase/functions/generate-patient-summary/index.ts` — classification gate + threshold + new columns
+- `src/types/patient-summary.ts` — extend `Diagnosis`
+- `src/components/PatientSummary.tsx` — "Why?" evidence UI
+- Migration: add columns on `diagnoses`, insert `app_config` threshold, conservative backfill
+
+## Out of scope
+- Re-processing every historical document. Existing entries stay unless the conservative backfill matches; new uploads benefit immediately.
+- Changing how medications/allergies are displayed beyond the gating fix (UI tooltip is diagnosis-only for this pass).
+
+Approve and I'll implement.

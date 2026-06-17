@@ -241,7 +241,7 @@ ENHANCED ANALYSIS REQUIRED:
 
 2. MEDICAL ENTITIES (extract if found):
    - Doctor/Physician names
-   - Medical conditions/diagnoses
+   - Medical conditions/diagnoses — EACH must be classified by WHY it appears
    - Medications/prescriptions
    - Test names and results
    - Medical procedures
@@ -249,17 +249,19 @@ ENHANCED ANALYSIS REQUIRED:
    - Last checkup date
 
 3. CRITICAL ALERTS:
-   - Identify any critical medical conditions, severe allergies, or urgent findings that require immediate attention.
+   - Identify any critical medical conditions, severe allergies, or urgent findings.
 
 4. DOCUMENT CATEGORIES (max 3 most relevant):
    Choose from: "Lab Results", "Pathology Report", "Radiology Report", "Prescription", "Consultation Notes", "Discharge Summary", "Blood Work", "Imaging Report", "Referral Letter", "Surgical Report", "Vaccination Record", "Insurance Document", "General Medical"
 
-5. ADDITIONAL KEYWORDS (medical terms not already detected)
+5. ADDITIONAL KEYWORDS
 
-6. CONFIDENCE ASSESSMENT (0.0-1.0) considering:
-   - OCR quality and text clarity
-   - Medical content relevance
-   - Document completeness
+6. CONFIDENCE ASSESSMENT (0.0-1.0)
+
+CONDITION CLASSIFICATION (REQUIRED for every condition):
+Use one of: "confirmed_diagnosis" | "suspected_condition" | "family_history" | "doctor_specialty" | "template_checkbox_unchecked" | "template_checkbox_checked" | "screening_or_test_purpose" | "informational_mention".
+- Do NOT mark a disease as confirmed_diagnosis when it appears under Specialization / Conditions Treated / Services / Expertise / Department, near doctor info, in clinic or lab marketing, or next to an unchecked checkbox (☐ □ [ ]).
+- A ticked checkbox (☑ ✓ ✔ [x]) counts as confirmed.
 
 RESPOND ONLY in this exact JSON format:
 {
@@ -270,7 +272,15 @@ RESPOND ONLY in this exact JSON format:
   },
   "entities": {
     "doctors": ["Dr. Name"],
-    "conditions": ["condition"],
+    "conditions": [
+      {
+        "name": "condition",
+        "classification": "confirmed_diagnosis",
+        "confidence": 0.0-1.0,
+        "evidence_text": "exact snippet from the document",
+        "classification_reason": "why this classification"
+      }
+    ],
     "medications": ["medication"],
     "tests": ["test name"],
     "procedures": ["procedure"],
@@ -279,10 +289,7 @@ RESPOND ONLY in this exact JSON format:
     "lastCheckup": "YYYY-MM-DD"
   },
   "criticalAlerts": [
-    {
-      "message": "Critical finding description",
-      "severity": "high/medium/low"
-    }
+    { "message": "Critical finding description", "severity": "high/medium/low" }
   ],
   "keywords": ["additional", "medical", "keywords"],
   "categories": ["Lab Results", "Prescription"],

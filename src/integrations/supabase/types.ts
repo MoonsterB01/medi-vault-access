@@ -468,6 +468,10 @@ export type Database = {
       }
       diagnoses: {
         Row: {
+          classification: string | null
+          classification_reason: string | null
+          confidence: number | null
+          evidence_text: string | null
           firstseen: string | null
           hidden_by_user: boolean | null
           id: string
@@ -479,6 +483,10 @@ export type Database = {
           status: string | null
         }
         Insert: {
+          classification?: string | null
+          classification_reason?: string | null
+          confidence?: number | null
+          evidence_text?: string | null
           firstseen?: string | null
           hidden_by_user?: boolean | null
           id?: string
@@ -490,6 +498,10 @@ export type Database = {
           status?: string | null
         }
         Update: {
+          classification?: string | null
+          classification_reason?: string | null
+          confidence?: number | null
+          evidence_text?: string | null
           firstseen?: string | null
           hidden_by_user?: boolean | null
           id?: string
