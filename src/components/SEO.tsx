@@ -9,7 +9,7 @@ interface SEOProps {
 }
 
 const SITE_URL = "https://medilock.lovable.app";
-const DEFAULT_OG_IMAGE = `${SITE_URL}/__l5e/assets-v1/e67ab880-96d0-45dc-a120-4c4b9de33c47/medivault-og-v2.jpg`;
+const DEFAULT_OG_IMAGE = `${SITE_URL}/__l5e/assets-v1/52be7794-0c35-4cdd-b3d1-791b763315ec/medivault-og-v3.jpg`;
 
 export const SEO = ({ title, description, path, type = "website", image }: SEOProps) => {
   const url = `${SITE_URL}${path}`;
