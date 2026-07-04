@@ -26,6 +26,7 @@ import Security from "./pages/Security";
 import About from "./pages/About";
 import Settings from "./pages/Settings";
 import Status from "./pages/Status";
+import PatientDetails from "./pages/PatientDetails";
 import { ActivePatientProvider } from "./contexts/ActivePatientContext";
 
 
@@ -48,6 +49,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/hospital-dashboard" element={<AppLayout userRole="hospital_staff"><HospitalDashboard /></AppLayout>} />
           <Route path="/patient-dashboard" element={<AppLayout userRole="patient"><PatientDashboard /></AppLayout>} />
+          <Route path="/dashboard/details" element={<AppLayout userRole="patient"><PatientDetails /></AppLayout>} />
           <Route path="/document-timeline" element={<AppLayout userRole="patient"><DocumentTimeline /></AppLayout>} />
           <Route path="/upload" element={<PublicUpload />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
