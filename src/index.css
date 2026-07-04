@@ -42,6 +42,11 @@
     --warning: 45 93% 47%;
     --warning-foreground: 0 0% 100%;
 
+    --status-good: 142 71% 42%;
+    --status-watch: 38 92% 50%;
+    --status-alert: 0 78% 55%;
+
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -86,6 +91,11 @@
 
     --warning: 45 93% 47%;
     --warning-foreground: 0 0% 0%;
+
+    --status-good: 142 65% 50%;
+    --status-watch: 38 90% 58%;
+    --status-alert: 0 75% 62%;
+
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;

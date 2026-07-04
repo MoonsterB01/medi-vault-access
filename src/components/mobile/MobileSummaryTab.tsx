@@ -1,4 +1,4 @@
-import PatientSummary from "@/components/PatientSummary";
+import { SimplePatientDashboard } from "@/components/patient/SimplePatientDashboard";
 import { PatientSummary as PatientSummaryType } from "@/types/patient-summary";
 
 interface MobileSummaryTabProps {
@@ -8,15 +8,10 @@ interface MobileSummaryTabProps {
   onRefresh?: () => Promise<void>;
 }
 
-export function MobileSummaryTab({ summary, isLoading, error, onRefresh }: MobileSummaryTabProps) {
+export function MobileSummaryTab({ summary, isLoading, error }: MobileSummaryTabProps) {
   return (
-    <div className="space-y-4 animate-fade-in">
-      <PatientSummary 
-        summary={summary} 
-        isLoading={isLoading} 
-        error={error}
-        onRefresh={onRefresh}
-      />
+    <div className="animate-fade-in">
+      <SimplePatientDashboard summary={summary} isLoading={isLoading} error={error} />
     </div>
   );
 }

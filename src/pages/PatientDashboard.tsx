@@ -17,6 +17,7 @@ import AppointmentBooking from "@/components/AppointmentBooking";
 import AppointmentTracker from "@/components/AppointmentTracker";
 import AppointmentCalendar from "@/components/AppointmentCalendar";
 import PatientSummary from "@/components/PatientSummary";
+import { SimplePatientDashboard } from "@/components/patient/SimplePatientDashboard";
 import { MissingInfoDialog } from "@/components/MissingInfoDialog";
 import { DocumentSummaryDialog } from "@/components/DocumentSummaryDialog";
 import { MediBot } from "@/components/MediBot";
@@ -571,11 +572,10 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
               </TabsList>
 
               <TabsContent value="summary" className="mt-6" id="tab-content-summary">
-                <PatientSummary 
-                  summary={summary} 
-                  isLoading={isSummaryLoading} 
+                <SimplePatientDashboard
+                  summary={summary}
+                  isLoading={isSummaryLoading}
                   error={summaryError}
-                  onRefresh={refreshPatientData}
                 />
               </TabsContent>
 
