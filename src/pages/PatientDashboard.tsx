@@ -688,65 +688,30 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
                     </CardContent>
                   </Card>
 
-                  {/* Uploaded Documents */}
+                  {/* Uploaded Documents - Visual Grid */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Uploaded Documents</CardTitle>
-                      <CardDescription>Your medical documents and records</CardDescription>
+                      <CardTitle>Your Reports</CardTitle>
+                      <CardDescription>Tap a report to see its health score and details</CardDescription>
                     </CardHeader>
                     <CardContent>
                       {documents.length > 0 ? (
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                          {documents.map((doc) => (
-                            <Card key={doc.id} className="p-4 flex flex-col justify-between">
-                              <div className="space-y-3">
-                                <div className="flex items-start justify-between">
-                                  <h3 className="font-semibold text-sm truncate flex-1">{doc.filename}</h3>
-                                  <Badge variant="secondary" className="text-xs ml-2">
-                                    {formatDocumentType(doc.document_type)}
-                                  </Badge>
-                                </div>
-                                <div className="text-xs text-muted-foreground space-y-1">
-                                  <p>Size: {formatFileSize(doc.file_size)}</p>
-                                  <p>Uploaded: {new Date(doc.uploaded_at).toLocaleDateString()}</p>
-                                </div>
-                                {doc.ai_summary && (
-                                  <DocumentSummaryDialog document={doc}>
-                                    <Button size="sm" variant="ghost" className="text-xs">
-                                      <Bot className="h-3 w-3 mr-1" /> Summary
-                                    </Button>
-                                  </DocumentSummaryDialog>
-                                )}
-                              </div>
-                              <div className="flex gap-2 mt-4">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={async () => {
-                                    try {
-                                      const { viewDocument } = await import('@/lib/storage');
-                                      await viewDocument(doc.file_path);
-                                    } catch (error: any) {
-                                      toast({ title: "View Failed", description: error.message, variant: "destructive" });
-                                    }
-                                  }}
-                                >
-                                  <Download className="h-4 w-4 mr-2" />View
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => handleDeleteDocument(doc.id, doc.filename)}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />Delete
-                                </Button>
-                              </div>
-                            </Card>
-                          ))}
-                        </div>
+                        <DocumentsGrid
+                          documents={documents}
+                          onDownload={async (doc) => {
+                            try {
+                              const { triggerDocumentDownload } = await import('@/lib/storage');
+                              await triggerDocumentDownload(doc.file_path, doc.filename);
+                              toast({ title: "Download started" });
+                            } catch (e: any) {
+                              toast({ title: "Download failed", description: e.message, variant: "destructive" });
+                            }
+                          }}
+                          onDelete={(doc) => handleDeleteDocument(doc.id, doc.filename)}
+                        />
                       ) : (
                         <p className="text-sm text-muted-foreground text-center py-8">
-                          No documents uploaded yet. Use the Upload tab to add documents.
+                          No reports yet. Use the Upload tab to add your first report.
                         </p>
                       )}
                     </CardContent>
