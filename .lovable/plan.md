@@ -1,103 +1,69 @@
+# Plan: Simplify Patient Portal — Step 1 (Summary + Documents)
 
-# Simplified Patient Dashboard
+Refine tabs in order: **Summary → Documents → Well Being**. This plan covers Summary refinement + Documents tab. Well Being will be a separate plan after your approval of these visuals.
 
-Goal: patient opens the app and instantly sees "how am I doing?" — no reading, no thinking. Deep detail moves to a separate page for doctors and curious users.
+## 1. Per-Document Detail Page (shared)
 
-## What the patient sees (new main view)
+New route `/document/:id` rendered by new `src/pages/DocumentDetail.tsx`.
 
-```text
-┌────────────────────────────────┐
-│         ● Doing Well           │  ← status light (green/yellow/red)
-│                                │
-│            82                  │  ← big Health Score (0–100)
-│         out of 100             │
-│         ↑ +4 vs last month     │  ← trend
-└────────────────────────────────┘
+Contents (visuals only, minimal text):
+- Header: document type icon + date + status dot (good/watch/alert)
+- `HealthScoreCard` scoped to this single document
+- `KeyMetricsBars` built only from that doc's extracted labs/vitals
+- `BodyHeatmap` with regions derived from this doc's diagnoses/alerts
+- Small "See raw details" link → existing document summary dialog / file view
+- Top-right icons: download, delete
 
-┌──── Key Numbers ────┐
-│ Blood Pressure  ██████████░  Good  │
-│ Blood Sugar     ███████░░░░  Watch │
-│ Cholesterol     █████████░░  Good  │
-│ BMI             ████████░░░  Good  │
-└─────────────────────┘
+Data source: `documents` row + `document_extractions` / existing per-doc summary already surfaced in `DocumentSummaryDialog`. No new edge functions. Score/metrics reuse `src/lib/healthScore.ts` helpers, refactored to accept either the full `PatientSummary` or a single-document subset.
 
-┌──── Your Body ────┐
-│    [body silhouette with        │
-│     colored zones — heart       │
-│     yellow, lungs green, etc.]  │
-└───────────────────┘
+## 2. Summary Tab Refinement
 
-[ See full details ]   ← link to old detailed view
-```
+Add below existing `SimplePatientDashboard` blocks: a **"Recent Reports"** strip.
+- Horizontal scroll on mobile / grid on desktop
+- Each card: type icon, date, colored status dot, one big number (doc's health score)
+- Tap → `/document/:id`
 
-Three blocks only. No paragraphs. No patient-info card. No confidence badges. No "regenerate" button visible by default.
+No other changes to Summary blocks already built.
 
-## Blocks in detail
+## 3. Documents Tab — Visual Grid of Report Cards
 
-**1. Health Score card**
-- Big number 0–100 with a colored ring (green ≥75, yellow 50–74, red <50).
-- Status label above: "Doing Well" / "Needs Attention" / "See a Doctor".
-- Trend row: arrow + delta vs previous score (`↑ +4 vs last month`).
-- Empty state (no docs): grey ring, "Upload a report to see your score", single upload button.
+Replace current `MobileDocumentsTab` list and desktop documents view with a **card grid**.
 
-**2. Key Numbers (progress bars)**
-- Up to 6 metrics pulled from the AI summary: BP (systolic), Blood Sugar (fasting), Cholesterol (total), BMI, Hemoglobin, Heart Rate. Show only metrics that exist in the data.
-- Each row: label · horizontal bar filled to `value` positioned inside its healthy range · one-word status (Low / Good / Watch / High), colored.
-- Bar shows the healthy band as a lighter track and a marker for the patient's value — no numbers, no units on the main view.
+Each card (compact, no filename shown upfront):
+- Large document-type icon (Lab / Prescription / Scan / Report)
+- Date (relative, e.g. "3 days ago")
+- Colored status dot + one-word label (Good / Watch / Alert)
+- One big number: per-doc health score
+- Bottom-right: tiny download + delete icon buttons
+- Tap card body → `/document/:id`
 
-**3. Body heatmap**
-- Simple SVG human silhouette. Regions (head, heart, lungs, stomach, liver, kidneys, joints) are tinted green/yellow/red based on findings.
-- Tap a region → small tooltip with the plain-language status ("Heart: looking good"). No medical detail.
-
-**4. "See full details" link**
-- Opens a new route `/dashboard/details` (mobile + desktop) that renders the current `PatientSummary` UI as-is: AI paragraph, patient info card, confidence, regenerate, edit. Nothing there is lost — just moved.
-
-## Scope
+Grouping: chips at top to filter by type (All / Labs / Prescriptions / Scans / Other). No search bar, no tags, no descriptions on the grid (moved to detail page).
 
 Applies to both:
-- Desktop: `PatientDashboard.tsx` Summary section
-- Mobile: `MobileSummaryTab.tsx`
+- `src/components/mobile/MobileDocumentsTab.tsx` (2-col grid)
+- Desktop documents view inside `PatientDashboard.tsx` (3-4 col grid)
 
-Both render a new shared component; the detail page reuses the existing `PatientSummary` component untouched.
+Prescriptions continue to appear as their own card type with pill icon.
 
-## Data source
+## 4. Technical Notes
 
-No backend changes. Everything derives from the existing `patient_summaries.summary` JSON already fetched by `use-patient-summary.ts`:
-- Score: use `aiSummary.confidence`-adjusted composite if a numeric score exists in the JSON; otherwise compute client-side from metric statuses (each Good = full, Watch = half, High/Low = zero, averaged × 100).
-- Trend: compare to previous score snapshot stored client-side in `localStorage` keyed by patient id (until a `score_history` table is added later).
-- Metrics: read `summary.vitals` / `summary.labs` if present; otherwise best-effort parse from `aiSummary` structured fields. Any missing metric is skipped (never shown as 0).
-- Body regions: map known condition keywords in `summary.conditions` to region ids.
+- New files:
+  - `src/pages/DocumentDetail.tsx`
+  - `src/components/patient/DocumentCard.tsx` (visual card)
+  - `src/components/patient/RecentReportsStrip.tsx` (Summary tab addition)
+- Refactor `src/lib/healthScore.ts`: extract `computeDocScore(doc, extraction)` helper reused by cards + detail page.
+- Edit:
+  - `src/App.tsx` → add `/document/:id` route
+  - `src/components/patient/SimplePatientDashboard.tsx` → mount `RecentReportsStrip`
+  - `src/components/mobile/MobileDocumentsTab.tsx` → new grid layout
+  - `src/pages/PatientDashboard.tsx` → desktop grid layout for documents tab
+- Untouched: edge functions, DB schema, Well Being, existing `PatientSummary` (still available via `/dashboard/details`)
+- Status color derivation: reuses tokens `--status-good` / `--status-watch` / `--status-alert` already in `index.css`
 
-If the JSON doesn't yet contain structured metrics, the block renders an empty state ("Metrics will appear after your next report is analyzed") rather than fake data — per the no-fake-data rule.
+## 5. Out of scope (this step)
+- Well Being tab (next step after your approval of these two)
+- Search tab, Appointments, Upload
+- Doctor view
+- Any backend/schema changes
 
-## Visual language
-
-- Minimal. White surface, generous padding, one accent color per status.
-- Reuse existing semantic tokens (`--primary`, `--trust`, plus new `--status-good`, `--status-watch`, `--status-alert` HSL tokens in `index.css`, mirrored in `tailwind.config.ts`).
-- No animation beyond a subtle fade-in and a bar fill transition. No pulsing dots on the main view.
-- Fully responsive: score card full-width on mobile, side-by-side with metrics on desktop ≥ md.
-
-## Files
-
-New:
-- `src/components/patient/HealthScoreCard.tsx`
-- `src/components/patient/KeyMetricsBars.tsx`
-- `src/components/patient/BodyHeatmap.tsx` (inline SVG)
-- `src/components/patient/SimplePatientDashboard.tsx` (composes the three)
-- `src/pages/PatientDetails.tsx` (renders current `PatientSummary`)
-- `src/lib/healthScore.ts` (score + metric derivation from summary JSON)
-
-Edited:
-- `src/components/mobile/MobileSummaryTab.tsx` → render `SimplePatientDashboard` + "See full details" link.
-- `src/pages/PatientDashboard.tsx` → replace the summary section with `SimplePatientDashboard` + link.
-- `src/App.tsx` → add `/dashboard/details` route.
-- `src/index.css` + `tailwind.config.ts` → add status color tokens.
-
-Untouched:
-- `PatientSummary.tsx`, `EditPatientInfoDialog.tsx`, `use-patient-summary.ts`, all edge functions, all DB schema.
-
-## Out of scope (call out for later)
-
-- Persisting score history in a `patient_score_history` table (currently localStorage).
-- Re-prompting `generate-patient-summary` to always emit structured `vitals` / `labs` / `regions` blocks.
-- Doctor-facing view of the same simplified card.
+After you approve and I implement, we'll move to **Well Being** as step 2.
