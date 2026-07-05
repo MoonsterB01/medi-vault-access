@@ -576,6 +576,7 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
                   summary={summary}
                   isLoading={isSummaryLoading}
                   error={summaryError}
+                  documents={documents}
                 />
               </TabsContent>
 
