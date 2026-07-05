@@ -81,6 +81,7 @@ export function MobilePatientDashboard({
             summary={summary}
             isLoading={isSummaryLoading}
             error={summaryError}
+            documents={documents}
             onRefresh={refreshPatientData}
           />
         );
@@ -114,6 +115,7 @@ export function MobilePatientDashboard({
             summary={summary}
             isLoading={isSummaryLoading}
             error={summaryError}
+            documents={documents}
             onRefresh={refreshPatientData}
           />
         );

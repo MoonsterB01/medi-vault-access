@@ -5,13 +5,14 @@ interface MobileSummaryTabProps {
   summary: PatientSummaryType | null;
   isLoading: boolean;
   error: Error | null;
+  documents?: any[];
   onRefresh?: () => Promise<void>;
 }
 
-export function MobileSummaryTab({ summary, isLoading, error }: MobileSummaryTabProps) {
+export function MobileSummaryTab({ summary, isLoading, error, documents }: MobileSummaryTabProps) {
   return (
     <div className="animate-fade-in">
-      <SimplePatientDashboard summary={summary} isLoading={isLoading} error={error} />
+      <SimplePatientDashboard summary={summary} isLoading={isLoading} error={error} documents={documents} />
     </div>
   );
 }
