@@ -16,14 +16,16 @@ import {
 import { HealthScoreCard } from "./HealthScoreCard";
 import { KeyMetricsBars } from "./KeyMetricsBars";
 import { BodyHeatmap } from "./BodyHeatmap";
+import { RecentReportsStrip } from "./RecentReportsStrip";
 
 interface Props {
   summary: PatientSummary | null;
   isLoading: boolean;
   error: Error | null;
+  documents?: any[];
 }
 
-export function SimplePatientDashboard({ summary, isLoading, error }: Props) {
+export function SimplePatientDashboard({ summary, isLoading, error, documents = [] }: Props) {
   const metrics = useMemo(() => deriveMetrics(summary), [summary]);
   const score = useMemo(() => computeHealthScore(summary, metrics), [summary, metrics]);
   const regions = useMemo(() => deriveRegions(summary), [summary]);
@@ -79,6 +81,9 @@ export function SimplePatientDashboard({ summary, isLoading, error }: Props) {
         <KeyMetricsBars metrics={metrics} />
         <BodyHeatmap regions={regions} />
       </div>
+
+      <RecentReportsStrip documents={documents} />
+
 
       <div className="flex justify-center pt-2">
         <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
