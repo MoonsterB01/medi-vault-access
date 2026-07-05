@@ -18,6 +18,7 @@ import AppointmentTracker from "@/components/AppointmentTracker";
 import AppointmentCalendar from "@/components/AppointmentCalendar";
 import PatientSummary from "@/components/PatientSummary";
 import { SimplePatientDashboard } from "@/components/patient/SimplePatientDashboard";
+import { DocumentsGrid } from "@/components/patient/DocumentsGrid";
 import { MissingInfoDialog } from "@/components/MissingInfoDialog";
 import { DocumentSummaryDialog } from "@/components/DocumentSummaryDialog";
 import { MediBot } from "@/components/MediBot";
