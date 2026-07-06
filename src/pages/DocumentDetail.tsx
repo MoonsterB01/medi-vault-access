@@ -80,6 +80,7 @@ export default function DocumentDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [doc, setDoc] = useState<any | null>(null);
+  const [siblings, setSiblings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRaw, setShowRaw] = useState(false);
 
@@ -90,11 +91,22 @@ export default function DocumentDetail() {
       const { data, error } = await supabase.from("documents").select("*").eq("id", id).maybeSingle();
       if (error) toast({ title: "Could not load report", description: error.message, variant: "destructive" });
       setDoc(data);
+
+      // Load sibling documents for the same patient so we can detect trends
+      if (data?.patient_id) {
+        const { data: sibs } = await supabase
+          .from("documents")
+          .select("id, uploaded_at, extracted_entities, document_type")
+          .eq("patient_id", data.patient_id)
+          .order("uploaded_at", { ascending: false })
+          .limit(20);
+        setSiblings(sibs ?? []);
+      }
       setLoading(false);
     })();
   }, [id, toast]);
 
-  const score = useMemo(() => (doc ? computeDocScore(doc) : null), [doc]);
+  const score = useMemo(() => (doc ? computeDocScore(doc, siblings) : null), [doc, siblings]);
   const synthetic = useMemo(() => docToSummary(doc), [doc]);
   const metrics = useMemo(() => deriveMetrics(synthetic), [synthetic]);
   const regions = useMemo(() => deriveRegions(synthetic), [synthetic]);
