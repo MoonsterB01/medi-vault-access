@@ -1,5 +1,6 @@
 import { FileText, FlaskConical, Pill, Scan, Stethoscope, HeartPulse, Syringe } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { evaluateDocument, type FlagSeverity, type RuleFlag } from "./labRules";
 
 export type DocStatus = "good" | "watch" | "alert" | "unknown";
 
@@ -7,45 +8,126 @@ export interface DocScore {
   score: number;
   status: DocStatus;
   label: string;
+  /** Individual rule flags that shaped the score (empty when normal) */
+  flags: RuleFlag[];
+  /** Metric keys that recur across the trend window */
+  persistentMetrics: string[];
+  /** How many documents were considered for trend context */
+  trendWindow: number;
+  /** True if this document has no extractable numeric measurements at all */
+  unscored: boolean;
 }
 
+/** Trend window: a metric flagged in ≥ TREND_THRESHOLD of the last TREND_WINDOW docs escalates. */
+const TREND_WINDOW = 3;
+const TREND_THRESHOLD = 3;
+
+const SEVERITY_PENALTY: Record<FlagSeverity, number> = {
+  normal: 0,
+  mild: 5,
+  moderate: 12,
+  severe: 22,
+  critical: 40,
+};
+
+const SEVERITY_RANK: Record<FlagSeverity, number> = {
+  normal: 0, mild: 1, moderate: 2, severe: 3, critical: 4,
+};
+
 /**
- * Compute a per-document health signal.
- * Uses signals actually available on the documents row without new backend calls:
- * - content_confidence: how well we understood the doc
- * - medical_keyword_count: richness of medical info
- * - verification_status: cleared as medical or not
- * - alert-like tokens found inside ai_summary text (abnormal / high / low / positive)
+ * Compute a per-document score using **cited rule-based thresholds** only.
+ *
+ * `siblings`: other documents belonging to the same patient. Used to detect
+ * a "trend" — the same metric flagged in ≥3 of the most recent 3 documents
+ * (including this one) escalates the status one step.
+ *
+ * Status mapping:
+ *   - No numeric findings extractable → "unknown" (we can't judge)
+ *   - No flags                         → "good"    ("Looks Normal")
+ *   - Any critical flag                → "alert"   ("Needs Review")
+ *   - Any severe flag + trend          → "alert"
+ *   - Any severe flag alone            → "watch"   ("Monitor")
+ *   - Any mild/moderate flag + trend   → "watch"   ("Persistent — Monitor")
+ *   - Any mild/moderate flag alone     → "watch"   ("New reading — Monitor")
+ *
+ * We never say "See a Doctor" — that's the doctor's call. We only surface
+ * which measurements crossed which cited threshold.
  */
-export function computeDocScore(doc: any): DocScore {
-  if (!doc) return { score: 0, status: "unknown", label: "Not analyzed" };
-
-  const summary = String(doc.ai_summary ?? "").toLowerCase();
-  const hasSummary = summary.length > 0;
-  const conf = typeof doc.content_confidence === "number" ? doc.content_confidence : 0;
-  const kw = typeof doc.medical_keyword_count === "number" ? doc.medical_keyword_count : 0;
-
-  if (!hasSummary && conf === 0 && kw === 0) {
-    return { score: 0, status: "unknown", label: "Not analyzed" };
+export function computeDocScore(doc: any, siblings: any[] = []): DocScore {
+  if (!doc) {
+    return { score: 0, status: "unknown", label: "Not analyzed", flags: [], persistentMetrics: [], trendWindow: 0, unscored: true };
   }
 
-  // Base score
-  let score = 55 + Math.round(conf * 35) + Math.min(10, Math.round(kw / 3));
+  const flags = evaluateDocument(doc);
+  const pairsCount = (doc.extracted_entities && typeof doc.extracted_entities === "object")
+    ? Object.values(doc.extracted_entities).filter(Array.isArray).reduce((s, a: any) => s + a.length, 0)
+    : 0;
 
-  // Penalties for concerning findings in the AI summary
-  const abnormalHits = (summary.match(/\b(abnormal|elevated|high|low|deficien|positive|critical|urgent|severe)\b/g) || []).length;
-  const reassuringHits = (summary.match(/\b(normal|within range|healthy|stable|no significant|negative)\b/g) || []).length;
+  // Nothing numeric to score against.
+  if (pairsCount === 0) {
+    return { score: 0, status: "unknown", label: "Not analyzed", flags: [], persistentMetrics: [], trendWindow: 0, unscored: true };
+  }
 
-  score -= abnormalHits * 8;
-  score += reassuringHits * 3;
+  // Base score = 100 minus penalties per flag.
+  const penalty = flags.reduce((s, f) => s + SEVERITY_PENALTY[f.severity], 0);
+  const score = Math.max(0, Math.min(100, 100 - penalty));
 
-  if (doc.verification_status === "not_medical") score -= 40;
+  // Trend detection: look at the most recent TREND_WINDOW-1 siblings + this doc.
+  const trendPool = [doc, ...[...siblings]
+    .filter(d => d && d.id !== doc.id)
+    .sort((a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime())
+    .slice(0, TREND_WINDOW - 1)];
 
-  score = Math.max(0, Math.min(100, score));
+  const metricCounts = new Map<string, number>();
+  for (const d of trendPool) {
+    const dFlags = d === doc ? flags : evaluateDocument(d);
+    const seen = new Set<string>();
+    for (const f of dFlags) {
+      if (seen.has(f.key)) continue;
+      seen.add(f.key);
+      metricCounts.set(f.key, (metricCounts.get(f.key) ?? 0) + 1);
+    }
+  }
+  const persistentMetrics = [...metricCounts.entries()]
+    .filter(([, n]) => n >= TREND_THRESHOLD)
+    .map(([k]) => k);
+  const hasTrend = persistentMetrics.length > 0;
 
-  if (score >= 75) return { score, status: "good", label: "Looks Good" };
-  if (score >= 50) return { score, status: "watch", label: "Watch" };
-  return { score, status: "alert", label: "See Doctor" };
+  // Determine status.
+  let status: DocStatus = "good";
+  let label = "Looks Normal";
+
+  if (flags.length === 0) {
+    status = "good";
+    label = "Looks Normal";
+  } else {
+    const worst = flags.reduce<FlagSeverity>(
+      (w, f) => (SEVERITY_RANK[f.severity] > SEVERITY_RANK[w] ? f.severity : w),
+      "normal"
+    );
+
+    if (worst === "critical") {
+      status = "alert";
+      label = "Needs Review";
+    } else if (worst === "severe") {
+      status = hasTrend ? "alert" : "watch";
+      label = hasTrend ? "Persistent — Needs Review" : "Monitor";
+    } else {
+      // mild / moderate only
+      status = "watch";
+      label = hasTrend ? "Persistent — Monitor" : "New reading — Monitor";
+    }
+  }
+
+  return {
+    score,
+    status,
+    label,
+    flags,
+    persistentMetrics,
+    trendWindow: trendPool.length,
+    unscored: false,
+  };
 }
 
 export function getDocTypeMeta(type?: string): { icon: LucideIcon; label: string } {
