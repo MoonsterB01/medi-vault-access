@@ -14,15 +14,16 @@ const STATUS_STYLES = {
 
 interface Props {
   doc: any;
+  siblings?: any[];
   onDownload?: (doc: any) => void;
   onDelete?: (doc: any) => void;
   variant?: "grid" | "strip";
 }
 
-export function DocumentCard({ doc, onDownload, onDelete, variant = "grid" }: Props) {
+export function DocumentCard({ doc, siblings = [], onDownload, onDelete, variant = "grid" }: Props) {
   const navigate = useNavigate();
   const { icon: Icon, label: typeLabel } = getDocTypeMeta(doc.document_type);
-  const score = computeDocScore(doc);
+  const score = computeDocScore(doc, siblings);
   const s = STATUS_STYLES[score.status];
 
   const compact = variant === "strip";
