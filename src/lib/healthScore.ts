@@ -109,9 +109,9 @@ export function computeHealthScore(
   }
 
   score = Math.max(0, Math.min(100, score));
-  if (score >= 75) return { score, status: "good", label: "Doing Well" };
-  if (score >= 50) return { score, status: "watch", label: "Needs Attention" };
-  return { score, status: "alert", label: "See a Doctor" };
+  if (score >= 75) return { score, status: "good", label: "Looks Normal" };
+  if (score >= 50) return { score, status: "watch", label: "Monitor" };
+  return { score, status: "alert", label: "Needs Review" };
 }
 
 /** localStorage-backed previous score for trend */
@@ -212,8 +212,8 @@ export const REGION_LABEL: Record<BodyRegion, string> = {
 };
 
 export const STATUS_TEXT: Record<RegionStatus, string> = {
-  good: "Looking good",
-  watch: "Needs attention",
-  alert: "See a doctor",
+  good: "Looks normal",
+  watch: "Monitor",
+  alert: "Needs review",
   unknown: "No data yet",
 };

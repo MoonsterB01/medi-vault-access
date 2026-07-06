@@ -48,7 +48,7 @@ export function DocumentsGrid({ documents, onDownload, onDelete }: Props) {
       {filtered.length > 0 ? (
         <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {filtered.map((doc) => (
-            <DocumentCard key={doc.id} doc={doc} onDownload={onDownload} onDelete={onDelete} />
+            <DocumentCard key={doc.id} doc={doc} siblings={documents} onDownload={onDownload} onDelete={onDelete} />
           ))}
         </div>
       ) : (

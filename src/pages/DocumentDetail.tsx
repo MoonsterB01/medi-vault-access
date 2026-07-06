@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Download, Trash2, Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Download, Trash2, Eye, ChevronDown, ChevronUp, TrendingUp, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { computeDocScore, formatRelativeDate, getDocTypeMeta } from "@/lib/documentScore";
 import { triggerDocumentDownload, viewDocument } from "@/lib/storage";
@@ -14,6 +15,7 @@ import { KeyMetricsBars } from "@/components/patient/KeyMetricsBars";
 import { BodyHeatmap } from "@/components/patient/BodyHeatmap";
 import type { PatientSummary } from "@/types/patient-summary";
 import { deriveMetrics, deriveRegions } from "@/lib/healthScore";
+import type { FlagSeverity } from "@/lib/labRules";
 
 /**
  * Build a synthetic PatientSummary from a single document so we can reuse
@@ -78,6 +80,7 @@ export default function DocumentDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [doc, setDoc] = useState<any | null>(null);
+  const [siblings, setSiblings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRaw, setShowRaw] = useState(false);
 
@@ -88,11 +91,22 @@ export default function DocumentDetail() {
       const { data, error } = await supabase.from("documents").select("*").eq("id", id).maybeSingle();
       if (error) toast({ title: "Could not load report", description: error.message, variant: "destructive" });
       setDoc(data);
+
+      // Load sibling documents for the same patient so we can detect trends
+      if (data?.patient_id) {
+        const { data: sibs } = await supabase
+          .from("documents")
+          .select("id, uploaded_at, extracted_entities, document_type")
+          .eq("patient_id", data.patient_id)
+          .order("uploaded_at", { ascending: false })
+          .limit(20);
+        setSiblings(sibs ?? []);
+      }
       setLoading(false);
     })();
   }, [id, toast]);
 
-  const score = useMemo(() => (doc ? computeDocScore(doc) : null), [doc]);
+  const score = useMemo(() => (doc ? computeDocScore(doc, siblings) : null), [doc, siblings]);
   const synthetic = useMemo(() => docToSummary(doc), [doc]);
   const metrics = useMemo(() => deriveMetrics(synthetic), [synthetic]);
   const regions = useMemo(() => deriveRegions(synthetic), [synthetic]);
@@ -196,6 +210,9 @@ export default function DocumentDetail() {
         documentCount={1}
       />
 
+      {/* Why this rating — cited flags */}
+      <ScoringExplanation score={score} />
+
       {/* Metrics + body */}
       <div className="grid gap-6 md:grid-cols-2">
         <KeyMetricsBars metrics={metrics} />
@@ -229,3 +246,89 @@ export default function DocumentDetail() {
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* Scoring explanation — shows exactly which cited thresholds were crossed.    */
+/* -------------------------------------------------------------------------- */
+
+const SEVERITY_BADGE: Record<FlagSeverity, { label: string; className: string }> = {
+  normal:   { label: "Normal",   className: "bg-[hsl(var(--status-good))]/15 text-[hsl(var(--status-good))]" },
+  mild:     { label: "Mild",     className: "bg-[hsl(var(--status-watch))]/15 text-[hsl(var(--status-watch))]" },
+  moderate: { label: "Moderate", className: "bg-[hsl(var(--status-watch))]/25 text-[hsl(var(--status-watch))]" },
+  severe:   { label: "Severe",   className: "bg-[hsl(var(--status-alert))]/15 text-[hsl(var(--status-alert))]" },
+  critical: { label: "Critical", className: "bg-[hsl(var(--status-alert))]/25 text-[hsl(var(--status-alert))]" },
+};
+
+function ScoringExplanation({ score }: { score: ReturnType<typeof computeDocScore> }) {
+  if (score.unscored) {
+    return (
+      <Card className="p-5 flex items-start gap-3">
+        <Info className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+        <div className="text-sm text-muted-foreground">
+          No numeric measurements were extracted from this report, so we can't score it against
+          reference ranges. Your doctor is the best person to interpret the contents.
+        </div>
+      </Card>
+    );
+  }
+
+  if (score.flags.length === 0) {
+    return (
+      <Card className="p-5 flex items-start gap-3">
+        <Info className="h-4 w-4 mt-0.5 text-[hsl(var(--status-good))] shrink-0" />
+        <div className="text-sm">
+          <p className="font-medium">All measured values fall within published reference ranges.</p>
+          <p className="text-muted-foreground mt-1">
+            This is a rule check, not a diagnosis. Your doctor may still spot things the numbers don't.
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-sm">Why this rating</h3>
+        <span className="text-xs text-muted-foreground">Rule-based · cited thresholds</span>
+      </div>
+
+      <ul className="space-y-3">
+        {score.flags.map((f) => {
+          const badge = SEVERITY_BADGE[f.severity];
+          const persistent = score.persistentMetrics.includes(f.key);
+          return (
+            <li key={f.key} className="border-l-2 pl-3 border-border">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-sm">{f.label}</span>
+                <span className="text-sm tabular-nums">
+                  {f.value}{f.unit && ` ${f.unit}`}
+                </span>
+                <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", badge.className)}>
+                  {badge.label}
+                </Badge>
+                {persistent && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
+                    <TrendingUp className="h-3 w-3" /> Persistent (≥3 reports)
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {f.reason}. Normal range: {f.normalMin}–{f.normalMax}{f.unit && ` ${f.unit}`}.
+              </p>
+              <p className="text-[10px] text-muted-foreground/70 mt-0.5">Source: {f.citation}</p>
+            </li>
+          );
+        })}
+      </ul>
+
+      <p className="text-[11px] text-muted-foreground leading-relaxed border-t pt-3">
+        Ratings compare extracted numbers to published reference ranges (ADA, AHA/ACC, WHO, NCEP ATP III).
+        A single out-of-range reading is marked <b>Monitor</b>. The same metric appearing out-of-range in
+        3 recent reports is marked <b>Persistent</b>. Only life-threatening values are flagged
+        <b> Needs Review</b> on their own. This is not medical advice — your doctor interprets the report.
+      </p>
+    </Card>
+  );
+}
+

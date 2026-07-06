@@ -41,7 +41,7 @@ export function RecentReportsStrip({ documents }: Props) {
       <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
         {recent.map((doc) => (
           <div key={doc.id} className="snap-start">
-            <DocumentCard doc={doc} variant="strip" />
+            <DocumentCard doc={doc} siblings={documents} variant="strip" />
           </div>
         ))}
       </div>
