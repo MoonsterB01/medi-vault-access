@@ -79,7 +79,8 @@ export const LAB_RULES: LabRule[] = [
     normalMax: 99,
     citation: "American Diabetes Association (ADA) Standards of Care",
     bands: [
-      { when: v => v >= 400 || v < 54, severity: "critical", direction: v => v >= 400 ? "high" : "low" as any, reason: "outside safe range" } as any,
+      { when: v => v >= 400, severity: "critical", direction: "high", reason: "≥400 mg/dL — critical hyperglycemia" },
+      { when: v => v < 54,   severity: "critical", direction: "low",  reason: "<54 mg/dL — critical hypoglycemia" },
       { when: v => v >= 126, severity: "severe",   direction: "high", reason: "≥126 mg/dL — diabetic range" },
       { when: v => v >= 100, severity: "mild",     direction: "high", reason: "100–125 mg/dL — prediabetic" },
       { when: v => v < 70,   severity: "moderate", direction: "low",  reason: "<70 mg/dL — hypoglycemia" },
