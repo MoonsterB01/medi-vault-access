@@ -212,8 +212,8 @@ export const REGION_LABEL: Record<BodyRegion, string> = {
 };
 
 export const STATUS_TEXT: Record<RegionStatus, string> = {
-  good: "Looking good",
-  watch: "Needs attention",
-  alert: "See a doctor",
+  good: "Looks normal",
+  watch: "Monitor",
+  alert: "Needs review",
   unknown: "No data yet",
 };
