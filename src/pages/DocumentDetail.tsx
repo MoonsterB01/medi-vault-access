@@ -210,6 +210,9 @@ export default function DocumentDetail() {
         documentCount={1}
       />
 
+      {/* Why this rating — cited flags */}
+      <ScoringExplanation score={score} />
+
       {/* Metrics + body */}
       <div className="grid gap-6 md:grid-cols-2">
         <KeyMetricsBars metrics={metrics} />
