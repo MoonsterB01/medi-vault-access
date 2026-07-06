@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Download, Trash2, Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Download, Trash2, Eye, ChevronDown, ChevronUp, TrendingUp, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { computeDocScore, formatRelativeDate, getDocTypeMeta } from "@/lib/documentScore";
 import { triggerDocumentDownload, viewDocument } from "@/lib/storage";
@@ -14,6 +15,7 @@ import { KeyMetricsBars } from "@/components/patient/KeyMetricsBars";
 import { BodyHeatmap } from "@/components/patient/BodyHeatmap";
 import type { PatientSummary } from "@/types/patient-summary";
 import { deriveMetrics, deriveRegions } from "@/lib/healthScore";
+import type { FlagSeverity } from "@/lib/labRules";
 
 /**
  * Build a synthetic PatientSummary from a single document so we can reuse
