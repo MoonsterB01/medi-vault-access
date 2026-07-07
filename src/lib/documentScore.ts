@@ -59,9 +59,10 @@ export function computeDocScore(doc: any, siblings: any[] = []): DocScore {
   }
 
   const flags = evaluateDocument(doc);
-  const pairsCount = (doc.extracted_entities && typeof doc.extracted_entities === "object")
-    ? Object.values(doc.extracted_entities).filter(Array.isArray).reduce((s, a: any) => s + a.length, 0)
-    : 0;
+  // Count every measurement we could parse (structured entities OR ai_summary
+  // bullet lines) — not just the flagged ones. A doc full of in-range values
+  // should still be "scored", not "unknown".
+  const pairsCount = extractPairs(doc).length;
 
   // Nothing numeric to score against.
   if (pairsCount === 0) {
