@@ -289,25 +289,55 @@ export function evaluate(testName: string, rawValue: unknown): RuleFlag | null {
 }
 
 /**
- * Pull (test, value) pairs from a document's `extracted_entities` JSON.
- * Tolerates several shapes: labs / tests / vitals / measurements arrays
- * with items like { test|name|label, value|result }.
+ * Pull (test, value) pairs from a document.
+ *
+ * Sources, in order:
+ *   1. `extracted_entities.{labs|tests|vitals|measurements|results|labResults}` —
+ *      arrays of { test|name|label, value|result }.
+ *   2. `ai_summary` bullet lines like `• Heart rate: 109 bpm ⚠️` — used when
+ *      the structured extractor didn't populate entities (a real case in this
+ *      project: many docs have rich summaries but empty entities).
  */
 export function extractPairs(doc: any): { test: string; value: unknown }[] {
   const out: { test: string; value: unknown }[] = [];
   const entities = doc?.extracted_entities;
-  if (!entities || typeof entities !== "object") return out;
 
-  const buckets = [entities.labs, entities.tests, entities.vitals, entities.measurements, entities.results];
-  for (const arr of buckets) {
-    if (!Array.isArray(arr)) continue;
-    for (const item of arr) {
-      if (!item || typeof item !== "object") continue;
-      const test = item.test || item.name || item.label || item.parameter;
-      const value = item.value ?? item.result ?? item.reading;
-      if (test && value != null) out.push({ test: String(test), value });
+  if (entities && typeof entities === "object") {
+    const buckets = [
+      entities.labs, entities.tests, entities.vitals,
+      entities.measurements, entities.results, entities.labResults,
+    ];
+    for (const arr of buckets) {
+      if (!Array.isArray(arr)) continue;
+      for (const item of arr) {
+        if (!item || typeof item !== "object") continue;
+        const test = item.test || item.name || item.label || item.parameter;
+        const rawValue = item.value ?? item.result ?? item.reading;
+        if (!test || rawValue == null) continue;
+        const value = item.unit ? `${rawValue} ${item.unit}` : rawValue;
+        out.push({ test: String(test), value });
+      }
     }
   }
+
+  // Fallback: parse `ai_summary` bullet lines. Matches "• Label: 109 bpm" or
+  // "- Label: 5.6%" and similar, tolerating leading emojis/whitespace.
+  if (out.length === 0 && typeof doc?.ai_summary === "string") {
+    // e.g. "• Heart rate: 109 bpm ⚠️" or "- Fasting glucose: 126 mg/dL"
+    const line = /^[\s•\-\*·]+([A-Za-z][A-Za-z0-9 /()%\-]{1,60}?)\s*[:=]\s*([\d.]+(?:\s*\/\s*\d+)?)\s*([%A-Za-z\/µ]+)?/gm;
+    let m: RegExpExecArray | null;
+    const seen = new Set<string>();
+    while ((m = line.exec(doc.ai_summary)) !== null) {
+      const test = m[1].trim();
+      const num = m[2];
+      const unit = m[3]?.trim() ?? "";
+      const key = test.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ test, value: unit ? `${num} ${unit}` : num });
+    }
+  }
+
   return out;
 }
 

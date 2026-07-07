@@ -96,7 +96,7 @@ export default function DocumentDetail() {
       if (data?.patient_id) {
         const { data: sibs } = await supabase
           .from("documents")
-          .select("id, uploaded_at, extracted_entities, document_type")
+          .select("id, uploaded_at, extracted_entities, document_type, ai_summary")
           .eq("patient_id", data.patient_id)
           .order("uploaded_at", { ascending: false })
           .limit(20);
