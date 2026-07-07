@@ -1,6 +1,6 @@
 import { FileText, FlaskConical, Pill, Scan, Stethoscope, HeartPulse, Syringe } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { evaluateDocument, type FlagSeverity, type RuleFlag } from "./labRules";
+import { evaluateDocument, extractPairs, type FlagSeverity, type RuleFlag } from "./labRules";
 
 export type DocStatus = "good" | "watch" | "alert" | "unknown";
 
