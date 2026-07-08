@@ -26,9 +26,10 @@ interface Props {
 }
 
 export function SimplePatientDashboard({ summary, isLoading, error, documents = [] }: Props) {
-  const metrics = useMemo(() => deriveMetrics(summary), [summary]);
-  const score = useMemo(() => computeHealthScore(summary, metrics), [summary, metrics]);
-  const regions = useMemo(() => deriveRegions(summary), [summary]);
+  const metrics = useMemo(() => deriveMetrics(summary, documents), [summary, documents]);
+  const score = useMemo(() => computeHealthScore(summary, metrics, documents), [summary, metrics, documents]);
+  const regions = useMemo(() => deriveRegions(summary, documents), [summary, documents]);
+
 
   const patientId = summary?.patientId;
   const trend = useMemo(() => {
