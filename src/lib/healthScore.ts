@@ -1,4 +1,8 @@
 import type { PatientSummary } from "@/types/patient-summary";
+import { extractPairs, evaluate } from "./labRules";
+import { computeDocScore } from "./documentScore";
+
+
 
 export type MetricStatus = "low" | "good" | "watch" | "high" | "unknown";
 
