@@ -122,28 +122,42 @@ export function deriveMetrics(
 
 export function computeHealthScore(
   summary: PatientSummary | null,
-  metrics: MetricRow[]
+  metrics: MetricRow[],
+  documents: any[] = []
 ): { score: number; status: "good" | "watch" | "alert" | "unknown"; label: string } {
-  const hasDocs = (summary?.sources?.documentCount ?? 0) > 0;
+  const hasDocs = (summary?.sources?.documentCount ?? 0) > 0 || documents.length > 0;
   if (!hasDocs) return { score: 0, status: "unknown", label: "Awaiting Reports" };
 
   let score: number;
-  if (metrics.length > 0) {
-    const weights: Record<MetricStatus, number> = { good: 1, watch: 0.55, low: 0.25, high: 0.25, unknown: 0.5 };
+
+  // 1. Preferred path: average the same per-document rule-based scores
+  //    shown on each document card. This guarantees the overall summary
+  //    can't disagree with the tiles (e.g. tiles 100/100/95/95 → ~97).
+  const scored = documents
+    .map(d => computeDocScore(d))
+    .filter(s => !s.unscored);
+
+  if (scored.length > 0) {
+    const avg = scored.reduce((s, d) => s + d.score, 0) / scored.length;
+    // Small nudge down if any doc is a critical "alert" — otherwise the
+    // average alone can mask a single serious finding.
+    const worstPenalty = scored.some(d => d.status === "alert") ? 5 : 0;
+    score = Math.round(Math.max(0, Math.min(100, avg - worstPenalty)));
+  } else if (metrics.length > 0) {
+    const weights: Record<MetricStatus, number> = { good: 1, watch: 0.7, low: 0.5, high: 0.5, unknown: 0.8 };
     const avg = metrics.reduce((s, m) => s + weights[m.status], 0) / metrics.length;
     score = Math.round(avg * 100);
   } else {
-    const conf = summary?.aiSummary?.confidence ?? 0.6;
-    const critical = (summary?.alerts ?? []).filter(a => a.level === "critical").length;
-    const warning = (summary?.alerts ?? []).filter(a => a.level === "warning").length;
-    score = Math.round(Math.max(0, conf * 100 - critical * 20 - warning * 8));
+    // Nothing numeric to judge against — don't invent a low score.
+    return { score: 0, status: "unknown", label: "Awaiting Analysis" };
   }
 
   score = Math.max(0, Math.min(100, score));
   if (score >= 75) return { score, status: "good", label: "Looks Normal" };
-  if (score >= 50) return { score, status: "watch", label: "Monitor" };
+  if (score >= 55) return { score, status: "watch", label: "Monitor" };
   return { score, status: "alert", label: "Needs Review" };
 }
+
 
 /** localStorage-backed previous score for trend */
 export function readPreviousScore(patientId: string): number | null {
