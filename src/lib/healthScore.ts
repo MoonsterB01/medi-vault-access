@@ -209,35 +209,74 @@ const REGION_KEYWORDS: Record<BodyRegion, RegExp> = {
   joints: /arthritis|joint|knee|shoulder|back pain|spine|orthop/i,
 };
 
-export function deriveRegions(summary: PatientSummary | null): Record<BodyRegion, RegionStatus> {
+/** Map a labRules key → body region so rule flags escalate the right organ. */
+const LAB_KEY_REGION: Record<string, BodyRegion> = {
+  systolic_bp: "heart",
+  heart_rate: "heart",
+  ldl: "heart",
+  hdl: "heart",
+  total_cholesterol: "heart",
+  triglycerides: "heart",
+  creatinine: "kidneys",
+  hemoglobin: "head", // anemia manifests systemically; skip mapping if unsure
+  // hba1c / glucose / bmi / tsh have no clean single-organ mapping — leave unmapped.
+};
+
+const RANK = { unknown: 0, good: 1, watch: 2, alert: 3 } as const;
+
+export function deriveRegions(
+  summary: PatientSummary | null,
+  documents: any[] = []
+): Record<BodyRegion, RegionStatus> {
   const out: Record<BodyRegion, RegionStatus> = {
     head: "unknown", heart: "unknown", lungs: "unknown",
     stomach: "unknown", liver: "unknown", kidneys: "unknown", joints: "unknown",
   };
-  if (!summary) return out;
 
-  const active = (summary.diagnoses ?? []).filter(d => !d.hiddenByUser && d.status !== "resolved");
+  const bump = (region: BodyRegion, next: RegionStatus) => {
+    if (RANK[next] > RANK[out[region]]) out[region] = next;
+  };
+
+  // 1. Active diagnoses — only "severe/critical/acute" severity escalates
+  //    to alert. A plain "active" status is NOT enough — otherwise every
+  //    routine active condition would paint the organ red.
+  const active = (summary?.diagnoses ?? []).filter(d => !d.hiddenByUser && d.status !== "resolved");
   for (const dx of active) {
     for (const [region, re] of Object.entries(REGION_KEYWORDS) as [BodyRegion, RegExp][]) {
       if (!re.test(dx.name)) continue;
-      const isSevere = /severe|critical|acute/i.test(dx.severity) || dx.status === "active";
-      const next: RegionStatus = isSevere ? "alert" : "watch";
-      const rank = { unknown: 0, good: 1, watch: 2, alert: 3 } as const;
-      if (rank[next] > rank[out[region]]) out[region] = next;
+      const isSevere = /severe|critical|acute/i.test(dx.severity || "");
+      bump(region, isSevere ? "alert" : "watch");
     }
   }
 
-  for (const alert of summary.alerts ?? []) {
+  // 2. Explicit summary alerts.
+  for (const alert of summary?.alerts ?? []) {
     for (const [region, re] of Object.entries(REGION_KEYWORDS) as [BodyRegion, RegExp][]) {
       if (!re.test(alert.message)) continue;
-      const next: RegionStatus = alert.level === "critical" ? "alert" : alert.level === "warning" ? "watch" : "good";
-      const rank = { unknown: 0, good: 1, watch: 2, alert: 3 } as const;
-      if (rank[next] > rank[out[region]]) out[region] = next;
+      const next: RegionStatus =
+        alert.level === "critical" ? "alert" : alert.level === "warning" ? "watch" : "good";
+      bump(region, next);
     }
   }
 
-  // If we have documents but no signal for a region, mark as good (no findings)
-  if ((summary.sources?.documentCount ?? 0) > 0) {
+  // 3. Cited rule-based lab flags across documents — the same source of
+  //    truth used by per-document scores. Keeps the heatmap consistent
+  //    with what "Why this rating" shows on each doc.
+  for (const doc of documents) {
+    for (const { test, value } of extractPairs(doc)) {
+      const flag = evaluate(String(test), String(value));
+      if (!flag || flag.severity === "normal") continue;
+      const region = LAB_KEY_REGION[flag.key];
+      if (!region) continue;
+      const next: RegionStatus =
+        flag.severity === "critical" || flag.severity === "severe" ? "alert" : "watch";
+      bump(region, next);
+    }
+  }
+
+  // If we have documents but no signal for a region, mark as good (no findings).
+  const hasDocs = (summary?.sources?.documentCount ?? 0) > 0 || documents.length > 0;
+  if (hasDocs) {
     for (const r of Object.keys(out) as BodyRegion[]) {
       if (out[r] === "unknown") out[r] = "good";
     }
@@ -245,6 +284,7 @@ export function deriveRegions(summary: PatientSummary | null): Record<BodyRegion
 
   return out;
 }
+
 
 export const REGION_LABEL: Record<BodyRegion, string> = {
   head: "Head",
