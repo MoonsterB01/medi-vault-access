@@ -65,15 +65,18 @@ function statusFor(v: number, hMin: number, hMax: number): MetricStatus {
   return "good";
 }
 
-export function deriveMetrics(summary: PatientSummary | null): MetricRow[] {
-  if (!summary?.labs?.latest?.length) return [];
+export function deriveMetrics(
+  summary: PatientSummary | null,
+  documents: any[] = []
+): MetricRow[] {
   const rows: MetricRow[] = [];
   const seen = new Set<string>();
-  for (const lab of summary.labs.latest) {
+
+  const pushFromTest = (testName: string, rawValue: string) => {
     for (const [key, cfg] of Object.entries(RANGES)) {
       if (seen.has(key)) continue;
-      if (!cfg.match.test(lab.test)) continue;
-      const v = parseValue(lab.value);
+      if (!cfg.match.test(testName)) continue;
+      const v = parseValue(rawValue);
       if (v == null || Number.isNaN(v)) continue;
       seen.add(key);
       rows.push({
@@ -87,11 +90,35 @@ export function deriveMetrics(summary: PatientSummary | null): MetricRow[] {
         healthyMax: cfg.hMax,
         status: statusFor(v, cfg.hMin, cfg.hMax),
       });
-      break;
+      return;
+    }
+  };
+
+  // 1. Prefer the structured labs.latest from the aggregated summary.
+  for (const lab of summary?.labs?.latest ?? []) {
+    pushFromTest(lab.test, String(lab.value ?? ""));
+  }
+
+  // 2. Fallback: pull measurements straight from the most recent documents
+  //    (via the same extractor the per-doc scorer uses). This covers the
+  //    common case where the summary hasn't aggregated labs yet but the
+  //    documents contain rich ai_summary bullets.
+  if (rows.length < 6 && documents.length > 0) {
+    const sorted = [...documents].sort(
+      (a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime()
+    );
+    for (const doc of sorted) {
+      if (rows.length >= 6) break;
+      for (const { test, value } of extractPairs(doc)) {
+        pushFromTest(String(test), String(value));
+        if (rows.length >= 6) break;
+      }
     }
   }
+
   return rows.slice(0, 6);
 }
+
 
 export function computeHealthScore(
   summary: PatientSummary | null,
