@@ -1,4 +1,8 @@
 import type { PatientSummary } from "@/types/patient-summary";
+import { extractPairs, evaluate } from "./labRules";
+import { computeDocScore } from "./documentScore";
+
+
 
 export type MetricStatus = "low" | "good" | "watch" | "high" | "unknown";
 
@@ -61,15 +65,18 @@ function statusFor(v: number, hMin: number, hMax: number): MetricStatus {
   return "good";
 }
 
-export function deriveMetrics(summary: PatientSummary | null): MetricRow[] {
-  if (!summary?.labs?.latest?.length) return [];
+export function deriveMetrics(
+  summary: PatientSummary | null,
+  documents: any[] = []
+): MetricRow[] {
   const rows: MetricRow[] = [];
   const seen = new Set<string>();
-  for (const lab of summary.labs.latest) {
+
+  const pushFromTest = (testName: string, rawValue: string) => {
     for (const [key, cfg] of Object.entries(RANGES)) {
       if (seen.has(key)) continue;
-      if (!cfg.match.test(lab.test)) continue;
-      const v = parseValue(lab.value);
+      if (!cfg.match.test(testName)) continue;
+      const v = parseValue(rawValue);
       if (v == null || Number.isNaN(v)) continue;
       seen.add(key);
       rows.push({
@@ -83,36 +90,74 @@ export function deriveMetrics(summary: PatientSummary | null): MetricRow[] {
         healthyMax: cfg.hMax,
         status: statusFor(v, cfg.hMin, cfg.hMax),
       });
-      break;
+      return;
+    }
+  };
+
+  // 1. Prefer the structured labs.latest from the aggregated summary.
+  for (const lab of summary?.labs?.latest ?? []) {
+    pushFromTest(lab.test, String(lab.value ?? ""));
+  }
+
+  // 2. Fallback: pull measurements straight from the most recent documents
+  //    (via the same extractor the per-doc scorer uses). This covers the
+  //    common case where the summary hasn't aggregated labs yet but the
+  //    documents contain rich ai_summary bullets.
+  if (rows.length < 6 && documents.length > 0) {
+    const sorted = [...documents].sort(
+      (a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime()
+    );
+    for (const doc of sorted) {
+      if (rows.length >= 6) break;
+      for (const { test, value } of extractPairs(doc)) {
+        pushFromTest(String(test), String(value));
+        if (rows.length >= 6) break;
+      }
     }
   }
+
   return rows.slice(0, 6);
 }
 
+
 export function computeHealthScore(
   summary: PatientSummary | null,
-  metrics: MetricRow[]
+  metrics: MetricRow[],
+  documents: any[] = []
 ): { score: number; status: "good" | "watch" | "alert" | "unknown"; label: string } {
-  const hasDocs = (summary?.sources?.documentCount ?? 0) > 0;
+  const hasDocs = (summary?.sources?.documentCount ?? 0) > 0 || documents.length > 0;
   if (!hasDocs) return { score: 0, status: "unknown", label: "Awaiting Reports" };
 
   let score: number;
-  if (metrics.length > 0) {
-    const weights: Record<MetricStatus, number> = { good: 1, watch: 0.55, low: 0.25, high: 0.25, unknown: 0.5 };
+
+  // 1. Preferred path: average the same per-document rule-based scores
+  //    shown on each document card. This guarantees the overall summary
+  //    can't disagree with the tiles (e.g. tiles 100/100/95/95 → ~97).
+  const scored = documents
+    .map(d => computeDocScore(d))
+    .filter(s => !s.unscored);
+
+  if (scored.length > 0) {
+    const avg = scored.reduce((s, d) => s + d.score, 0) / scored.length;
+    // Small nudge down if any doc is a critical "alert" — otherwise the
+    // average alone can mask a single serious finding.
+    const worstPenalty = scored.some(d => d.status === "alert") ? 5 : 0;
+    score = Math.round(Math.max(0, Math.min(100, avg - worstPenalty)));
+  } else if (metrics.length > 0) {
+    const weights: Record<MetricStatus, number> = { good: 1, watch: 0.7, low: 0.5, high: 0.5, unknown: 0.8 };
     const avg = metrics.reduce((s, m) => s + weights[m.status], 0) / metrics.length;
     score = Math.round(avg * 100);
   } else {
-    const conf = summary?.aiSummary?.confidence ?? 0.6;
-    const critical = (summary?.alerts ?? []).filter(a => a.level === "critical").length;
-    const warning = (summary?.alerts ?? []).filter(a => a.level === "warning").length;
-    score = Math.round(Math.max(0, conf * 100 - critical * 20 - warning * 8));
+    // Nothing numeric to judge against — don't invent a low score.
+    return { score: 0, status: "unknown", label: "Awaiting Analysis" };
   }
 
   score = Math.max(0, Math.min(100, score));
   if (score >= 75) return { score, status: "good", label: "Looks Normal" };
-  if (score >= 50) return { score, status: "watch", label: "Monitor" };
+  if (score >= 55) return { score, status: "watch", label: "Monitor" };
   return { score, status: "alert", label: "Needs Review" };
 }
+
 
 /** localStorage-backed previous score for trend */
 export function readPreviousScore(patientId: string): number | null {
@@ -164,35 +209,74 @@ const REGION_KEYWORDS: Record<BodyRegion, RegExp> = {
   joints: /arthritis|joint|knee|shoulder|back pain|spine|orthop/i,
 };
 
-export function deriveRegions(summary: PatientSummary | null): Record<BodyRegion, RegionStatus> {
+/** Map a labRules key → body region so rule flags escalate the right organ. */
+const LAB_KEY_REGION: Record<string, BodyRegion> = {
+  systolic_bp: "heart",
+  heart_rate: "heart",
+  ldl: "heart",
+  hdl: "heart",
+  total_cholesterol: "heart",
+  triglycerides: "heart",
+  creatinine: "kidneys",
+  hemoglobin: "head", // anemia manifests systemically; skip mapping if unsure
+  // hba1c / glucose / bmi / tsh have no clean single-organ mapping — leave unmapped.
+};
+
+const RANK = { unknown: 0, good: 1, watch: 2, alert: 3 } as const;
+
+export function deriveRegions(
+  summary: PatientSummary | null,
+  documents: any[] = []
+): Record<BodyRegion, RegionStatus> {
   const out: Record<BodyRegion, RegionStatus> = {
     head: "unknown", heart: "unknown", lungs: "unknown",
     stomach: "unknown", liver: "unknown", kidneys: "unknown", joints: "unknown",
   };
-  if (!summary) return out;
 
-  const active = (summary.diagnoses ?? []).filter(d => !d.hiddenByUser && d.status !== "resolved");
+  const bump = (region: BodyRegion, next: RegionStatus) => {
+    if (RANK[next] > RANK[out[region]]) out[region] = next;
+  };
+
+  // 1. Active diagnoses — only "severe/critical/acute" severity escalates
+  //    to alert. A plain "active" status is NOT enough — otherwise every
+  //    routine active condition would paint the organ red.
+  const active = (summary?.diagnoses ?? []).filter(d => !d.hiddenByUser && d.status !== "resolved");
   for (const dx of active) {
     for (const [region, re] of Object.entries(REGION_KEYWORDS) as [BodyRegion, RegExp][]) {
       if (!re.test(dx.name)) continue;
-      const isSevere = /severe|critical|acute/i.test(dx.severity) || dx.status === "active";
-      const next: RegionStatus = isSevere ? "alert" : "watch";
-      const rank = { unknown: 0, good: 1, watch: 2, alert: 3 } as const;
-      if (rank[next] > rank[out[region]]) out[region] = next;
+      const isSevere = /severe|critical|acute/i.test(dx.severity || "");
+      bump(region, isSevere ? "alert" : "watch");
     }
   }
 
-  for (const alert of summary.alerts ?? []) {
+  // 2. Explicit summary alerts.
+  for (const alert of summary?.alerts ?? []) {
     for (const [region, re] of Object.entries(REGION_KEYWORDS) as [BodyRegion, RegExp][]) {
       if (!re.test(alert.message)) continue;
-      const next: RegionStatus = alert.level === "critical" ? "alert" : alert.level === "warning" ? "watch" : "good";
-      const rank = { unknown: 0, good: 1, watch: 2, alert: 3 } as const;
-      if (rank[next] > rank[out[region]]) out[region] = next;
+      const next: RegionStatus =
+        alert.level === "critical" ? "alert" : alert.level === "warning" ? "watch" : "good";
+      bump(region, next);
     }
   }
 
-  // If we have documents but no signal for a region, mark as good (no findings)
-  if ((summary.sources?.documentCount ?? 0) > 0) {
+  // 3. Cited rule-based lab flags across documents — the same source of
+  //    truth used by per-document scores. Keeps the heatmap consistent
+  //    with what "Why this rating" shows on each doc.
+  for (const doc of documents) {
+    for (const { test, value } of extractPairs(doc)) {
+      const flag = evaluate(String(test), String(value));
+      if (!flag || flag.severity === "normal") continue;
+      const region = LAB_KEY_REGION[flag.key];
+      if (!region) continue;
+      const next: RegionStatus =
+        flag.severity === "critical" || flag.severity === "severe" ? "alert" : "watch";
+      bump(region, next);
+    }
+  }
+
+  // If we have documents but no signal for a region, mark as good (no findings).
+  const hasDocs = (summary?.sources?.documentCount ?? 0) > 0 || documents.length > 0;
+  if (hasDocs) {
     for (const r of Object.keys(out) as BodyRegion[]) {
       if (out[r] === "unknown") out[r] = "good";
     }
@@ -200,6 +284,7 @@ export function deriveRegions(summary: PatientSummary | null): Record<BodyRegion
 
   return out;
 }
+
 
 export const REGION_LABEL: Record<BodyRegion, string> = {
   head: "Head",
