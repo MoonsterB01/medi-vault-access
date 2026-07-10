@@ -19,7 +19,8 @@ import type { FlagSeverity } from "@/lib/labRules";
 
 /**
  * Build a synthetic PatientSummary from a single document so we can reuse
- * the existing metrics + heatmap components at the per-document level.
+ * the existing summary shape for text-only fields. Numeric visuals are still
+ * driven directly from the document through labRules, not keyword guesses.
  */
 function docToSummary(doc: any): PatientSummary | null {
   if (!doc) return null;
@@ -36,39 +37,16 @@ function docToSummary(doc: any): PatientSummary | null {
     }
   }
 
-  const summaryText = String(doc.ai_summary ?? "").toLowerCase();
-  const alerts: PatientSummary["alerts"] = [];
-  const alertKeywords = /(abnormal|elevated|high|low|deficien|positive|critical|urgent|severe)/g;
-  const matches = summaryText.match(alertKeywords);
-  if (matches?.length) {
-    alerts.push({
-      id: `doc-${doc.id}`,
-      level: matches.length >= 3 ? "critical" : "warning",
-      message: doc.ai_summary?.slice(0, 200) ?? "Concerning findings",
-    });
-  }
-
-  const diagnoses = (Array.isArray(entities.diagnoses) ? entities.diagnoses : [])
-    .map((d: any, i: number) => ({
-      id: `${doc.id}-dx-${i}`,
-      name: d?.name || d?.label || String(d),
-      severity: d?.severity || "",
-      status: "active" as const,
-      firstSeen: doc.uploaded_at,
-      lastSeen: doc.uploaded_at,
-      sourceDocs: [{ docId: doc.id, confidence: 1 }],
-    }));
-
   return {
     patientId: `doc-${doc.id}`,
     generatedAt: doc.uploaded_at,
     version: 1,
     sources: { documentCount: 1, lastDocumentId: doc.id, documents: [{ id: doc.id, type: doc.document_type, uploadedAt: doc.uploaded_at }] },
-    diagnoses,
+    diagnoses: [],
     medications: [],
     labs: { latest, trends: {} },
     visits: [],
-    alerts,
+    alerts: [],
     aiSummary: doc.ai_summary
       ? { oneLine: doc.ai_summary.slice(0, 120), paragraph: doc.ai_summary, confidence: doc.content_confidence ?? 0.7 }
       : undefined,
@@ -108,8 +86,9 @@ export default function DocumentDetail() {
 
   const score = useMemo(() => (doc ? computeDocScore(doc, siblings) : null), [doc, siblings]);
   const synthetic = useMemo(() => docToSummary(doc), [doc]);
-  const metrics = useMemo(() => deriveMetrics(synthetic), [synthetic]);
-  const regions = useMemo(() => deriveRegions(synthetic), [synthetic]);
+  const documentScope = useMemo(() => (doc ? [doc] : []), [doc]);
+  const metrics = useMemo(() => deriveMetrics(synthetic, documentScope), [synthetic, documentScope]);
+  const regions = useMemo(() => deriveRegions(null, documentScope), [documentScope]);
 
   const handleDownload = async () => {
     if (!doc) return;
