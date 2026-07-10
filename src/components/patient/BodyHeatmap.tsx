@@ -124,7 +124,7 @@ export function BodyHeatmap({ regions }: Props) {
             </div>
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded-full bg-[hsl(var(--status-alert))]" />
-              <span className="text-muted-foreground">See a doctor</span>
+              <span className="text-muted-foreground">Needs review</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded-full bg-muted-foreground/40" />
