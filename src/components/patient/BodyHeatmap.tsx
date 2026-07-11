@@ -7,239 +7,204 @@ interface Props {
   regions: Record<BodyRegion, RegionStatus>;
 }
 
-const FILL: Record<RegionStatus, string> = {
-  good: "hsl(var(--status-good) / 0.4)",
-  watch: "hsl(var(--status-watch) / 0.55)",
-  alert: "hsl(var(--status-alert) / 0.6)",
-  unknown: "hsl(var(--muted-foreground) / 0.12)",
+// Spec colors — used directly so the palette matches Apple/Samsung Health tone
+// regardless of the app's semantic tokens.
+const NODE_COLOR: Record<RegionStatus, string> = {
+  good: "#22C55E",
+  watch: "#F59E0B",
+  alert: "#EF4444",
+  unknown: "#64748B",
 };
 
-const STROKE: Record<RegionStatus, string> = {
-  good: "hsl(var(--status-good))",
-  watch: "hsl(var(--status-watch))",
-  alert: "hsl(var(--status-alert))",
-  unknown: "hsl(var(--muted-foreground) / 0.35)",
+// Animation class per status — subtle, no bouncing/spinning.
+const NODE_ANIM: Record<RegionStatus, string> = {
+  good: "animate-[breath_4s_ease-in-out_infinite]",
+  watch: "animate-[pulseSoft_2s_ease-in-out_infinite]",
+  alert: "animate-[pulseStrong_1.6s_ease-in-out_infinite]",
+  unknown: "",
 };
 
-// Central symmetry axis at x=120. All paired organs mirror around it.
-// Silhouette is a single mirrored path — head, neck, shoulders, torso, hips, legs.
+// Central axis at x=120. Silhouette is a single mirrored path — head, neck,
+// rounded shoulders, tapered torso, hips, legs. No arms, no facial features,
+// no fingers/toes. Filled with a dark slate, no outline.
 const SILHOUETTE_D = `
-  M 120 22
-  C 138 22 152 36 152 56
-  C 152 70 146 82 138 88
-  L 142 100
-  L 168 108
-  C 182 114 190 128 190 148
-  L 182 236
-  C 180 256 170 268 152 272
-  L 148 316
-  L 152 336
-  L 148 448
-  C 148 470 138 486 132 500
-  L 108 500
-  C 102 486 92 470 92 448
-  L 88 336
-  L 92 316
-  L 88 272
-  C 70 268 60 256 58 236
-  L 50 148
-  C 50 128 58 114 72 108
-  L 98 100
-  L 102 88
-  C 94 82 88 70 88 56
-  C 88 36 102 22 120 22 Z
+  M 120 24
+  C 138 24 152 40 152 60
+  C 152 76 144 88 134 92
+  L 138 106
+  C 158 110 174 122 180 142
+  L 184 210
+  C 186 232 178 246 164 252
+  L 160 320
+  L 156 344
+  L 150 470
+  C 150 488 142 500 132 504
+  L 108 504
+  C 98 500 90 488 90 470
+  L 84 344
+  L 80 320
+  L 76 252
+  C 62 246 54 232 56 210
+  L 60 142
+  C 66 122 82 110 102 106
+  L 106 92
+  C 96 88 88 76 88 60
+  C 88 40 102 24 120 24 Z
 `;
 
-interface OrganProps {
+interface Node {
   region: BodyRegion;
-  status: RegionStatus;
-  tip: string;
-  children: React.ReactNode;
+  cx: number;
+  cy: number;
+  shape: "circle" | "capsule" | "pill" | "rect";
+  w?: number;
+  h?: number;
+  r?: number;
 }
 
-function Organ({ region, status, tip, children }: OrganProps) {
+// Abstract health nodes — never literal organs. Placed on the symmetry axis
+// or mirrored across it. Regions that map to a paired area render two nodes
+// sharing one status; taps still register per region.
+const NODES: Record<BodyRegion, Node[]> = {
+  head: [{ region: "head", cx: 120, cy: 58, shape: "circle", r: 5 }],
+  lungs: [
+    { region: "lungs", cx: 108, cy: 150, shape: "capsule", w: 8, h: 26 },
+    { region: "lungs", cx: 132, cy: 150, shape: "capsule", w: 8, h: 26 },
+  ],
+  heart: [{ region: "heart", cx: 120, cy: 168, shape: "circle", r: 4.5 }],
+  stomach: [{ region: "stomach", cx: 120, cy: 208, shape: "rect", w: 22, h: 10 }],
+  liver: [{ region: "liver", cx: 120, cy: 232, shape: "pill", w: 26, h: 8 }],
+  kidneys: [
+    { region: "kidneys", cx: 108, cy: 262, shape: "circle", r: 3.5 },
+    { region: "kidneys", cx: 132, cy: 262, shape: "circle", r: 3.5 },
+  ],
+  joints: [
+    { region: "joints", cx: 104, cy: 402, shape: "circle", r: 4 },
+    { region: "joints", cx: 136, cy: 402, shape: "circle", r: 4 },
+  ],
+};
+
+function NodeShape({ node, color, anim }: { node: Node; color: string; anim: string }) {
+  const style = {
+    filter: `drop-shadow(0 0 6px ${color}) drop-shadow(0 0 12px ${color})`,
+    opacity: 0.95,
+  } as const;
+  // fillOpacity keeps the node visible on the dark silhouette while the outer
+  // glow does the heavy lifting; overall glow stays under ~20% perceived.
+  const common = {
+    fill: color,
+    fillOpacity: 0.85,
+    stroke: color,
+    strokeOpacity: 0.35,
+    strokeWidth: 0.6,
+    style,
+    className: anim,
+  };
+
+  if (node.shape === "circle") {
+    return <circle cx={node.cx} cy={node.cy} r={node.r ?? 4} {...common} />;
+  }
+  const w = node.w ?? 10;
+  const h = node.h ?? 6;
+  const rx = node.shape === "rect" ? 3 : Math.min(w, h) / 2;
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <g
-          className="cursor-pointer transition-transform duration-150 hover:scale-105"
-          style={{ transformOrigin: "center", transformBox: "fill-box" }}
-          data-region={region}
-        >
-          {status === "alert" && (
-            // Subtle pulsing ring only when action is needed
-            <g className="animate-pulse" style={{ pointerEvents: "none" }}>
-              {children}
-            </g>
-          )}
-          {children}
-        </g>
-      </TooltipTrigger>
-      <TooltipContent>{tip}</TooltipContent>
-    </Tooltip>
+    <rect
+      x={node.cx - w / 2}
+      y={node.cy - h / 2}
+      width={w}
+      height={h}
+      rx={rx}
+      ry={rx}
+      {...common}
+    />
   );
 }
 
-export function BodyHeatmap({ regions }: Props) {
-  const s = (r: BodyRegion) => regions[r];
-  const tip = (r: BodyRegion) => `${REGION_LABEL[r]}: ${STATUS_TEXT[regions[r]]}`;
+const REGION_EMOJI: Record<BodyRegion, string> = {
+  head: "🧠",
+  heart: "❤️",
+  lungs: "🫁",
+  stomach: "🍽",
+  liver: "🧬",
+  kidneys: "💧",
+  joints: "🦴",
+};
 
+export function BodyHeatmap({ regions }: Props) {
   return (
-    <Card className="p-6 md:p-8 animate-fade-in">
+    <Card className="p-6 md:p-8 animate-fade-in bg-card">
       <h2 className="text-lg font-semibold mb-6">Your Body</h2>
+
+      {/* Local keyframes — kept scoped so we don't touch the global tailwind config. */}
+      <style>{`
+        @keyframes breath {
+          0%, 100% { opacity: 0.75; }
+          50% { opacity: 1; }
+        }
+        @keyframes pulseSoft {
+          0%, 100% { opacity: 0.7; transform: scale(1); transform-box: fill-box; transform-origin: center; }
+          50% { opacity: 1; transform: scale(1.08); }
+        }
+        @keyframes pulseStrong {
+          0%, 100% { opacity: 0.75; transform: scale(1); transform-box: fill-box; transform-origin: center; }
+          50% { opacity: 1; transform: scale(1.18); }
+        }
+      `}</style>
+
       <TooltipProvider delayDuration={100}>
-        <div className="flex items-center justify-center gap-8 flex-wrap">
+        <div className="flex items-center justify-center gap-10 flex-wrap">
           <svg
-            viewBox="0 0 240 520"
+            viewBox="0 0 240 528"
             className="h-80 w-auto"
             aria-label="Body regions health status"
           >
-            {/* Silhouette */}
-            <path
-              d={SILHOUETTE_D}
-              fill="hsl(var(--muted))"
-              stroke="hsl(var(--border))"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-            />
+            <defs>
+              <linearGradient id="bodyFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#334155" />
+                <stop offset="100%" stopColor="#273449" />
+              </linearGradient>
+            </defs>
 
-            {/* Head — centered */}
-            <Organ region="head" status={s("head")} tip={tip("head")}>
-              <circle
-                cx="120"
-                cy="52"
-                r="18"
-                fill={FILL[s("head")]}
-                stroke={STROKE[s("head")]}
-                strokeWidth="1.5"
-              />
-            </Organ>
+            {/* Silhouette — no outline, no anatomy, just form */}
+            <path d={SILHOUETTE_D} fill="url(#bodyFill)" />
 
-            {/* Lungs — symmetric pair around x=120 */}
-            <Organ region="lungs" status={s("lungs")} tip={tip("lungs")}>
-              <path
-                d="M 102 138 C 88 138 82 152 84 172 C 85 188 92 196 100 196 L 112 196 L 112 138 Z"
-                fill={FILL[s("lungs")]}
-                stroke={STROKE[s("lungs")]}
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M 138 138 C 152 138 158 152 156 172 C 155 188 148 196 140 196 L 128 196 L 128 138 Z"
-                fill={FILL[s("lungs")]}
-                stroke={STROKE[s("lungs")]}
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-            </Organ>
-
-            {/* Heart — nestled between lungs, slightly left of center (anatomical) */}
-            <Organ region="heart" status={s("heart")} tip={tip("heart")}>
-              <path
-                d="M 116 158
-                   C 108 150 96 156 100 170
-                   C 103 182 116 190 116 190
-                   C 116 190 129 182 132 170
-                   C 136 156 124 150 116 158 Z"
-                fill={FILL[s("heart")]}
-                stroke={STROKE[s("heart")]}
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-            </Organ>
-
-            {/* Liver — right upper abdomen (viewer's right = patient's left in mirror; kept on right for visual clarity) */}
-            <Organ region="liver" status={s("liver")} tip={tip("liver")}>
-              <path
-                d="M 120 210
-                   L 158 210
-                   Q 168 210 168 220
-                   L 164 232
-                   Q 160 240 148 240
-                   L 120 240 Z"
-                fill={FILL[s("liver")]}
-                stroke={STROKE[s("liver")]}
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-            </Organ>
-
-            {/* Stomach — left upper abdomen, mirrors liver visually */}
-            <Organ region="stomach" status={s("stomach")} tip={tip("stomach")}>
-              <ellipse
-                cx="96"
-                cy="222"
-                rx="18"
-                ry="14"
-                fill={FILL[s("stomach")]}
-                stroke={STROKE[s("stomach")]}
-                strokeWidth="1.5"
-              />
-            </Organ>
-
-            {/* Kidneys — symmetric bean pair, lower back position */}
-            <Organ region="kidneys" status={s("kidneys")} tip={tip("kidneys")}>
-              <path
-                d="M 96 256
-                   C 88 256 84 264 84 274
-                   C 84 284 88 290 96 290
-                   C 102 290 104 284 102 274
-                   C 104 264 102 256 96 256 Z"
-                fill={FILL[s("kidneys")]}
-                stroke={STROKE[s("kidneys")]}
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M 144 256
-                   C 152 256 156 264 156 274
-                   C 156 284 152 290 144 290
-                   C 138 290 136 284 138 274
-                   C 136 264 138 256 144 256 Z"
-                fill={FILL[s("kidneys")]}
-                stroke={STROKE[s("kidneys")]}
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-            </Organ>
-
-            {/* Joints — knees, aligned with leg centers */}
-            <Organ region="joints" status={s("joints")} tip={tip("joints")}>
-              <circle
-                cx="104"
-                cy="400"
-                r="9"
-                fill={FILL[s("joints")]}
-                stroke={STROKE[s("joints")]}
-                strokeWidth="1.5"
-              />
-              <circle
-                cx="136"
-                cy="400"
-                r="9"
-                fill={FILL[s("joints")]}
-                stroke={STROKE[s("joints")]}
-                strokeWidth="1.5"
-              />
-            </Organ>
+            {/* Health nodes */}
+            {(Object.keys(NODES) as BodyRegion[]).map((region) => {
+              const status = regions[region];
+              const color = NODE_COLOR[status];
+              const anim = NODE_ANIM[status];
+              const tip = `${REGION_EMOJI[region]} ${REGION_LABEL[region]} — ${STATUS_TEXT[status]}`;
+              return (
+                <Tooltip key={region}>
+                  <TooltipTrigger asChild>
+                    <g className="cursor-pointer" data-region={region}>
+                      {NODES[region].map((node, i) => (
+                        <NodeShape key={i} node={node} color={color} anim={anim} />
+                      ))}
+                    </g>
+                  </TooltipTrigger>
+                  <TooltipContent>{tip}</TooltipContent>
+                </Tooltip>
+              );
+            })}
           </svg>
 
           {/* Legend */}
           <div className="space-y-2 text-sm">
             <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-[hsl(var(--status-good))]" />
-              <span className="text-muted-foreground">Looking good</span>
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: NODE_COLOR.good }} />
+              <span className="text-muted-foreground">Good</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-[hsl(var(--status-watch))]" />
-              <span className="text-muted-foreground">Needs attention</span>
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: NODE_COLOR.watch }} />
+              <span className="text-muted-foreground">Monitor</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-[hsl(var(--status-alert))]" />
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: NODE_COLOR.alert }} />
               <span className="text-muted-foreground">Needs review</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded-full bg-muted-foreground/40" />
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: NODE_COLOR.unknown }} />
               <span className="text-muted-foreground">No data yet</span>
             </div>
           </div>
