@@ -28,6 +28,7 @@ import Settings from "./pages/Settings";
 import Status from "./pages/Status";
 import PatientDetails from "./pages/PatientDetails";
 import DocumentDetail from "./pages/DocumentDetail";
+import OAuthConsent from "./pages/OAuthConsent";
 import { ActivePatientProvider } from "./contexts/ActivePatientContext";
 
 
