@@ -121,7 +121,9 @@ export default function Auth() {
       if (data.user) {
         const { data: userData } = await supabase.from('users').select('role').eq('id', data.user.id).single();
         toast({ title: "Welcome back!", description: "Signed in successfully." });
-        if (userData?.role === 'hospital_staff' || userData?.role === 'admin' || userData?.role === 'doctor') {
+        if (nextPath) {
+          window.location.href = nextPath;
+        } else if (userData?.role === 'hospital_staff' || userData?.role === 'admin' || userData?.role === 'doctor') {
           navigate(userData.role === 'doctor' ? '/doctor-dashboard' : '/hospital-dashboard');
         } else {
           navigate('/patient-dashboard');
