@@ -57,7 +57,7 @@ export default function Auth() {
         email: validatedData.email,
         password: validatedData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}${nextPath ?? "/"}`,
           data: { 
             name: validatedData.name, 
             role: 'patient',
