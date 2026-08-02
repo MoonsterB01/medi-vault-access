@@ -41,6 +41,11 @@ export default function Auth() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Same-origin relative path to return to after auth (e.g. the OAuth consent screen).
+  const nextParam = new URLSearchParams(window.location.search).get("next");
+  const nextPath = nextParam && /^\/(?!\/)/.test(nextParam) ? nextParam : null;
+
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
