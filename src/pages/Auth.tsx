@@ -41,6 +41,11 @@ export default function Auth() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Same-origin relative path to return to after auth (e.g. the OAuth consent screen).
+  const nextParam = new URLSearchParams(window.location.search).get("next");
+  const nextPath = nextParam && /^\/(?!\/)/.test(nextParam) ? nextParam : null;
+
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -52,7 +57,7 @@ export default function Auth() {
         email: validatedData.email,
         password: validatedData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}${nextPath ?? "/"}`,
           data: { 
             name: validatedData.name, 
             role: 'patient',
@@ -94,7 +99,7 @@ export default function Auth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: `${window.location.origin}${nextPath ?? "/"}`,
         },
       });
       if (error) throw error;
@@ -116,7 +121,9 @@ export default function Auth() {
       if (data.user) {
         const { data: userData } = await supabase.from('users').select('role').eq('id', data.user.id).single();
         toast({ title: "Welcome back!", description: "Signed in successfully." });
-        if (userData?.role === 'hospital_staff' || userData?.role === 'admin' || userData?.role === 'doctor') {
+        if (nextPath) {
+          window.location.href = nextPath;
+        } else if (userData?.role === 'hospital_staff' || userData?.role === 'admin' || userData?.role === 'doctor') {
           navigate(userData.role === 'doctor' ? '/doctor-dashboard' : '/hospital-dashboard');
         } else {
           navigate('/patient-dashboard');

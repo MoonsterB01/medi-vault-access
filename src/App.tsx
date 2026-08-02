@@ -28,6 +28,7 @@ import Settings from "./pages/Settings";
 import Status from "./pages/Status";
 import PatientDetails from "./pages/PatientDetails";
 import DocumentDetail from "./pages/DocumentDetail";
+import OAuthConsent from "./pages/OAuthConsent";
 import { ActivePatientProvider } from "./contexts/ActivePatientContext";
 
 
@@ -69,7 +70,8 @@ const App = () => (
           <Route path="/about" element={<About />} />
           <Route path="/settings" element={<AppLayout userRole="patient"><Settings /></AppLayout>} />
           <Route path="/status" element={<Status />} />
-          
+          <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
