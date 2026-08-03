@@ -70,6 +70,7 @@ const App = () => (
           <Route path="/about" element={<About />} />
           <Route path="/settings" element={<AppLayout userRole="patient"><Settings /></AppLayout>} />
           <Route path="/status" element={<Status />} />
+          <Route path="/oauth/consent" element={<OAuthConsent />} />
           <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
