@@ -70,7 +70,17 @@ export default function OAuthConsent() {
     window.location.href = target;
   }
 
-  const clientName = details?.client?.name ?? "this app";
+  const clientName = details?.client?.name ?? params.get("client_name") ?? "this app";
+  const scopeString: string =
+    details?.scope ?? (Array.isArray(details?.scopes) ? details.scopes.join(" ") : "") ?? params.get("scope") ?? "";
+  const scopes = scopeString.split(/[\s,]+/).filter(Boolean);
+
+  const scopeLabels: Record<string, string> = {
+    openid: "Verify your identity",
+    profile: "Read your basic profile",
+    email: "Read your email address",
+    offline_access: "Stay connected when you're away",
+  };
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-background px-4 py-10">
