@@ -108,13 +108,26 @@ export default function OAuthConsent() {
           )}
         </CardHeader>
         {details && !error && (
-          <CardContent className="flex flex-col sm:flex-row gap-2">
-            <Button className="flex-1" disabled={busy} onClick={() => decide(true)}>
-              Approve
-            </Button>
-            <Button className="flex-1" variant="outline" disabled={busy} onClick={() => decide(false)}>
-              Deny
-            </Button>
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">This app is requesting access to:</p>
+              <ul className="space-y-1.5">
+                {(scopes.length ? scopes : ["Your MediVault records (read-only)"]).map((s) => (
+                  <li key={s} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                    <span className="break-words">{scopeLabels[s] ?? s}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button className="flex-1" disabled={busy} onClick={() => decide(true)}>
+                Allow
+              </Button>
+              <Button className="flex-1" variant="outline" disabled={busy} onClick={() => decide(false)}>
+                Deny
+              </Button>
+            </div>
           </CardContent>
         )}
       </Card>
