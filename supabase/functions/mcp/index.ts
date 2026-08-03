@@ -175,18 +175,106 @@ var list_appointments_default = defineTool4({
   }
 });
 
+// src/lib/mcp/tools/search.ts
+import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z4 } from "npm:zod@^4.1.11";
+var search_default = defineTool5({
+  name: "search",
+  title: "Search medical records",
+  description: "Search the signed-in user's MediVault medical documents (and those of family members they can access) by keyword. Returns matching records with ids to pass to `fetch`.",
+  inputSchema: {
+    query: z4.string().describe("Keywords to search for, e.g. a filename, condition or report type.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ query }, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+    }
+    const supabase = supabaseForUser(ctx);
+    const term = (query ?? "").trim();
+    let request = supabase.from("documents").select("id, filename, document_type, description, ai_summary, uploaded_at").order("uploaded_at", { ascending: false }).limit(20);
+    if (term) {
+      const escaped = term.replace(/[%,()]/g, " ").trim();
+      if (escaped) {
+        request = request.or(
+          `filename.ilike.%${escaped}%,description.ilike.%${escaped}%,ai_summary.ilike.%${escaped}%,document_type.ilike.%${escaped}%`
+        );
+      }
+    }
+    const { data, error } = await request;
+    if (error) {
+      return { content: [{ type: "text", text: error.message }], isError: true };
+    }
+    const results = (data ?? []).map((d) => ({
+      id: d.id,
+      title: d.filename ?? "Medical document",
+      text: [d.document_type, d.description, d.ai_summary].filter(Boolean).join(" \u2014 ").slice(0, 500),
+      url: `https://medilock.lovable.app/documents/${d.id}`
+    }));
+    return {
+      content: [{ type: "text", text: JSON.stringify({ results }, null, 2) }],
+      structuredContent: { results }
+    };
+  }
+});
+
+// src/lib/mcp/tools/fetch.ts
+import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@0.26.1";
+import { z as z5 } from "npm:zod@^4.1.11";
+var fetch_default = defineTool6({
+  name: "fetch",
+  title: "Fetch a medical record",
+  description: "Fetch the stored details of one MediVault medical document by id (from `search`). Returns stored record data only \u2014 never a diagnosis or medical advice.",
+  inputSchema: {
+    id: z5.string().describe("Document id returned by `search`.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ id }, ctx) => {
+    if (!ctx.isAuthenticated()) {
+      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+    }
+    const supabase = supabaseForUser(ctx);
+    const { data, error } = await supabase.from("documents").select(
+      "id, patient_id, filename, document_type, description, tags, medical_specialties, ai_summary, extracted_entities, uploaded_at"
+    ).eq("id", id).maybeSingle();
+    if (error) {
+      return { content: [{ type: "text", text: error.message }], isError: true };
+    }
+    if (!data) {
+      return { content: [{ type: "text", text: "Document not found or not accessible." }], isError: true };
+    }
+    const result = {
+      id: data.id,
+      title: data.filename ?? "Medical document",
+      text: JSON.stringify(data, null, 2),
+      url: `https://medilock.lovable.app/documents/${data.id}`
+    };
+    return {
+      content: [{ type: "text", text: result.text }],
+      structuredContent: result
+    };
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "qiqepumdtaozjzfjbggl";
 var mcp_default = defineMcp({
   name: "medivault",
   title: "MediVault",
   version: "0.1.0",
-  instructions: "Read-only tools for MediVault, a family medical records vault. Start with `list_patients` to find an accessible patient, then use `list_documents`, `get_document` and `list_appointments`. These tools return stored records only \u2014 never give medical advice or a diagnosis; direct health questions to a doctor.",
+  instructions: "Read-only tools for MediVault, a family medical records vault. Use `search` to find the signed-in user's medical documents by keyword and `fetch` to read one by id. For structured browsing, start with `list_patients`, then `list_documents`, `get_document` and `list_appointments`. Always call these tools when the user asks about their records, documents, reports or appointments \u2014 never answer from memory. These tools return stored records only; never give medical advice or a diagnosis, and direct health questions to a doctor.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
-  tools: [list_patients_default, list_documents_default, get_document_default, list_appointments_default]
+  tools: [
+    search_default,
+    fetch_default,
+    list_patients_default,
+    list_documents_default,
+    get_document_default,
+    list_appointments_default
+  ]
 });
 
 // lovable-mcp-supabase-entry.ts
