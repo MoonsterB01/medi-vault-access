@@ -61,7 +61,19 @@ export default function OAuthConsent() {
       setError(decideError.message);
       return;
     }
-    const target = data?.redirect_url ?? data?.redirect_to;
+    let target = data?.redirect_url ?? data?.redirect_to;
+    if (!target && !approve) {
+      // Fall back to a standards-compliant access_denied response.
+      const redirectUri = details?.redirect_uri ?? params.get("redirect_uri");
+      if (redirectUri) {
+        const url = new URL(redirectUri);
+        url.searchParams.set("error", "access_denied");
+        url.searchParams.set("error_description", "The user denied the authorization request.");
+        const state = details?.state ?? params.get("state");
+        if (state) url.searchParams.set("state", state);
+        target = url.toString();
+      }
+    }
     if (!target) {
       setBusy(false);
       setError("No redirect returned by the authorization server.");
