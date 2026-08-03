@@ -61,7 +61,19 @@ export default function OAuthConsent() {
       setError(decideError.message);
       return;
     }
-    const target = data?.redirect_url ?? data?.redirect_to;
+    let target = data?.redirect_url ?? data?.redirect_to;
+    if (!target && !approve) {
+      // Fall back to a standards-compliant access_denied response.
+      const redirectUri = details?.redirect_uri ?? params.get("redirect_uri");
+      if (redirectUri) {
+        const url = new URL(redirectUri);
+        url.searchParams.set("error", "access_denied");
+        url.searchParams.set("error_description", "The user denied the authorization request.");
+        const state = details?.state ?? params.get("state");
+        if (state) url.searchParams.set("state", state);
+        target = url.toString();
+      }
+    }
     if (!target) {
       setBusy(false);
       setError("No redirect returned by the authorization server.");
@@ -70,7 +82,17 @@ export default function OAuthConsent() {
     window.location.href = target;
   }
 
-  const clientName = details?.client?.name ?? "this app";
+  const clientName = details?.client?.name ?? params.get("client_name") ?? "this app";
+  const scopeString: string =
+    details?.scope ?? (Array.isArray(details?.scopes) ? details.scopes.join(" ") : "") ?? params.get("scope") ?? "";
+  const scopes = scopeString.split(/[\s,]+/).filter(Boolean);
+
+  const scopeLabels: Record<string, string> = {
+    openid: "Verify your identity",
+    profile: "Read your basic profile",
+    email: "Read your email address",
+    offline_access: "Stay connected when you're away",
+  };
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-background px-4 py-10">
@@ -98,13 +120,26 @@ export default function OAuthConsent() {
           )}
         </CardHeader>
         {details && !error && (
-          <CardContent className="flex flex-col sm:flex-row gap-2">
-            <Button className="flex-1" disabled={busy} onClick={() => decide(true)}>
-              Approve
-            </Button>
-            <Button className="flex-1" variant="outline" disabled={busy} onClick={() => decide(false)}>
-              Deny
-            </Button>
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">This app is requesting access to:</p>
+              <ul className="space-y-1.5">
+                {(scopes.length ? scopes : ["Your MediVault records (read-only)"]).map((s) => (
+                  <li key={s} className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                    <span className="break-words">{scopeLabels[s] ?? s}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button className="flex-1" disabled={busy} onClick={() => decide(true)}>
+                Allow
+              </Button>
+              <Button className="flex-1" variant="outline" disabled={busy} onClick={() => decide(false)}>
+                Deny
+              </Button>
+            </div>
           </CardContent>
         )}
       </Card>
