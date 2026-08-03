@@ -11,7 +11,69 @@ type OAuthApi = {
   denyAuthorization: (id: string) => Promise<{ data: any; error: any }>;
 };
 
-const oauth = () => (supabase.auth as unknown as { oauth: OAuthApi }).oauth;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
+/**
+ * supabase-js v2 does not (yet) expose `supabase.auth.oauth`. When it is
+ * missing we talk to the GoTrue OAuth 2.1 authorization endpoints directly.
+ */
+async function restCall(path: string, init?: RequestInit) {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/oauth/authorizations/${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_KEY,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init?.headers ?? {}),
+      },
+    });
+    const text = await res.text();
+    const body = text ? JSON.parse(text) : {};
+    if (!res.ok) {
+      return {
+        data: null,
+        error: {
+          message:
+            body?.error_description ??
+            body?.msg ??
+            body?.message ??
+            `Authorization server returned ${res.status}.`,
+        },
+      };
+    }
+    return { data: body, error: null };
+  } catch (e: any) {
+    return { data: null, error: { message: e?.message ?? "Network error" } };
+  }
+}
+
+function oauth(): OAuthApi {
+  const sdk = (supabase.auth as unknown as { oauth?: Partial<OAuthApi> }).oauth;
+  return {
+    getAuthorizationDetails: (id) =>
+      typeof sdk?.getAuthorizationDetails === "function"
+        ? sdk.getAuthorizationDetails(id)
+        : restCall(encodeURIComponent(id)),
+    approveAuthorization: (id) =>
+      typeof sdk?.approveAuthorization === "function"
+        ? sdk.approveAuthorization(id)
+        : restCall(`${encodeURIComponent(id)}/consent`, {
+            method: "POST",
+            body: JSON.stringify({ action: "approve" }),
+          }),
+    denyAuthorization: (id) =>
+      typeof sdk?.denyAuthorization === "function"
+        ? sdk.denyAuthorization(id)
+        : restCall(`${encodeURIComponent(id)}/consent`, {
+            method: "POST",
+            body: JSON.stringify({ action: "deny" }),
+          }),
+  };
+}
 
 export default function OAuthConsent() {
   const [params] = useSearchParams();
