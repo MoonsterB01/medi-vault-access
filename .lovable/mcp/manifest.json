@@ -17,6 +17,52 @@
     },
     "tools": [
       {
+        "name": "search",
+        "title": "Search medical records",
+        "description": "Search the signed-in user's MediVault medical documents (and those of family members they can access) by keyword. Returns matching records with ids to pass to `fetch`.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "fetch",
+        "title": "Fetch a medical record",
+        "description": "Fetch the stored details of one MediVault medical document by id (from `search`). Returns stored record data only — never a diagnosis or medical advice.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
         "name": "list_patients",
         "title": "List patients",
         "description": "List the patient profiles the signed-in MediVault user can access (their own and any family accounts shared with them).",
