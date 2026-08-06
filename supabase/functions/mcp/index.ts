@@ -71,6 +71,7 @@ async function accessiblePatientIds(supabase, ctx) {
   return [...ids];
 }
 var NO_ACCESS_MESSAGE = "No accessible records. This connector only exposes your own patient profiles and family accounts explicitly shared with you.";
+var NOT_ALLOWED_MESSAGE = "Not found, or this record does not belong to you or a family account shared with you.";
 
 // src/lib/mcp/tools/list-patients.ts
 var list_patients_default = defineTool({
@@ -116,6 +117,10 @@ var list_documents_default = defineTool2({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const supabase = supabaseForUser(ctx);
+    const allowed = await accessiblePatientIds(supabase, ctx);
+    if (!allowed.includes(patient_id)) {
+      return { content: [{ type: "text", text: NOT_ALLOWED_MESSAGE }], isError: true };
+    }
     const { data, error } = await supabase.from("documents").select("id, filename, document_type, description, ai_summary, uploaded_at, verification_status").eq("patient_id", patient_id).order("uploaded_at", { ascending: false }).limit(limit ?? 20);
     if (error) {
       return { content: [{ type: "text", text: error.message }], isError: true };
