@@ -19,7 +19,7 @@
       {
         "name": "search",
         "title": "Search medical records",
-        "description": "Search the signed-in user's MediVault medical documents (and those of family members they can access) by keyword. Returns matching records with ids to pass to `fetch`.",
+        "description": "Search the signed-in user's MediVault medical documents (and those of family members explicitly shared with them) by keyword. Returns matching records with ids to pass to `fetch`.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,

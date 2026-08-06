@@ -1,6 +1,7 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
+import { accessiblePatientIds, NO_ACCESS_MESSAGE } from "../scope";
 
 /**
  * ChatGPT connectors only auto-invoke tools named `search` and `fetch`
@@ -10,7 +11,7 @@ export default defineTool({
   name: "search",
   title: "Search medical records",
   description:
-    "Search the signed-in user's MediVault medical documents (and those of family members they can access) by keyword. Returns matching records with ids to pass to `fetch`.",
+    "Search the signed-in user's MediVault medical documents (and those of family members explicitly shared with them) by keyword. Returns matching records with ids to pass to `fetch`.",
   inputSchema: {
     query: z.string().describe("Keywords to search for, e.g. a filename, condition or report type."),
   },
@@ -20,15 +21,22 @@ export default defineTool({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const supabase = supabaseForUser(ctx);
+    const allowed = await accessiblePatientIds(supabase, ctx);
+    if (allowed.length === 0) {
+      return { content: [{ type: "text", text: NO_ACCESS_MESSAGE }], structuredContent: { results: [] } };
+    }
+
     const term = (query ?? "").trim();
     let request = supabase
       .from("documents")
       .select("id, filename, document_type, description, ai_summary, uploaded_at")
+      .in("patient_id", allowed)
       .order("uploaded_at", { ascending: false })
       .limit(20);
 
     if (term) {
-      const escaped = term.replace(/[%,()]/g, " ").trim();
+      // Strip PostgREST filter metacharacters so the term can't inject filters.
+      const escaped = term.replace(/[%,()*."\\]/g, " ").trim().slice(0, 100);
       if (escaped) {
         request = request.or(
           `filename.ilike.%${escaped}%,description.ilike.%${escaped}%,ai_summary.ilike.%${escaped}%,document_type.ilike.%${escaped}%`,

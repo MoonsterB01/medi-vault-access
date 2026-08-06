@@ -213,7 +213,7 @@ import { z as z4 } from "npm:zod@^4.1.11";
 var search_default = defineTool5({
   name: "search",
   title: "Search medical records",
-  description: "Search the signed-in user's MediVault medical documents (and those of family members they can access) by keyword. Returns matching records with ids to pass to `fetch`.",
+  description: "Search the signed-in user's MediVault medical documents (and those of family members explicitly shared with them) by keyword. Returns matching records with ids to pass to `fetch`.",
   inputSchema: {
     query: z4.string().describe("Keywords to search for, e.g. a filename, condition or report type.")
   },
@@ -223,10 +223,14 @@ var search_default = defineTool5({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const supabase = supabaseForUser(ctx);
+    const allowed = await accessiblePatientIds(supabase, ctx);
+    if (allowed.length === 0) {
+      return { content: [{ type: "text", text: NO_ACCESS_MESSAGE }], structuredContent: { results: [] } };
+    }
     const term = (query ?? "").trim();
-    let request = supabase.from("documents").select("id, filename, document_type, description, ai_summary, uploaded_at").order("uploaded_at", { ascending: false }).limit(20);
+    let request = supabase.from("documents").select("id, filename, document_type, description, ai_summary, uploaded_at").in("patient_id", allowed).order("uploaded_at", { ascending: false }).limit(20);
     if (term) {
-      const escaped = term.replace(/[%,()]/g, " ").trim();
+      const escaped = term.replace(/[%,()*."\\]/g, " ").trim().slice(0, 100);
       if (escaped) {
         request = request.or(
           `filename.ilike.%${escaped}%,description.ilike.%${escaped}%,ai_summary.ilike.%${escaped}%,document_type.ilike.%${escaped}%`
