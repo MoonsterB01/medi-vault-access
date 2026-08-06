@@ -57,11 +57,26 @@ function supabaseForUser(ctx) {
   });
 }
 
+// src/lib/mcp/scope.ts
+async function accessiblePatientIds(supabase, ctx) {
+  const userId = ctx.getUserId();
+  if (!userId) return [];
+  const [owned, family] = await Promise.all([
+    supabase.from("patients").select("id").eq("created_by", userId),
+    supabase.from("family_access").select("patient_id").eq("family_user_id", userId).eq("is_active", true).is("revoked_at", null)
+  ]);
+  const ids = /* @__PURE__ */ new Set();
+  for (const row of owned.data ?? []) if (row?.id) ids.add(row.id);
+  for (const row of family.data ?? []) if (row?.patient_id) ids.add(row.patient_id);
+  return [...ids];
+}
+var NO_ACCESS_MESSAGE = "No accessible records. This connector only exposes your own patient profiles and family accounts explicitly shared with you.";
+
 // src/lib/mcp/tools/list-patients.ts
 var list_patients_default = defineTool({
   name: "list_patients",
   title: "List patients",
-  description: "List the patient profiles the signed-in MediVault user can access (their own and any family accounts shared with them).",
+  description: "List the patient profiles the signed-in MediVault user can access (their own and any family accounts explicitly shared with them).",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {
@@ -69,7 +84,11 @@ var list_patients_default = defineTool({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const supabase = supabaseForUser(ctx);
-    const { data, error } = await supabase.from("patients").select("id, name, dob, gender, blood_group, shareable_id, created_at").order("created_at", { ascending: true });
+    const allowed = await accessiblePatientIds(supabase, ctx);
+    if (allowed.length === 0) {
+      return { content: [{ type: "text", text: NO_ACCESS_MESSAGE }], structuredContent: { patients: [] } };
+    }
+    const { data, error } = await supabase.from("patients").select("id, name, dob, gender, blood_group, shareable_id, created_at").in("id", allowed).order("created_at", { ascending: true });
     if (error) {
       return { content: [{ type: "text", text: error.message }], isError: true };
     }
