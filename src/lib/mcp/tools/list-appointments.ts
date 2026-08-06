@@ -1,6 +1,7 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
+import { accessiblePatientIds, NOT_ALLOWED_MESSAGE } from "../scope";
 
 export default defineTool({
   name: "list_appointments",
@@ -17,6 +18,11 @@ export default defineTool({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const supabase = supabaseForUser(ctx);
+    const allowed = await accessiblePatientIds(supabase, ctx);
+    if (!allowed.includes(patient_id)) {
+      return { content: [{ type: "text", text: NOT_ALLOWED_MESSAGE }], isError: true };
+    }
+
     let query = supabase
       .from("appointments")
       .select(

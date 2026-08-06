@@ -185,6 +185,10 @@ var list_appointments_default = defineTool4({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const supabase = supabaseForUser(ctx);
+    const allowed = await accessiblePatientIds(supabase, ctx);
+    if (!allowed.includes(patient_id)) {
+      return { content: [{ type: "text", text: NOT_ALLOWED_MESSAGE }], isError: true };
+    }
     let query = supabase.from("appointments").select(
       "id, appointment_id, appointment_date, appointment_time, appointment_type, status, chief_complaint, doctor_id"
     ).eq("patient_id", patient_id);
