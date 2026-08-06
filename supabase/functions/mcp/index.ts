@@ -148,14 +148,18 @@ var get_document_default = defineTool3({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const supabase = supabaseForUser(ctx);
+    const allowed = await accessiblePatientIds(supabase, ctx);
+    if (allowed.length === 0) {
+      return { content: [{ type: "text", text: NOT_ALLOWED_MESSAGE }], isError: true };
+    }
     const { data, error } = await supabase.from("documents").select(
       "id, patient_id, filename, document_type, description, tags, medical_specialties, ai_summary, extracted_entities, summary_confidence, uploaded_at"
-    ).eq("id", document_id).maybeSingle();
+    ).eq("id", document_id).in("patient_id", allowed).maybeSingle();
     if (error) {
       return { content: [{ type: "text", text: error.message }], isError: true };
     }
     if (!data) {
-      return { content: [{ type: "text", text: "Document not found or not accessible." }], isError: true };
+      return { content: [{ type: "text", text: NOT_ALLOWED_MESSAGE }], isError: true };
     }
     return {
       content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
