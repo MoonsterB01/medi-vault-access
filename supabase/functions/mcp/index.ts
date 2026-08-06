@@ -57,11 +57,27 @@ function supabaseForUser(ctx) {
   });
 }
 
+// src/lib/mcp/scope.ts
+async function accessiblePatientIds(supabase, ctx) {
+  const userId = ctx.getUserId();
+  if (!userId) return [];
+  const [owned, family] = await Promise.all([
+    supabase.from("patients").select("id").eq("created_by", userId),
+    supabase.from("family_access").select("patient_id").eq("family_user_id", userId).eq("is_active", true).is("revoked_at", null)
+  ]);
+  const ids = /* @__PURE__ */ new Set();
+  for (const row of owned.data ?? []) if (row?.id) ids.add(row.id);
+  for (const row of family.data ?? []) if (row?.patient_id) ids.add(row.patient_id);
+  return [...ids];
+}
+var NO_ACCESS_MESSAGE = "No accessible records. This connector only exposes your own patient profiles and family accounts explicitly shared with you.";
+var NOT_ALLOWED_MESSAGE = "Not found, or this record does not belong to you or a family account shared with you.";
+
 // src/lib/mcp/tools/list-patients.ts
 var list_patients_default = defineTool({
   name: "list_patients",
   title: "List patients",
-  description: "List the patient profiles the signed-in MediVault user can access (their own and any family accounts shared with them).",
+  description: "List the patient profiles the signed-in MediVault user can access (their own and any family accounts explicitly shared with them).",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {
@@ -69,7 +85,11 @@ var list_patients_default = defineTool({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const supabase = supabaseForUser(ctx);
-    const { data, error } = await supabase.from("patients").select("id, name, dob, gender, blood_group, shareable_id, created_at").order("created_at", { ascending: true });
+    const allowed = await accessiblePatientIds(supabase, ctx);
+    if (allowed.length === 0) {
+      return { content: [{ type: "text", text: NO_ACCESS_MESSAGE }], structuredContent: { patients: [] } };
+    }
+    const { data, error } = await supabase.from("patients").select("id, name, dob, gender, blood_group, shareable_id, created_at").in("id", allowed).order("created_at", { ascending: true });
     if (error) {
       return { content: [{ type: "text", text: error.message }], isError: true };
     }
@@ -97,6 +117,10 @@ var list_documents_default = defineTool2({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const supabase = supabaseForUser(ctx);
+    const allowed = await accessiblePatientIds(supabase, ctx);
+    if (!allowed.includes(patient_id)) {
+      return { content: [{ type: "text", text: NOT_ALLOWED_MESSAGE }], isError: true };
+    }
     const { data, error } = await supabase.from("documents").select("id, filename, document_type, description, ai_summary, uploaded_at, verification_status").eq("patient_id", patient_id).order("uploaded_at", { ascending: false }).limit(limit ?? 20);
     if (error) {
       return { content: [{ type: "text", text: error.message }], isError: true };
@@ -124,14 +148,18 @@ var get_document_default = defineTool3({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const supabase = supabaseForUser(ctx);
+    const allowed = await accessiblePatientIds(supabase, ctx);
+    if (allowed.length === 0) {
+      return { content: [{ type: "text", text: NOT_ALLOWED_MESSAGE }], isError: true };
+    }
     const { data, error } = await supabase.from("documents").select(
       "id, patient_id, filename, document_type, description, tags, medical_specialties, ai_summary, extracted_entities, summary_confidence, uploaded_at"
-    ).eq("id", document_id).maybeSingle();
+    ).eq("id", document_id).in("patient_id", allowed).maybeSingle();
     if (error) {
       return { content: [{ type: "text", text: error.message }], isError: true };
     }
     if (!data) {
-      return { content: [{ type: "text", text: "Document not found or not accessible." }], isError: true };
+      return { content: [{ type: "text", text: NOT_ALLOWED_MESSAGE }], isError: true };
     }
     return {
       content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
@@ -157,6 +185,10 @@ var list_appointments_default = defineTool4({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const supabase = supabaseForUser(ctx);
+    const allowed = await accessiblePatientIds(supabase, ctx);
+    if (!allowed.includes(patient_id)) {
+      return { content: [{ type: "text", text: NOT_ALLOWED_MESSAGE }], isError: true };
+    }
     let query = supabase.from("appointments").select(
       "id, appointment_id, appointment_date, appointment_time, appointment_type, status, chief_complaint, doctor_id"
     ).eq("patient_id", patient_id);
@@ -181,7 +213,7 @@ import { z as z4 } from "npm:zod@^4.1.11";
 var search_default = defineTool5({
   name: "search",
   title: "Search medical records",
-  description: "Search the signed-in user's MediVault medical documents (and those of family members they can access) by keyword. Returns matching records with ids to pass to `fetch`.",
+  description: "Search the signed-in user's MediVault medical documents (and those of family members explicitly shared with them) by keyword. Returns matching records with ids to pass to `fetch`.",
   inputSchema: {
     query: z4.string().describe("Keywords to search for, e.g. a filename, condition or report type.")
   },
@@ -191,10 +223,14 @@ var search_default = defineTool5({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const supabase = supabaseForUser(ctx);
+    const allowed = await accessiblePatientIds(supabase, ctx);
+    if (allowed.length === 0) {
+      return { content: [{ type: "text", text: NO_ACCESS_MESSAGE }], structuredContent: { results: [] } };
+    }
     const term = (query ?? "").trim();
-    let request = supabase.from("documents").select("id, filename, document_type, description, ai_summary, uploaded_at").order("uploaded_at", { ascending: false }).limit(20);
+    let request = supabase.from("documents").select("id, filename, document_type, description, ai_summary, uploaded_at").in("patient_id", allowed).order("uploaded_at", { ascending: false }).limit(20);
     if (term) {
-      const escaped = term.replace(/[%,()]/g, " ").trim();
+      const escaped = term.replace(/[%,()*."\\]/g, " ").trim().slice(0, 100);
       if (escaped) {
         request = request.or(
           `filename.ilike.%${escaped}%,description.ilike.%${escaped}%,ai_summary.ilike.%${escaped}%,document_type.ilike.%${escaped}%`
@@ -234,14 +270,18 @@ var fetch_default = defineTool6({
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
     }
     const supabase = supabaseForUser(ctx);
+    const allowed = await accessiblePatientIds(supabase, ctx);
+    if (allowed.length === 0) {
+      return { content: [{ type: "text", text: NOT_ALLOWED_MESSAGE }], isError: true };
+    }
     const { data, error } = await supabase.from("documents").select(
       "id, patient_id, filename, document_type, description, tags, medical_specialties, ai_summary, extracted_entities, uploaded_at"
-    ).eq("id", id).maybeSingle();
+    ).eq("id", id).in("patient_id", allowed).maybeSingle();
     if (error) {
       return { content: [{ type: "text", text: error.message }], isError: true };
     }
     if (!data) {
-      return { content: [{ type: "text", text: "Document not found or not accessible." }], isError: true };
+      return { content: [{ type: "text", text: NOT_ALLOWED_MESSAGE }], isError: true };
     }
     const result = {
       id: data.id,
@@ -262,7 +302,7 @@ var mcp_default = defineMcp({
   name: "medivault",
   title: "MediVault",
   version: "0.1.0",
-  instructions: "Read-only tools for MediVault, a family medical records vault. Use `search` to find the signed-in user's medical documents by keyword and `fetch` to read one by id. For structured browsing, start with `list_patients`, then `list_documents`, `get_document` and `list_appointments`. Always call these tools when the user asks about their records, documents, reports or appointments \u2014 never answer from memory. These tools return stored records only; never give medical advice or a diagnosis, and direct health questions to a doctor.",
+  instructions: "Read-only tools for MediVault, a family medical records vault. These tools only ever return the signed-in user's own patient profiles and family accounts explicitly shared with them \u2014 never any other person's records, even if asked. Use `search` to find documents by keyword and `fetch` to read one by id. For structured browsing, start with `list_patients`, then `list_documents`, `get_document` and `list_appointments`. Always call these tools when the user asks about their records, documents, reports or appointments \u2014 never answer from memory. These tools return stored records only; never give medical advice or a diagnosis, and direct health questions to a doctor.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"

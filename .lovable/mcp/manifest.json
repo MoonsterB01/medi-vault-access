@@ -19,7 +19,7 @@
       {
         "name": "search",
         "title": "Search medical records",
-        "description": "Search the signed-in user's MediVault medical documents (and those of family members they can access) by keyword. Returns matching records with ids to pass to `fetch`.",
+        "description": "Search the signed-in user's MediVault medical documents (and those of family members explicitly shared with them) by keyword. Returns matching records with ids to pass to `fetch`.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -65,7 +65,7 @@
       {
         "name": "list_patients",
         "title": "List patients",
-        "description": "List the patient profiles the signed-in MediVault user can access (their own and any family accounts shared with them).",
+        "description": "List the patient profiles the signed-in MediVault user can access (their own and any family accounts explicitly shared with them).",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
