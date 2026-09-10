@@ -66,3 +66,33 @@ export async function assertOwnsPatient(
     .maybeSingle();
   return !!data;
 }
+
+export async function assertPatientPermission(
+  adminClient: any,
+  caller: CallerContext,
+  patientId: string,
+  permission: "view" | "upload" | "appointments",
+): Promise<boolean> {
+  if (caller.isServiceRole) return true;
+  if (!caller.userId) return false;
+
+  const { data: patient } = await adminClient
+    .from("patients")
+    .select("id, created_by")
+    .eq("id", patientId)
+    .maybeSingle();
+
+  if (!patient) return false;
+  if (patient.created_by === caller.userId) return true;
+
+  const { data: access } = await adminClient
+    .from("family_access")
+    .select("permissions")
+    .eq("patient_id", patientId)
+    .eq("family_user_id", caller.userId)
+    .eq("is_active", true)
+    .is("revoked_at", null)
+    .maybeSingle();
+
+  return access?.permissions?.[permission] === true;
+}

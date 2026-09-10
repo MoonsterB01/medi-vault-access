@@ -54,6 +54,9 @@ interface Patient {
  */
 interface AppointmentBookingProps {
   user: any;
+  targetPatientId?: string;
+  targetPatientName?: string;
+  canManageAppointments?: boolean;
 }
 
 /**
@@ -62,7 +65,7 @@ interface AppointmentBookingProps {
  * @param {AppointmentBookingProps} props - The props for the component.
  * @returns {JSX.Element} - The rendered AppointmentBooking component.
  */
-const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
+const AppointmentBooking = ({ user, targetPatientId, targetPatientName, canManageAppointments = true }: AppointmentBookingProps) => {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
@@ -87,7 +90,7 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
   useEffect(() => {
     fetchDoctors();
     fetchPatients();
-  }, []);
+  }, [targetPatientId]);
 
   useEffect(() => {
     if (selectedDoctor && selectedDate) {
@@ -160,10 +163,12 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
     const maxRetries = 2;
     
     try {
-      const { data, error } = await supabase
+      const query = supabase
         .from('patients')
         .select('id, name, shareable_id')
-        .eq('created_by', user.id);
+      const { data, error } = targetPatientId
+        ? await query.eq('id', targetPatientId)
+        : await query.eq('created_by', user.id);
 
       if (error) {
         console.error('Error fetching patients:', error);
@@ -182,6 +187,7 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
       }
 
       setPatients(data || []);
+      if (targetPatientId && data?.[0]) setSelectedPatient(data[0].id);
     } catch (error: any) {
       console.error('Error in fetchPatients:', error);
       
@@ -278,9 +284,8 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .insert([{
+      const { error } = await supabase.functions.invoke('book-appointment', {
+        body: {
           doctor_id: selectedDoctor.id,
           patient_id: selectedPatient,
           appointment_date: format(selectedDate, 'yyyy-MM-dd'),
@@ -288,29 +293,10 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
           appointment_type: appointmentType,
           chief_complaint: chiefComplaint,
           patient_notes: patientNotes,
-          created_by: user.id,
-          status: 'pending',
-          appointment_id: `APT-${Math.random().toString(36).substr(2, 8).toUpperCase()}` // Temporary, will be overwritten by trigger
-        }] as any);
+        }
+      });
 
       if (error) throw error;
-
-      // Create notification for the doctor using the unified function
-      const patientName = patients.find(p => p.id === selectedPatient)?.name;
-      const { error: notificationError } = await supabase
-        .rpc('create_notification', {
-          target_user_id: selectedDoctor.user_id,
-          notification_title: 'New Appointment Request',
-          notification_message: `New appointment request from ${patientName} for ${format(selectedDate, 'MMM dd, yyyy')} at ${selectedTime}`,
-          notification_type: 'appointment_booked',
-          metadata_param: {
-            appointment_date: format(selectedDate, 'yyyy-MM-dd'),
-            appointment_time: selectedTime,
-            patient_name: patientName
-          }
-        });
-
-      if (notificationError) console.error('Error creating notification:', notificationError);
 
       toast({
         title: "Success",
@@ -335,6 +321,17 @@ const AppointmentBooking = ({ user }: AppointmentBookingProps) => {
       setLoading(false);
     }
   };
+
+  if (!canManageAppointments) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Book an Appointment</CardTitle>
+          <CardDescription>This family account does not have appointment access.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6 w-full max-w-full overflow-x-hidden">

@@ -53,6 +53,8 @@ interface Appointment {
 interface AppointmentTrackerProps {
   user: any;
   showCalendarButton?: boolean;
+  targetPatientId?: string;
+  canManageAppointments?: boolean;
 }
 
 /**
@@ -61,7 +63,7 @@ interface AppointmentTrackerProps {
  * @param {AppointmentTrackerProps} props - The props for the component.
  * @returns {JSX.Element} - The rendered AppointmentTracker component.
  */
-const AppointmentTracker = ({ user, showCalendarButton = false }: AppointmentTrackerProps) => {
+const AppointmentTracker = ({ user, showCalendarButton = false, targetPatientId, canManageAppointments = true }: AppointmentTrackerProps) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
@@ -88,7 +90,7 @@ const AppointmentTracker = ({ user, showCalendarButton = false }: AppointmentTra
     return () => {
       subscription.unsubscribe();
     };
-  }, [user.id]);
+  }, [user.id, targetPatientId]);
 
   const fetchAppointments = async (retryCount = 0) => {
     const maxRetries = 2;
@@ -97,10 +99,12 @@ const AppointmentTracker = ({ user, showCalendarButton = false }: AppointmentTra
       console.log('Fetching appointments for user:', user.id);
       
       // Get appointments for patients the user created
-      const { data: patients, error: patientsError } = await supabase
+      const patientQuery = supabase
         .from('patients')
         .select('id')
-        .eq('created_by', user.id);
+      const { data: patients, error: patientsError } = targetPatientId
+        ? await patientQuery.eq('id', targetPatientId)
+        : await patientQuery.eq('created_by', user.id);
 
       if (patientsError) {
         console.error('Error fetching patients:', patientsError);
@@ -249,10 +253,9 @@ const AppointmentTracker = ({ user, showCalendarButton = false }: AppointmentTra
     if (!selectedAppointment) return;
 
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .update({ patient_notes: patientNotes })
-        .eq('id', selectedAppointment.id);
+      const { error } = await supabase.functions.invoke('update-appointment-notes', {
+        body: { appointment_id: selectedAppointment.id, patient_notes: patientNotes }
+      });
 
       if (error) throw error;
 
@@ -615,7 +618,7 @@ const AppointmentTracker = ({ user, showCalendarButton = false }: AppointmentTra
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Close
                 </Button>
-                <Button onClick={updatePatientNotes}>
+                 <Button onClick={updatePatientNotes} disabled={!canManageAppointments}>
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Update Notes
                 </Button>
