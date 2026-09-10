@@ -11,6 +11,7 @@ import {
   logStorageOperation,
   createErrorResponse
 } from "../_shared/diagnostics.ts";
+import { authenticateRequest, assertPatientPermission } from "../_shared/auth.ts";
 
 interface UploadRequest {
   file: {
@@ -25,6 +26,7 @@ interface UploadRequest {
   ocrResult?: any;
   aiVisionResult?: any;
   fileHash?: string;
+  patientId?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -40,16 +42,11 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     logAuthDiagnostics(requestId, req);
     
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-    );
-
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
+    const caller = await authenticateRequest(req);
+    if (!caller?.userId) {
       return createErrorResponse(requestId, 401, 'authentication_required', authError?.message, origin);
     }
+    const user = { id: caller.userId };
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -63,16 +60,14 @@ const handler = async (req: Request): Promise<Response> => {
       return createErrorResponse(requestId, 400, 'invalid_request_body', err.message, origin);
     }
 
-    const { file, documentType, description, tags, ocrResult, aiVisionResult, fileHash } = uploadData;
+    const { file, documentType, description, tags, ocrResult, aiVisionResult, fileHash, patientId } = uploadData;
 
     console.log(JSON.stringify({ requestId, userId: user.id, step: 'fetching_patient_record' }));
 
-    // Get patient record for authenticated user
-    const { data: patients, error: patientError } = await supabase
-      .from('patients')
-      .select('id, name, shareable_id')
-      .eq('created_by', user.id)
-      .limit(1);
+    const targetPatientId = patientId;
+    const { data: patients, error: patientError } = targetPatientId
+      ? await supabase.from('patients').select('id, name, shareable_id').eq('id', targetPatientId).limit(1)
+      : await supabase.from('patients').select('id, name, shareable_id').eq('created_by', user.id).limit(1);
     
     logDbQuery(requestId, 'patients', 'select_by_created_by', patientError, patients?.length);
     
@@ -85,6 +80,9 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const patient = patients[0];
+    if (!(await assertPatientPermission(supabase, caller, patient.id, 'upload'))) {
+      return createErrorResponse(requestId, 403, 'upload_not_allowed', 'You do not have upload permission for this patient.', origin);
+    }
     console.log(JSON.stringify({ requestId, patientId: patient.id, patientName: patient.name, step: 'patient_found' }));
 
     if (fileHash) {

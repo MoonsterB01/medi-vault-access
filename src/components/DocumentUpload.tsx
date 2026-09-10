@@ -17,6 +17,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 
 interface DocumentUploadProps {
   onUploadSuccess?: () => void;
+  targetPatientId?: string;
+  targetPatientName?: string;
+  canUpload?: boolean;
 }
 
 interface AIVisionResult {
@@ -50,7 +53,7 @@ interface AIVisionResult {
   error?: string;
 }
 
-export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps) {
+export default function DocumentUpload({ onUploadSuccess, targetPatientId, targetPatientName, canUpload = true }: DocumentUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [documentType, setDocumentType] = useState("");
@@ -72,8 +75,14 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
   const subscription = useSubscription(userId || undefined, patientId || undefined);
 
   useEffect(() => {
+    if (targetPatientId) {
+      setPatientId(targetPatientId);
+      setPatientName(targetPatientName || "Selected patient");
+      supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
+      return;
+    }
     fetchUserPatient();
-  }, []);
+  }, [targetPatientId, targetPatientName]);
 
   const fetchUserPatient = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -334,6 +343,7 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
         tags: tagsArray.length > 0 ? tagsArray : undefined,
         aiVisionResult: aiVisionResult || undefined,
         fileHash: fileHash || undefined,
+        patientId,
       };
 
       const { data, error } = await supabase.functions.invoke('upload-document', {
@@ -410,6 +420,17 @@ export default function DocumentUpload({ onUploadSuccess }: DocumentUploadProps)
         <CardHeader>
           <CardTitle>Upload Medical Document</CardTitle>
           <CardDescription>Loading your patient profile...</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (!canUpload) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Upload Medical Document</CardTitle>
+          <CardDescription>This family account has view-only access.</CardDescription>
         </CardHeader>
       </Card>
     );

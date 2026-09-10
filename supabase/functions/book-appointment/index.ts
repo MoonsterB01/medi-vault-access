@@ -10,6 +10,7 @@ import {
   logDbQuery,
   createErrorResponse
 } from "../_shared/diagnostics.ts";
+import { authenticateRequest, assertPatientPermission } from "../_shared/auth.ts";
 
 serve(async (req) => {
   const requestId = createRequestId();
@@ -24,10 +25,19 @@ serve(async (req) => {
   try {
     logAuthDiagnostics(requestId, req);
     
+    const caller = await authenticateRequest(req);
+    if (!caller?.userId) {
+      return createErrorResponse(requestId, 401, 'authentication_required', 'A valid signed-in session is required.', origin);
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+      { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } }
+    );
+    const adminClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
     let body: any;
@@ -37,10 +47,14 @@ serve(async (req) => {
       return createErrorResponse(requestId, 400, 'invalid_request_body', err.message, origin);
     }
 
-    const { doctor_id, patient_id, appointment_date, appointment_time, appointment_type, chief_complaint, patient_notes, created_by } = body;
+    const { doctor_id, patient_id, appointment_date, appointment_time, appointment_type, chief_complaint, patient_notes } = body;
 
-    if (!doctor_id || !patient_id || !appointment_date || !appointment_time || !created_by) {
-      return createErrorResponse(requestId, 400, 'missing_required_fields', 'doctor_id, patient_id, appointment_date, appointment_time, and created_by are required', origin);
+    if (!doctor_id || !patient_id || !appointment_date || !appointment_time) {
+      return createErrorResponse(requestId, 400, 'missing_required_fields', 'doctor_id, patient_id, appointment_date, and appointment_time are required', origin);
+    }
+
+    if (!(await assertPatientPermission(adminClient, caller, patient_id, 'appointments'))) {
+      return createErrorResponse(requestId, 403, 'appointment_not_allowed', 'You do not have appointment permission for this patient.', origin);
     }
 
     // Validate appointment is not in the past (IST)
@@ -78,7 +92,7 @@ serve(async (req) => {
 
     const { data: appointment, error: appointmentError } = await supabaseClient.from('appointments').insert([{
       appointment_id: appointmentIdData, doctor_id, patient_id, appointment_date, appointment_time,
-      appointment_type: appointment_type || 'consultation', chief_complaint, patient_notes, created_by, status: 'pending'
+       appointment_type: appointment_type || 'consultation', chief_complaint, patient_notes, created_by: caller.userId, status: 'pending'
     }]).select().single();
 
     logDbQuery(requestId, 'appointments', 'insert', appointmentError, appointment ? 1 : 0);
