@@ -603,6 +603,7 @@ const AppointmentTracker = ({ user, showCalendarButton = false, targetPatientId,
                     onChange={(e) => setPatientNotes(e.target.value)}
                     placeholder="Add notes about this appointment..."
                     rows={3}
+                    disabled={!canManageAppointments}
                   />
                 </div>
 

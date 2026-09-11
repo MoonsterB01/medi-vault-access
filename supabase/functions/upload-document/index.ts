@@ -44,7 +44,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     const caller = await authenticateRequest(req);
     if (!caller?.userId) {
-      return createErrorResponse(requestId, 401, 'authentication_required', authError?.message, origin);
+      return createErrorResponse(requestId, 401, 'authentication_required', 'A valid signed-in session is required.', origin);
     }
     const user = { id: caller.userId };
 
@@ -255,7 +255,7 @@ const handler = async (req: Request): Promise<Response> => {
       description: description || null,
       tags: tags || [],
       verification_status: verificationStatus,
-      uploaded_by_user_shareable_id: user.user_metadata?.user_shareable_id || null,
+      uploaded_by_user_shareable_id: null,
     };
 
     if (extractedText) {

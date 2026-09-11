@@ -33,6 +33,8 @@ interface MobilePatientDashboardProps {
   onUploadSuccess: () => void;
   refreshPatientData: () => Promise<void>;
   fetchPatientData: (userId: string) => Promise<void>;
+  canUpload: boolean;
+  canManageAppointments: boolean;
 }
 
 export function MobilePatientDashboard({
@@ -51,6 +53,8 @@ export function MobilePatientDashboard({
   onUploadSuccess,
   refreshPatientData,
   fetchPatientData,
+  canUpload,
+  canManageAppointments,
 }: MobilePatientDashboardProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -102,13 +106,33 @@ export function MobilePatientDashboard({
           <WellbeingPage patientId={patientData.id} />
         ) : null;
       case 'appointments':
-        return <MobileAppointmentsTab user={user} />;
+        return (
+          <MobileAppointmentsTab
+            user={user}
+            targetPatientId={patientData?.id}
+            canManageAppointments={canManageAppointments}
+          />
+        );
       case 'calendar':
         return <AppointmentCalendar user={user} />;
       case 'book-appointment':
-        return <AppointmentBooking user={user} />;
+        return (
+          <AppointmentBooking
+            user={user}
+            targetPatientId={patientData?.id}
+            targetPatientName={patientData?.name}
+            canManageAppointments={canManageAppointments}
+          />
+        );
       case 'upload':
-        return <MobileUploadTab onUploadSuccess={onUploadSuccess} />;
+        return (
+          <MobileUploadTab
+            onUploadSuccess={onUploadSuccess}
+            targetPatientId={patientData?.id}
+            targetPatientName={patientData?.name}
+            canUpload={canUpload}
+          />
+        );
       default:
         return (
           <MobileSummaryTab

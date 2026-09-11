@@ -1,4 +1,4 @@
-- [ ] Audit patient portal actions and existing RLS/edge-function ownership checks
-- [ ] Add one shared family-access permission resolver for the active patient
-- [ ] Scope records, upload, appointment booking, and family management to that resolver
+- [x] Audit patient portal actions and existing RLS/edge-function ownership checks
+- [x] Add one shared family-access permission resolver for the active patient
+- [x] Scope records, upload, appointment booking, and appointment note updates to that resolver
 - [ ] Verify the signed-in patient flow and preview/build signals
