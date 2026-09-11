@@ -61,6 +61,8 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
   const [missingFields, setMissingFields] = useState<any[]>([]);
   const subscription = useSubscription(user?.id, patientData?.id);
   const { activePatient, isFamilyMode, switchToOwnAccount } = useActivePatient();
+  const canUploadForActivePatient = !isFamilyMode || activePatient?.permissions?.upload === true;
+  const canManageActivePatientAppointments = !isFamilyMode || activePatient?.permissions?.appointments === true;
 
   useEffect(() => {
     if (patientData) {
@@ -453,6 +455,8 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
           onUploadSuccess={onUploadSuccess}
           refreshPatientData={refreshPatientData}
           fetchPatientData={fetchPatientData}
+          canUpload={canUploadForActivePatient}
+          canManageAppointments={canManageActivePatientAppointments}
         />
       </ErrorBoundary>
     );
@@ -729,15 +733,30 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
               </TabsContent>
 
               <TabsContent value="appointments" className="mt-6" id="tab-content-appointments">
-                <AppointmentTracker user={user} showCalendarButton />
+                <AppointmentTracker
+                  user={user}
+                  showCalendarButton
+                  targetPatientId={patientData?.id}
+                  canManageAppointments={canManageActivePatientAppointments}
+                />
               </TabsContent>
 
               <TabsContent value="book-appointment" className="mt-6" id="tab-content-book-appointment">
-                <AppointmentBooking user={user} />
+                <AppointmentBooking
+                  user={user}
+                  targetPatientId={patientData?.id}
+                  targetPatientName={patientData?.name}
+                  canManageAppointments={canManageActivePatientAppointments}
+                />
               </TabsContent>
               
               <TabsContent value="upload" className="mt-6" id="tab-content-upload">
-                <DocumentUpload onUploadSuccess={onUploadSuccess} />
+                <DocumentUpload
+                  onUploadSuccess={onUploadSuccess}
+                  targetPatientId={patientData?.id}
+                  targetPatientName={patientData?.name}
+                  canUpload={canUploadForActivePatient}
+                />
               </TabsContent>
 
               <TabsContent value="family" className="mt-6" id="tab-content-family">

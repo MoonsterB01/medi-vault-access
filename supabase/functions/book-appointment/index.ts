@@ -90,7 +90,7 @@ serve(async (req) => {
       return createErrorResponse(requestId, 500, 'id_generation_failed', idError.message, origin);
     }
 
-    const { data: appointment, error: appointmentError } = await supabaseClient.from('appointments').insert([{
+    const { data: appointment, error: appointmentError } = await adminClient.from('appointments').insert([{
       appointment_id: appointmentIdData, doctor_id, patient_id, appointment_date, appointment_time,
        appointment_type: appointment_type || 'consultation', chief_complaint, patient_notes, created_by: caller.userId, status: 'pending'
     }]).select().single();
@@ -101,11 +101,11 @@ serve(async (req) => {
       return createErrorResponse(requestId, 500, 'appointment_creation_failed', appointmentError.message, origin);
     }
 
-    const { data: doctorData } = await supabaseClient.from('doctors').select('user_id, users(name)').eq('id', doctor_id).single();
+    const { data: doctorData } = await adminClient.from('doctors').select('user_id, users(name)').eq('id', doctor_id).single();
     logDbQuery(requestId, 'doctors', 'select_with_users', null, doctorData ? 1 : 0);
 
     if (doctorData?.user_id) {
-      await supabaseClient.rpc('create_notification', {
+      await adminClient.rpc('create_notification', {
         target_user_id: doctorData.user_id, notification_title: 'New Appointment Booked',
         notification_message: `New appointment scheduled for ${appointment_date} at ${appointment_time}`,
         notification_type: 'appointment_booked', appointment_id_param: appointment.id,
