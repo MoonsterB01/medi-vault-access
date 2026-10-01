@@ -20,7 +20,7 @@ interface UploadRequest {
     type: string;
     size: number;
   };
-  documentType: string;
+  documentType?: string;
   description?: string;
   tags?: string[];
   ocrResult?: any;
@@ -60,7 +60,8 @@ const handler = async (req: Request): Promise<Response> => {
       return createErrorResponse(requestId, 400, 'invalid_request_body', err.message, origin);
     }
 
-    const { file, documentType, description, tags, ocrResult, aiVisionResult, fileHash, patientId } = uploadData;
+    const { file, ocrResult, aiVisionResult, fileHash, patientId } = uploadData;
+    const documentType = uploadData.documentType || 'other';
 
     console.log(JSON.stringify({ requestId, userId: user.id, step: 'fetching_patient_record' }));
 
@@ -251,9 +252,10 @@ const handler = async (req: Request): Promise<Response> => {
       filename: file.name,
       file_path: filePath,
       file_size: file.size,
+      content_type: file.type,
       document_type: documentType,
-      description: description || null,
-      tags: tags || [],
+      description: uploadData.description || null,
+      tags: uploadData.tags || [],
       verification_status: verificationStatus,
       uploaded_by_user_shareable_id: null,
     };
@@ -319,7 +321,7 @@ const handler = async (req: Request): Promise<Response> => {
     fileBuffer = new Uint8Array(0);
 
     // Auto-generate document summary if we have extracted text (non-blocking)
-    if (extractedText && extractedText.length > 50) {
+    if (true) {
       console.log(JSON.stringify({ requestId, step: 'triggering_summary_generation' }));
       supabase.functions.invoke('generate-document-summary', { 
         body: { documentId: document.id } 

@@ -1,7 +1,8 @@
 import DocumentUpload from "@/components/DocumentUpload";
+import type { UploadedDocumentResult } from "@/components/DocumentUpload";
 
 interface MobileUploadTabProps {
-  onUploadSuccess: () => void;
+  onUploadSuccess: (document?: UploadedDocumentResult) => void;
   targetPatientId?: string;
   targetPatientName?: string;
   canUpload: boolean;

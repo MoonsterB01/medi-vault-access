@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.53.0";
-import { authenticateRequest, unauthorized, forbidden } from "../_shared/auth.ts";
+import { authenticateRequest, assertPatientPermission, unauthorized, forbidden } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -251,15 +251,9 @@ serve(async (req: Request) => {
       );
     }
 
-    // Ownership check (service-role bypasses)
-    if (!caller.isServiceRole) {
-      const { data: ownsPatient } = await supabaseClient
-        .from('patients')
-        .select('id')
-        .eq('id', document.patient_id)
-        .eq('created_by', caller.userId)
-        .maybeSingle();
-      if (!ownsPatient) return forbidden(corsHeaders);
+    // The owner and an active family member with view permission may request a retry.
+    if (!(await assertPatientPermission(supabaseClient, caller, document.patient_id, 'view'))) {
+      return forbidden(corsHeaders);
     }
 
 
