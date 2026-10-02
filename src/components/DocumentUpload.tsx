@@ -150,6 +150,7 @@ export default function DocumentUpload({
         return;
       }
     }
+    setProcessingStatus("needs-review");
   };
 
   const checkAndSaveFile = async (selectedFile: File) => {
@@ -275,10 +276,9 @@ export default function DocumentUpload({
     if (!savedDocument?.documentId) return;
     setDetailsSaving(true);
     const detailTags = tags.split(",").map((tag) => tag.trim()).filter(Boolean);
-    const { error } = await supabase
-      .from("documents")
-      .update({ description: description.trim() || null, tags: detailTags })
-      .eq("id", savedDocument.documentId);
+    const { error } = await supabase.functions.invoke("update-document-details", {
+      body: { documentId: savedDocument.documentId, description, tags: detailTags },
+    });
     setDetailsSaving(false);
     if (error) {
       toast({ title: "Details not saved", description: error.message, variant: "destructive" });

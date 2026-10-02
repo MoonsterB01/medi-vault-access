@@ -320,15 +320,13 @@ const handler = async (req: Request): Promise<Response> => {
     // Clear file buffer from memory to reduce memory usage
     fileBuffer = new Uint8Array(0);
 
-    // Auto-generate document summary if we have extracted text (non-blocking)
-    if (true) {
-      console.log(JSON.stringify({ requestId, step: 'triggering_summary_generation' }));
-      supabase.functions.invoke('generate-document-summary', { 
-        body: { documentId: document.id } 
-      }).catch((err) => {
-        console.error(JSON.stringify({ requestId, step: 'summary_generation_trigger_failed', error: err.message }));
-      });
-    }
+    // Start processing after the saved record exists; this must never block the save response.
+    console.log(JSON.stringify({ requestId, step: 'triggering_summary_generation' }));
+    supabase.functions.invoke('generate-document-summary', {
+      body: { documentId: document.id }
+    }).catch((err) => {
+      console.error(JSON.stringify({ requestId, step: 'summary_generation_trigger_failed', error: err.message }));
+    });
     
     // Trigger patient summary update (non-blocking)
     console.log(JSON.stringify({ requestId, step: 'triggering_patient_summary' }));

@@ -336,15 +336,6 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
       return;
     }
 
-    if (!documentName.trim()) {
-      toast({
-        title: "Document name required",
-        description: "Please enter a name for your document",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsGeneratingPDF(true);
 
     try {
@@ -397,7 +388,8 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
 
       // Convert PDF to blob and then to File
       const pdfBlob = pdf.output('blob');
-      const pdfFile = new File([pdfBlob], `${documentName}.pdf`, {
+      const safeName = documentName.trim() || `medical-report-${Date.now()}`;
+      const pdfFile = new File([pdfBlob], `${safeName}.pdf`, {
         type: 'application/pdf',
         lastModified: Date.now(),
       });
@@ -412,7 +404,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
 
       toast({
         title: 'PDF Generated',
-        description: `Document "${documentName}" is ready for upload.`,
+        description: 'Your scanned report is ready to save.',
       });
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -436,15 +428,6 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
       return;
     }
 
-    if (!documentName.trim()) {
-      toast({
-        title: "Document name required",
-        description: "Please enter a name for your document",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsUploadingImages(true);
 
     try {
@@ -456,9 +439,10 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
         // Convert dataUrl to blob and then to File
         const response = await fetch(image.dataUrl);
         const blob = await response.blob();
-        const fileName = scannedImages.length > 1 
-          ? `${documentName}_page_${i + 1}.jpg`
-          : `${documentName}.jpg`;
+        const safeName = documentName.trim() || `medical-report-${Date.now()}`;
+        const fileName = scannedImages.length > 1
+          ? `${safeName}_page_${i + 1}.jpg`
+          : `${safeName}.jpg`;
           
         const imageFile = new File([blob], fileName, {
           type: 'image/jpeg',
@@ -668,7 +652,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                   <Button
                     onClick={uploadImages}
                     variant="secondary"
-                    disabled={scannedImages.length === 0 || !documentName.trim() || isUploadingImages}
+                    disabled={scannedImages.length === 0 || isUploadingImages}
                   >
                     {isUploadingImages ? (
                       <>
@@ -684,7 +668,7 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
                   </Button>
                   <Button
                     onClick={generatePDF}
-                    disabled={scannedImages.length === 0 || !documentName.trim() || isGeneratingPDF}
+                    disabled={scannedImages.length === 0 || isGeneratingPDF}
                   >
                     {isGeneratingPDF ? (
                       <>
