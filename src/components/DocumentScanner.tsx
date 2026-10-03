@@ -248,6 +248,25 @@ export const DocumentScanner: React.FC<DocumentScannerProps> = ({
         };
 
         const updatedImages = [...scannedImages, newImage];
+
+        // A single photo is the fast path: hand it back immediately so the
+        // upload screen can save it without asking for a name or extra steps.
+        if (updatedImages.length === 1) {
+          const response = await fetch(correctedDataUrl);
+          const blob = await response.blob();
+          const imageFile = new File([blob], `medical-report-${Date.now()}.jpg`, {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          });
+
+          clearSession();
+          setScannedImages([]);
+          setDocumentName('');
+          onScanComplete(imageFile);
+          onClose();
+          return;
+        }
+
         setScannedImages(updatedImages);
         saveSession(updatedImages, documentName);
 
