@@ -1,23 +1,19 @@
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
-import { Shield, FileText, Lock, Clock, Search, ArrowRight, Users, CheckCircle, Zap, BarChart3, AlertTriangle } from "lucide-react";
+import { Shield, FileText, Lock, Clock, Search, ArrowRight, Users, CheckCircle, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import logo from "@/assets/logo.png";
+import familyPassportImage from "@/assets/indian-family-health-passport.jpg";
 import PublicLayout from "@/components/PublicLayout";
 import SEO from "@/components/SEO";
 import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
 import { VoiceAssistant } from "@/components/VoiceAssistant";
 import { ChatAssistant } from "@/components/ChatAssistant";
-import { usePublicStats, formatStatNumber } from "@/hooks/usePublicStats";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Index() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
-  const stats = usePublicStats();
-
   useEffect(() => {
     const checkUser = async () => {
       const {
@@ -30,10 +26,6 @@ export default function Index() {
     };
     checkUser();
   }, []);
-
-  const handleTryNow = () => {
-    navigate("/patient-dashboard");
-  };
 
   const handleGetStarted = () => {
     if (user) {
@@ -49,7 +41,7 @@ export default function Index() {
 
   return (
     <PublicLayout>
-      <SEO title="MediVault - Secure Digital Medical Records for Families" description="MediVault helps Indian families store, share and manage medical records securely with AI-powered organization and bank-grade encryption." path="/" />
+      <SEO title="MediVault — A Health Passport for Your Family" description="Keep your family’s medical reports, prescriptions and scans together. Build a health record you can return to over time, one document at a time." path="/" />
       <Helmet>
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
@@ -62,161 +54,80 @@ export default function Index() {
             "price": "0",
             "priceCurrency": "INR"
           },
-          "description": "Secure digital medical records management for Indian families and healthcare providers. AI-powered document organization with bank-grade encryption.",
+          "description": "A family-focused place to keep medical reports, prescriptions and scans together and find them over time.",
           "featureList": [
-            "AI-powered document categorization",
-            "Bank-grade encryption",
-            "Family record sharing",
-            "Appointment booking",
-            "Multi-device access"
-          ],
-          "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "4.8",
-            "ratingCount": "1250"
-          }
+            "Organize medical documents",
+            "Search saved records",
+            "Manage family access"
+          ]
         })}</script>
       </Helmet>
-      {/* Hero Section - Clean, Professional */}
-      <section className="py-16 lg:py-24">
-        <div className="container mx-auto px-4">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left: Content */}
-            <div className="max-w-xl">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-                <Zap className="h-4 w-4" />
-                AI-Powered Document Analysis
-              </div>
-
-              {/* Headline */}
-              <h1 className="text-4xl lg:text-5xl font-bold text-foreground leading-tight mb-6">
-                Your Medical History, Intelligently Organized
-              </h1>
-
-              {/* Subheadline */}
-              <p className="text-lg text-muted-foreground mb-8">
-                Stop searching through WhatsApp, folders, and scattered PDFs. Keep all your family's medical records in one secure place and find them in seconds.
-              </p>
-
-              {/* CTAs */}
-              <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                <Button size="lg" className="gap-2" onClick={handleGetStarted}>
-                  Start Your Health Analysis
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-                <Button size="lg" variant="outline" onClick={() => navigate("/how-it-works")}>
-                  View Demo
-                </Button>
-              </div>
-
-              {/* Trust Indicators */}
-              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle className="h-4 w-4 text-trust" />
-                  Only you control access
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle className="h-4 w-4 text-trust" />
-                  Encrypted in transit & at rest
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle className="h-4 w-4 text-trust" />
-                  Free to Start
-                </span>
-              </div>
-
-              {/* Portal Links */}
-              <div className="flex gap-4 mt-6 pt-6 border-t border-border">
-                <Button
-                  variant="link"
-                  className="text-muted-foreground hover:text-primary p-0 h-auto"
-                  onClick={() => navigate("/doctor-auth")}
-                >
-                  Doctor Portal →
-                </Button>
-                <Button
-                  variant="link"
-                  className="text-muted-foreground hover:text-primary p-0 h-auto"
-                  onClick={() => navigate("/hospital-auth")}
-                >
-                  Hospital Portal →
-                </Button>
-              </div>
+      <section aria-labelledby="home-title" className="relative isolate flex min-h-[680px] items-center overflow-hidden bg-muted lg:min-h-[720px]">
+        <img
+          src={familyPassportImage}
+          alt="An Indian daughter and her father looking through health papers together at home"
+          width={1600}
+          height={1104}
+          className="absolute inset-0 -z-20 h-full w-full object-cover object-[25%_center] sm:object-center"
+        />
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-background via-background/90 to-background/10" />
+        <div className="container mx-auto px-4 py-14">
+          <div className="max-w-2xl">
+            <p className="mb-4 text-sm font-semibold text-primary">A calmer way to keep family health records together</p>
+            <h1 id="home-title" className="mb-6 max-w-xl text-4xl font-bold leading-tight text-foreground lg:text-5xl">
+              A Health Passport for your family, one report at a time.
+            </h1>
+            <p className="mb-8 max-w-xl text-lg leading-relaxed text-foreground">
+              Keep prescriptions, test reports and scans together. Build a health record you can return to before the next doctor visit—without searching through chats, folders and scattered PDFs.
+            </p>
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+              <Button size="lg" className="gap-2" onClick={handleGetStarted}>
+                Organize your first report
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => document.getElementById("health-passport")?.scrollIntoView({ behavior: "smooth" })}>
+                Explore the vision
+              </Button>
             </div>
-
-            {/* Right: Product Mockup */}
-            <div className="relative hidden lg:block">
-              <div className="bg-muted/50 rounded-2xl p-8 border border-border">
-                <div className="bg-background rounded-xl shadow-sm border border-border overflow-hidden">
-                  {/* Mock Dashboard Header */}
-                  <div className="bg-primary/5 px-4 py-3 border-b border-border flex items-center gap-3">
-                    <div className="flex gap-1.5">
-                      <div className="w-3 h-3 rounded-full bg-destructive/60" />
-                      <div className="w-3 h-3 rounded-full bg-warning/60" />
-                      <div className="w-3 h-3 rounded-full bg-trust/60" />
-                    </div>
-                    <div className="flex-1 bg-muted rounded-md h-6" />
-                  </div>
-                  {/* Mock Content */}
-                  <div className="p-4 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <FileText className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="h-4 bg-muted rounded w-3/4 mb-1" />
-                        <div className="h-3 bg-muted/60 rounded w-1/2" />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-trust/10 flex items-center justify-center">
-                        <Shield className="h-5 w-5 text-trust" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="h-4 bg-muted rounded w-2/3 mb-1" />
-                        <div className="h-3 bg-muted/60 rounded w-2/5" />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Search className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="h-4 bg-muted rounded w-4/5 mb-1" />
-                        <div className="h-3 bg-muted/60 rounded w-3/5" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-foreground">
+              <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-trust" />Family access is yours to manage</span>
+              <span className="flex items-center gap-1.5"><CheckCircle className="h-4 w-4 text-trust" />Encrypted in transit and at rest</span>
+            </div>
+            <div className="mt-6 flex flex-wrap gap-x-4 border-t border-foreground/20 pt-4">
+              <Button variant="link" className="h-auto p-0 text-foreground" onClick={() => navigate("/doctor-auth")}>Doctor Portal →</Button>
+              <Button variant="link" className="h-auto p-0 text-foreground" onClick={() => navigate("/hospital-auth")}>Hospital Portal →</Button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-12 border-y border-border bg-muted/30">
+      <section id="health-passport" className="scroll-mt-20 border-b border-border py-16 lg:py-24">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              { value: stats.isLoading ? null : formatStatNumber(stats.documentsCount), label: "Documents Organized", icon: FileText },
-              { value: stats.isLoading ? null : formatStatNumber(stats.patientsCount), label: "Families Trust Us", icon: Users },
-              { value: "AI", label: "Auto-Categorized", icon: BarChart3 },
-              { value: stats.isLoading ? null : formatStatNumber(stats.hospitalsCount || 4), label: "Healthcare Partners", icon: CheckCircle },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <div className="flex justify-center mb-2">
-                  <stat.icon className="h-5 w-5 text-primary" />
-                </div>
-                {stat.value === null ? (
-                  <Skeleton className="h-8 w-16 mx-auto mb-1" />
-                ) : (
-                  <div className="text-2xl lg:text-3xl font-bold text-foreground">{stat.value}</div>
-                )}
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
+          <div className="mx-auto mb-12 max-w-3xl text-center">
+            <h2 className="mb-4 text-3xl font-bold text-foreground">A health history that grows with your family.</h2>
+            <p className="text-lg leading-relaxed text-muted-foreground">
+              What happened before should be easier to find when your family needs it again.
+            </p>
+          </div>
+          <div className="mx-auto grid max-w-5xl gap-10 md:grid-cols-2 md:gap-16">
+            <div className="border-t-2 border-primary pt-5">
+              <div className="mb-4 flex items-center gap-3">
+                <FileText className="h-6 w-6 text-primary" />
+                <h3 className="text-xl font-semibold">The Health Passport</h3>
               </div>
-            ))}
+              <p className="leading-relaxed text-muted-foreground">
+                Today, MediVault helps keep a family member’s important reports, prescriptions and scans together in one place. Start with what you already have; add to the record as care continues.
+              </p>
+            </div>
+            <div className="border-t-2 border-trust pt-5">
+              <div className="mb-4 flex items-center gap-3">
+                <Clock className="h-6 w-6 text-trust" />
+                <h3 className="text-xl font-semibold">The Health Time Machine</h3>
+              </div>
+              <p className="leading-relaxed text-muted-foreground">
+                Our longer-term vision is to make it easier to look back through a family’s saved records over time. Today, MediVault helps keep that record together and searchable—not diagnose or predict what comes next.
+              </p>
+            </div>
           </div>
         </div>
       </section>
