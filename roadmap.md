@@ -1,3 +1,3 @@
-- [ ] Reframe the homepage around a family Health Passport and an honest Health Time Machine vision
-- [ ] Align the About and How It Works pages with the same present-day product and future direction
+- [x] Reframe the homepage around a family Health Passport and an honest Health Time Machine vision
+- [x] Align the About and How It Works pages with the same present-day product and future direction
 - [ ] Verify the updated public pages on desktop and mobile, then close this task

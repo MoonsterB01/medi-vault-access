@@ -16,7 +16,7 @@ export default function HowItWorks() {
 
   return (
     <PublicLayout>
-      <SEO title="How MediVault Works - Secure Medical Records" description="See how MediVault uploads, organizes and shares your medical records securely across doctors, hospitals and families in a few simple steps." path="/how-it-works" />
+      <SEO title="How MediVault Works — A Health Passport, One Report at a Time" description="MediVault helps Indian families keep health reports together today, with a longer-term vision for a Health Passport and a clearer view of the care journey." path="/how-it-works" />
       <header className="container mx-auto px-4 py-16 text-center">
         <div className="flex justify-center mb-6">
           <div className="bg-primary/10 p-4 rounded-full">
@@ -24,10 +24,10 @@ export default function HowItWorks() {
           </div>
         </div>
         <h1 className="text-4xl font-bold mb-4">
-          How MediVault Works & Trust Center
+          A Health Passport starts with the records you already have.
         </h1>
         <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-          Understanding our secure medical records platform, your data protection, and how we keep your health information safe
+          Keep prescriptions, test reports, and scans together today. The Health Time Machine is our longer-term vision for looking back through those records—not predicting or diagnosing.
         </p>
       </header>
 
@@ -84,7 +84,7 @@ export default function HowItWorks() {
                 <span>Automatic categorization</span>
               </div>
               <p className="text-sm text-muted-foreground/80">
-                Our AI helps organize your documents by type and urgency, making them easy to find later.
+                Document processing can help organize saved reports. Extracted details may need checking and are not medical advice.
               </p>
             </CardContent>
           </Card>
@@ -322,26 +322,15 @@ export default function HowItWorks() {
       <section className="bg-primary text-primary-foreground py-16">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-8">
-            Trusted by Healthcare Professionals
+            A family record, not a medical opinion
           </h2>
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div>
-              <div className="text-3xl font-bold text-blue-400 mb-2">AES-256</div>
-              <p className="text-primary-foreground/80">Encryption at Rest</p>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-blue-400 mb-2">TLS 1.2+</div>
-              <p className="text-primary-foreground/80">Encryption in Transit</p>
-            </div>
-            <div>
-              <div className="text-3xl font-bold text-blue-400 mb-2">RLS</div>
-              <p className="text-primary-foreground/80">Per-User Data Isolation</p>
-            </div>
+          <div className="mx-auto max-w-2xl">
+            <p className="text-primary-foreground/80">MediVault helps organize documents for family reference. It does not diagnose, predict, or replace advice from a qualified healthcare professional.</p>
           </div>
           
           <div className="mt-12">
             <Button size="lg" className="px-8 py-3" onClick={() => navigate('/auth')}>
-              Start Using MediVault Securely
+              Keep your family’s records together
             </Button>
           </div>
         </div>

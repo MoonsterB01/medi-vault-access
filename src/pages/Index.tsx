@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
-import { Shield, FileText, Lock, Clock, Search, ArrowRight, Users, CheckCircle, AlertTriangle } from "lucide-react";
+import { FileText, Lock, Clock, Search, ArrowRight, Users, CheckCircle, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,11 +49,6 @@ export default function Index() {
           "name": "MediVault",
           "applicationCategory": "HealthApplication",
           "operatingSystem": "Web",
-          "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "INR"
-          },
           "description": "A family-focused place to keep medical reports, prescriptions and scans together and find them over time.",
           "featureList": [
             "Organize medical documents",
@@ -70,7 +65,7 @@ export default function Index() {
           height={1104}
           className="absolute inset-0 -z-20 h-full w-full object-cover object-[25%_center] sm:object-center"
         />
-        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-r from-background via-background/90 to-background/10" />
+        <div aria-hidden="true" className="absolute inset-0 -z-10 bg-background/60" />
         <div className="container mx-auto px-4 py-14">
           <div className="max-w-2xl">
             <p className="mb-4 text-sm font-semibold text-primary">A calmer way to keep family health records together</p>
@@ -82,7 +77,7 @@ export default function Index() {
             </p>
             <div className="mb-6 flex flex-col gap-3 sm:flex-row">
               <Button size="lg" className="gap-2" onClick={handleGetStarted}>
-                Organize your first report
+                Start your Health Passport
                 <ArrowRight className="h-4 w-4" />
               </Button>
               <Button size="lg" variant="outline" onClick={() => document.getElementById("health-passport")?.scrollIntoView({ behavior: "smooth" })}>
@@ -137,10 +132,10 @@ export default function Index() {
         <div className="container mx-auto px-4">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <h2 className="text-3xl font-bold text-foreground mb-4">
-              How MediVault Works
+              Start with the records you already have.
             </h2>
             <p className="text-muted-foreground">
-              Three simple steps to organize all your family's medical records
+              One report is enough to begin building a more complete family health record.
             </p>
           </div>
 
@@ -148,20 +143,20 @@ export default function Index() {
             {[
               {
                 step: "01",
-                title: "Upload Documents",
-                description: "Take a photo or upload PDFs of prescriptions, test reports, or any medical document.",
+                title: "Keep a report",
+                description: "Save a photo or PDF of a prescription, test report, or scan.",
                 icon: FileText,
               },
               {
                 step: "02",
-                title: "Auto-Organize",
-                description: "Our AI automatically categorizes and tags your documents for easy retrieval.",
-                icon: Zap,
+                title: "Keep it with the family",
+                description: "Add records for the family member they belong to, with access you choose.",
+                icon: Users,
               },
               {
                 step: "03",
-                title: "Find Instantly",
-                description: "Search by name, date, or type. Access your records anytime, from any device.",
+                title: "Return to it later",
+                description: "Search your saved records when you need to revisit a report or prepare for a doctor visit.",
                 icon: Search,
               },
             ].map((item) => (
@@ -187,10 +182,10 @@ export default function Index() {
         <div className="container mx-auto px-4">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <h2 className="text-3xl font-bold text-foreground mb-4">
-              Built for Security & Simplicity
+              Made for real family care
             </h2>
             <p className="text-muted-foreground">
-              Everything you need to manage your family's health records
+              Because one person often ends up keeping everyone’s papers in order.
             </p>
           </div>
 
@@ -198,23 +193,23 @@ export default function Index() {
             {[
               {
                 icon: Lock,
-                title: "Your Data, Your Control",
-                description: "We don't sell your information. Only people you explicitly grant access can view your records.",
+                title: "Your records, your choice",
+                description: "Choose who can access your records and change family access when you need to.",
               },
               {
                 icon: FileText,
-                title: "Easy Organization",
-                description: "AI-powered categorization keeps everything organized automatically.",
+                title: "Less paper chasing",
+                description: "Keep photos and PDFs together instead of searching across chats, folders, and devices.",
               },
               {
                 icon: Clock,
-                title: "Always Available",
-                description: "Access your records anytime, anywhere, from any device.",
+                title: "A record to look back on",
+                description: "Find saved documents again as your family’s health story continues.",
               },
               {
                 icon: Users,
-                title: "Family Sharing",
-                description: "Securely share access with family members or doctors when needed.",
+                title: "Care across generations",
+                description: "Keep track of the records you help manage for children, parents, and loved ones.",
               },
             ].map((feature) => (
               <div key={feature.title} className="bg-card p-6 rounded-xl border border-border">
@@ -237,10 +232,9 @@ export default function Index() {
               <AlertTriangle className="h-5 w-5 text-warning" />
             </div>
             <div>
-              <h3 className="font-semibold text-foreground mb-1">Medical Disclaimer</h3>
+              <h3 className="font-semibold text-foreground mb-1">For your doctor conversations</h3>
               <p className="text-sm text-muted-foreground">
-                MediVault is a document organization tool and does not provide medical advice, diagnosis, or treatment. 
-                Always consult with qualified healthcare professionals for medical decisions.
+                MediVault helps organize documents; it does not diagnose, predict, or replace medical advice. Please speak with a qualified healthcare professional about medical decisions.
               </p>
             </div>
           </div>
@@ -252,23 +246,22 @@ export default function Index() {
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="text-3xl font-bold text-foreground mb-4">
-              Ready to organize your family's medical records?
+              Begin your family’s Health Passport with one report.
             </h2>
             <p className="text-muted-foreground mb-8">
-              Start for free. No credit card required.
+              Keep the report you already have. Build the record over time.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center mb-6">
-              <Button size="lg" className="gap-2" onClick={handleTryNow}>
-                Try Now — No Signup
+              <Button size="lg" className="gap-2" onClick={handleGetStarted}>
+              Start your Health Passport
                 <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button size="lg" variant="outline" onClick={handleGetStarted}>
-                <Shield className="mr-2 h-4 w-4" />
-                Create Free Account
+              <Button size="lg" variant="outline" onClick={() => navigate("/how-it-works")}>
+                See how it works
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Free plan includes 50 documents • Upgrade anytime
+              Your medical records remain yours to manage.
             </p>
           </div>
         </div>

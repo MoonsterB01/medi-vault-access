@@ -2,55 +2,45 @@ import PublicLayout from "@/components/PublicLayout";
 import SEO from "@/components/SEO";
 import { EnhancedFooter } from "@/components/trust/EnhancedFooter";
 import { FadeInOnScroll } from "@/components/FadeInOnScroll";
-import { Target, Heart, Shield, Lightbulb, Users, Globe } from "lucide-react";
+import { Target, Heart, Shield, FileText, Users, Clock } from "lucide-react";
 
 const values = [
   {
     icon: Shield,
-    title: "Security First",
-    description: "Every decision we make prioritizes the security and privacy of patient data.",
+    title: "Family first",
+    description: "Make it easier for the person caring for a family to keep important records together.",
   },
   {
     icon: Heart,
-    title: "Patient-Centric",
-    description: "We build for patients first, making healthcare records accessible and understandable.",
+    title: "Clarity over complexity",
+    description: "Use plain language and simple ways to organize and find health documents.",
   },
   {
-    icon: Lightbulb,
-    title: "Innovation",
-    description: "We continuously improve our platform with cutting-edge technology and AI.",
+    icon: FileText,
+    title: "Useful records",
+    description: "Keep the documents families already receive, ready to revisit when needed.",
   },
   {
     icon: Users,
-    title: "Collaboration",
-    description: "We work closely with healthcare providers to build solutions that truly work.",
+    title: "The long view",
+    description: "Build toward a clearer record of a family’s care over time, without replacing clinicians.",
   },
-];
-
-const milestones = [
-  { year: "2024", event: "MediVault founded with a vision to digitize India's healthcare" },
-  { year: "2024", event: "Launched platform with focus on security and privacy" },
-  { year: "2024", event: "Building partnerships with healthcare providers" },
 ];
 
 export default function About() {
   return (
     <PublicLayout>
-      <SEO title="About Us - MediVault" description="Learn about MediVault's mission to give Indian families secure, lifelong access to their medical records with privacy-first technology." path="/about" />
+      <SEO title="About MediVault — Family Health Records, Together" description="MediVault helps families keep medical reports together today, with a longer-term vision for a personal Health Passport and a clearer view of the health journey." path="/about" />
       {/* Hero Section */}
       <section className="py-20 relative overflow-hidden">
-        <div className="absolute inset-0 animated-gradient opacity-30" />
         <div className="container mx-auto px-4 relative z-10">
           <FadeInOnScroll>
             <div className="text-center max-w-3xl mx-auto">
               <h1 className="text-4xl md:text-5xl font-bold mb-6">
-                Building Trust in{" "}
-                <span className="gradient-text">Digital Healthcare</span>
+                A clearer health history, built around family.
               </h1>
               <p className="text-lg text-muted-foreground mb-8">
-                MediVault was born from a simple belief: every patient deserves secure, 
-                instant access to their complete medical history. We're on a mission to 
-                make that a reality for millions of Indians.
+                MediVault starts with a simple job: keep your family’s medical records together and easier to find. Our longer-term vision is a Health Passport you can look back through over time—the Health Time Machine.
               </p>
             </div>
           </FadeInOnScroll>
@@ -66,11 +56,9 @@ export default function About() {
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-6">
                   <Target className="h-6 w-6 text-primary" />
                 </div>
-                <h2 className="text-2xl font-bold mb-4">Our Mission</h2>
+                <h2 className="text-2xl font-bold mb-4">What we do today</h2>
                 <p className="text-muted-foreground">
-                  To empower every patient with secure, instant access to their complete 
-                  medical history while enabling healthcare providers to deliver better, 
-                  more informed care.
+                  Help families keep prescriptions, reports, and scans in one place, so they can find and revisit the records they already have.
                 </p>
               </div>
             </FadeInOnScroll>
@@ -78,13 +66,11 @@ export default function About() {
             <FadeInOnScroll delay={100}>
               <div className="bg-card rounded-2xl p-8 border border-border/50 h-full">
                 <div className="w-12 h-12 rounded-xl bg-trust/10 flex items-center justify-center mb-6">
-                  <Globe className="h-6 w-6 text-trust" />
+                  <Clock className="h-6 w-6 text-trust" />
                 </div>
-                <h2 className="text-2xl font-bold mb-4">Our Vision</h2>
+                <h2 className="text-2xl font-bold mb-4">Where we’re going</h2>
                 <p className="text-muted-foreground">
-                  A world where medical records seamlessly follow patients across healthcare 
-                  providers, enabling better health outcomes and eliminating the stress of 
-                  managing paper records.
+                  Toward a personal Health Passport: a clearer record of a family’s health journey that can support conversations with clinicians—not diagnose or predict.
                 </p>
               </div>
             </FadeInOnScroll>
@@ -97,41 +83,18 @@ export default function About() {
         <div className="container mx-auto px-4">
           <FadeInOnScroll>
             <div className="max-w-3xl mx-auto">
-              <h2 className="text-3xl font-bold text-center mb-8">Our Story</h2>
+              <h2 className="text-3xl font-bold text-center mb-8">From scattered papers to a Health Passport</h2>
               <div className="prose prose-lg dark:prose-invert mx-auto text-muted-foreground">
                 <p>
-                  MediVault started when our founders experienced firsthand the frustration 
-                  of managing medical records across multiple hospitals. Lost reports, 
-                  repeated tests, and the anxiety of not having crucial health information 
-                  when needed most—these were problems they knew affected millions of families.
+                  A prescription may be in a WhatsApp chat, a test report in a folder, and an older scan on someone else’s phone. Families should not have to piece together a health history from memory each time they need a record.
                 </p>
                 <p className="mt-4">
-                  In 2022, they set out to build a solution that would give patients control 
-                  over their health data while maintaining the highest standards of security 
-                  and privacy. Today, MediVault serves thousands of patients and healthcare 
-                  providers across India.
+                  MediVault brings those documents together as a practical first step. The Health Time Machine is the longer view: making it easier to look back through a family’s saved records over time, while leaving medical decisions to doctors and patients.
                 </p>
               </div>
             </div>
           </FadeInOnScroll>
 
-          {/* Timeline */}
-          <FadeInOnScroll delay={200}>
-            <div className="max-w-2xl mx-auto mt-12">
-              <div className="relative">
-                <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
-                {milestones.map((milestone, index) => (
-                  <div key={milestone.event} className="relative pl-12 pb-8 last:pb-0">
-                    <div className="absolute left-0 w-8 h-8 rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center">
-                      <div className="w-2 h-2 rounded-full bg-primary" />
-                    </div>
-                    <div className="text-sm font-bold text-primary mb-1">{milestone.year}</div>
-                    <p className="text-muted-foreground">{milestone.event}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </FadeInOnScroll>
         </div>
       </section>
 
