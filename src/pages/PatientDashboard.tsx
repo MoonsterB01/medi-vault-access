@@ -28,7 +28,8 @@ import { WellbeingPage } from "@/components/wellbeing/WellbeingPage";
 import { FamilyAccessTab } from "@/components/family/FamilyAccessTab";
 import { FamilyModeBanner } from "@/components/family/FamilyModeBanner";
 import { useActivePatient } from "@/contexts/ActivePatientContext";
-import { Users } from "lucide-react";
+import { Users, BookUser } from "lucide-react";
+import { HealthPassport } from "@/components/patient/HealthPassport";
 import { cn } from "@/lib/utils";
 
 /**
@@ -565,8 +566,9 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
             </div>
 
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+              <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 h-auto">
                 <TabsTrigger value="summary"><Bot className="h-4 w-4 mr-1" />Summary</TabsTrigger>
+                <TabsTrigger value="passport"><BookUser className="h-4 w-4 mr-1" />Passport</TabsTrigger>
                 <TabsTrigger value="documents"><FileText className="h-4 w-4 mr-1" />Documents</TabsTrigger>
                 <TabsTrigger value="search"><Search className="h-4 w-4 mr-1" />Search</TabsTrigger>
                 <TabsTrigger value="wellbeing"><Heart className="h-4 w-4 mr-1" />Well-being</TabsTrigger>
@@ -583,6 +585,10 @@ export default function PatientDashboard({ user }: PatientDashboardProps = {}) {
                   error={summaryError}
                   documents={documents}
                 />
+              </TabsContent>
+
+              <TabsContent value="passport" className="mt-6" id="tab-content-passport">
+                <HealthPassport patient={patientData} summary={summary} isLoading={isSummaryLoading} />
               </TabsContent>
 
               <TabsContent value="documents" className="mt-6" id="tab-content-documents">

@@ -15,6 +15,7 @@ import {
   Heart,
   Settings,
   LogOut,
+  BookUser,
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,6 +37,7 @@ import logo from "@/assets/logo.png";
 
 const patientMenuItems = [
   { title: "Summary", url: "/patient-dashboard#summary", icon: FileText, tab: "summary" },
+  { title: "Health Passport", url: "/patient-dashboard#passport", icon: BookUser, tab: "passport" },
   { title: "My Documents", url: "/patient-dashboard#documents", icon: FileText, tab: "documents" },
   { title: "Search Documents", url: "/patient-dashboard#search", icon: Search, tab: "search" },
   { title: "My Appointments", url: "/patient-dashboard#appointments", icon: Calendar, tab: "appointments" },

@@ -1,4 +1,4 @@
-import { Bot, FileText, Search, Calendar, Upload, Heart } from "lucide-react";
+import { Bot, FileText, Search, Calendar, Upload, Heart, BookUser } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MobileBottomNavProps {
@@ -9,6 +9,7 @@ interface MobileBottomNavProps {
 export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps) {
   const mainTabs = [
     { value: "summary", icon: Bot, label: "Summary" },
+    { value: "passport", icon: BookUser, label: "Passport" },
     { value: "documents", icon: FileText, label: "Docs" },
     { value: "wellbeing", icon: Heart, label: "Wellbeing" },
     { value: "appointments", icon: Calendar, label: "Appts" },
@@ -17,7 +18,7 @@ export function MobileBottomNav({ activeTab, onTabChange }: MobileBottomNavProps
 
   return (
     <nav className="flex-shrink-0 bg-card border-t border-border safe-area-bottom">
-      <div className="grid grid-cols-5 gap-1 px-2 py-2">
+      <div className="grid grid-cols-6 gap-1 px-2 py-2">
         {mainTabs.map((tab) => (
           <button
             key={tab.value}

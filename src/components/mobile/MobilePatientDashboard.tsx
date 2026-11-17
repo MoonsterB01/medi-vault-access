@@ -1,3 +1,4 @@
+import { HealthPassport } from "@/components/patient/HealthPassport";
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { MobileHeader } from "./MobileHeader";
@@ -89,6 +90,8 @@ export function MobilePatientDashboard({
             onRefresh={refreshPatientData}
           />
         );
+      case 'passport':
+        return <HealthPassport patient={patientData} summary={summary} isLoading={isSummaryLoading} />;
       case 'documents':
         return (
           <MobileDocumentsTab
